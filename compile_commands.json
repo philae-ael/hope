@@ -1,0 +1,142 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-c",
+      "-O0",
+      "-g",
+      "-std=c++20",
+      "-Wall",
+      "-Wextra",
+      "-Wno-unused-parameter",
+      "-Wno-missing-field-initializers",
+      "-DDEBUG",
+      "-o",
+      "build/main.o",
+      "main.cpp"
+    ],
+    "directory": "/home/eli/projects/other/misc/string",
+    "file": "/home/eli/projects/other/misc/string/main.cpp",
+    "output": "/home/eli/projects/other/misc/string/build/main.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-c",
+      "-O0",
+      "-g",
+      "-std=c++20",
+      "-Wall",
+      "-Wextra",
+      "-Wno-unused-parameter",
+      "-Wno-missing-field-initializers",
+      "-DDEBUG",
+      "-o",
+      "build/core/string.o",
+      "core/string.cpp"
+    ],
+    "directory": "/home/eli/projects/other/misc/string",
+    "file": "/home/eli/projects/other/misc/string/core/string.cpp",
+    "output": "/home/eli/projects/other/misc/string/build/core/string.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-c",
+      "-O0",
+      "-g",
+      "-std=c++20",
+      "-Wall",
+      "-Wextra",
+      "-Wno-unused-parameter",
+      "-Wno-missing-field-initializers",
+      "-DDEBUG",
+      "-o",
+      "build/core/memory.o",
+      "core/memory.cpp"
+    ],
+    "directory": "/home/eli/projects/other/misc/string",
+    "file": "/home/eli/projects/other/misc/string/core/memory.cpp",
+    "output": "/home/eli/projects/other/misc/string/build/core/memory.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-c",
+      "-O0",
+      "-g",
+      "-std=c++20",
+      "-Wall",
+      "-Wextra",
+      "-Wno-unused-parameter",
+      "-Wno-missing-field-initializers",
+      "-DDEBUG",
+      "-o",
+      "build/core/debug.o",
+      "core/debug.cpp"
+    ],
+    "directory": "/home/eli/projects/other/misc/string",
+    "file": "/home/eli/projects/other/misc/string/core/debug.cpp",
+    "output": "/home/eli/projects/other/misc/string/build/core/debug.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-c",
+      "-O0",
+      "-g",
+      "-std=c++20",
+      "-Wall",
+      "-Wextra",
+      "-Wno-unused-parameter",
+      "-Wno-missing-field-initializers",
+      "-DDEBUG",
+      "-o",
+      "build/core/log.o",
+      "core/log.cpp"
+    ],
+    "directory": "/home/eli/projects/other/misc/string",
+    "file": "/home/eli/projects/other/misc/string/core/log.cpp",
+    "output": "/home/eli/projects/other/misc/string/build/core/log.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-c",
+      "-O0",
+      "-g",
+      "-std=c++20",
+      "-Wall",
+      "-Wextra",
+      "-Wno-unused-parameter",
+      "-Wno-missing-field-initializers",
+      "-DDEBUG",
+      "-o",
+      "build/core/platform.o",
+      "core/platform.cpp"
+    ],
+    "directory": "/home/eli/projects/other/misc/string",
+    "file": "/home/eli/projects/other/misc/string/core/platform.cpp",
+    "output": "/home/eli/projects/other/misc/string/build/core/platform.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-c",
+      "-O0",
+      "-g",
+      "-std=c++20",
+      "-Wall",
+      "-Wextra",
+      "-Wno-unused-parameter",
+      "-Wno-missing-field-initializers",
+      "-DDEBUG",
+      "-o",
+      "build/core/math.o",
+      "core/math.cpp"
+    ],
+    "directory": "/home/eli/projects/other/misc/string",
+    "file": "/home/eli/projects/other/misc/string/core/math.cpp",
+    "output": "/home/eli/projects/other/misc/string/build/core/math.o"
+  }
+]
