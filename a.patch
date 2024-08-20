@@ -1,0 +1,10 @@
+diff --git a/corelib/src/core/math.h b/corelib/src/core/math.h
+index a538a38..513f7b4 100644
+--- a/corelib/src/core/math.h
++++ b/corelib/src/core/math.h
+@@ -1,4 +1,4 @@
+-// IWYU pragma: private, include "core/core.h"
++// IWYU pragma: private
+ 
+ #ifndef INCLUDE_CORE_MATH_H_
+ #define INCLUDE_CORE_MATH_H_

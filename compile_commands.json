@@ -1,9 +1,10 @@
 [
   {
     "arguments": [
-      "/usr/bin/g++",
+      "/usr/bin/clang++",
       "-c",
-      "-O0",
+      "-Isrc",
+      "-O3",
       "-g",
       "-std=c++20",
       "-Wall",
@@ -12,18 +13,19 @@
       "-Wno-missing-field-initializers",
       "-DDEBUG",
       "-o",
-      "build/main.o",
-      "main.cpp"
+      "build/src/main.o",
+      "src/main.cpp"
     ],
-    "directory": "/home/eli/projects/other/misc/string",
-    "file": "/home/eli/projects/other/misc/string/main.cpp",
-    "output": "/home/eli/projects/other/misc/string/build/main.o"
+    "directory": "/home/eli/projects/other/misc/corelib",
+    "file": "/home/eli/projects/other/misc/corelib/src/main.cpp",
+    "output": "/home/eli/projects/other/misc/corelib/build/src/main.o"
   },
   {
     "arguments": [
-      "/usr/bin/g++",
+      "/usr/bin/clang++",
       "-c",
-      "-O0",
+      "-Isrc",
+      "-O3",
       "-g",
       "-std=c++20",
       "-Wall",
@@ -32,18 +34,19 @@
       "-Wno-missing-field-initializers",
       "-DDEBUG",
       "-o",
-      "build/core/string.o",
-      "core/string.cpp"
+      "build/src/core/string.o",
+      "src/core/string.cpp"
     ],
-    "directory": "/home/eli/projects/other/misc/string",
-    "file": "/home/eli/projects/other/misc/string/core/string.cpp",
-    "output": "/home/eli/projects/other/misc/string/build/core/string.o"
+    "directory": "/home/eli/projects/other/misc/corelib",
+    "file": "/home/eli/projects/other/misc/corelib/src/core/string.cpp",
+    "output": "/home/eli/projects/other/misc/corelib/build/src/core/string.o"
   },
   {
     "arguments": [
-      "/usr/bin/g++",
+      "/usr/bin/clang++",
       "-c",
-      "-O0",
+      "-Isrc",
+      "-O3",
       "-g",
       "-std=c++20",
       "-Wall",
@@ -52,18 +55,19 @@
       "-Wno-missing-field-initializers",
       "-DDEBUG",
       "-o",
-      "build/core/memory.o",
-      "core/memory.cpp"
+      "build/src/core/memory.o",
+      "src/core/memory.cpp"
     ],
-    "directory": "/home/eli/projects/other/misc/string",
-    "file": "/home/eli/projects/other/misc/string/core/memory.cpp",
-    "output": "/home/eli/projects/other/misc/string/build/core/memory.o"
+    "directory": "/home/eli/projects/other/misc/corelib",
+    "file": "/home/eli/projects/other/misc/corelib/src/core/memory.cpp",
+    "output": "/home/eli/projects/other/misc/corelib/build/src/core/memory.o"
   },
   {
     "arguments": [
-      "/usr/bin/g++",
+      "/usr/bin/clang++",
       "-c",
-      "-O0",
+      "-Isrc",
+      "-O3",
       "-g",
       "-std=c++20",
       "-Wall",
@@ -72,18 +76,19 @@
       "-Wno-missing-field-initializers",
       "-DDEBUG",
       "-o",
-      "build/core/debug.o",
-      "core/debug.cpp"
+      "build/src/core/debug.o",
+      "src/core/debug.cpp"
     ],
-    "directory": "/home/eli/projects/other/misc/string",
-    "file": "/home/eli/projects/other/misc/string/core/debug.cpp",
-    "output": "/home/eli/projects/other/misc/string/build/core/debug.o"
+    "directory": "/home/eli/projects/other/misc/corelib",
+    "file": "/home/eli/projects/other/misc/corelib/src/core/debug.cpp",
+    "output": "/home/eli/projects/other/misc/corelib/build/src/core/debug.o"
   },
   {
     "arguments": [
-      "/usr/bin/g++",
+      "/usr/bin/clang++",
       "-c",
-      "-O0",
+      "-Isrc",
+      "-O3",
       "-g",
       "-std=c++20",
       "-Wall",
@@ -92,18 +97,19 @@
       "-Wno-missing-field-initializers",
       "-DDEBUG",
       "-o",
-      "build/core/log.o",
-      "core/log.cpp"
+      "build/src/core/log.o",
+      "src/core/log.cpp"
     ],
-    "directory": "/home/eli/projects/other/misc/string",
-    "file": "/home/eli/projects/other/misc/string/core/log.cpp",
-    "output": "/home/eli/projects/other/misc/string/build/core/log.o"
+    "directory": "/home/eli/projects/other/misc/corelib",
+    "file": "/home/eli/projects/other/misc/corelib/src/core/log.cpp",
+    "output": "/home/eli/projects/other/misc/corelib/build/src/core/log.o"
   },
   {
     "arguments": [
-      "/usr/bin/g++",
+      "/usr/bin/clang++",
       "-c",
-      "-O0",
+      "-Isrc",
+      "-O3",
       "-g",
       "-std=c++20",
       "-Wall",
@@ -112,18 +118,19 @@
       "-Wno-missing-field-initializers",
       "-DDEBUG",
       "-o",
-      "build/core/platform.o",
-      "core/platform.cpp"
+      "build/src/core/platform.o",
+      "src/core/platform.cpp"
     ],
-    "directory": "/home/eli/projects/other/misc/string",
-    "file": "/home/eli/projects/other/misc/string/core/platform.cpp",
-    "output": "/home/eli/projects/other/misc/string/build/core/platform.o"
+    "directory": "/home/eli/projects/other/misc/corelib",
+    "file": "/home/eli/projects/other/misc/corelib/src/core/platform.cpp",
+    "output": "/home/eli/projects/other/misc/corelib/build/src/core/platform.o"
   },
   {
     "arguments": [
-      "/usr/bin/g++",
+      "/usr/bin/clang++",
       "-c",
-      "-O0",
+      "-Isrc",
+      "-O3",
       "-g",
       "-std=c++20",
       "-Wall",
@@ -132,11 +139,95 @@
       "-Wno-missing-field-initializers",
       "-DDEBUG",
       "-o",
-      "build/core/math.o",
-      "core/math.cpp"
+      "build/src/core/math.o",
+      "src/core/math.cpp"
     ],
-    "directory": "/home/eli/projects/other/misc/string",
-    "file": "/home/eli/projects/other/misc/string/core/math.cpp",
-    "output": "/home/eli/projects/other/misc/string/build/core/math.o"
+    "directory": "/home/eli/projects/other/misc/corelib",
+    "file": "/home/eli/projects/other/misc/corelib/src/core/math.cpp",
+    "output": "/home/eli/projects/other/misc/corelib/build/src/core/math.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/clang++",
+      "-c",
+      "-Isrc",
+      "-O3",
+      "-g",
+      "-std=c++20",
+      "-Wall",
+      "-Wextra",
+      "-Wno-unused-parameter",
+      "-Wno-missing-field-initializers",
+      "-DDEBUG",
+      "-o",
+      "build/src/os/time.o",
+      "src/os/time.cpp"
+    ],
+    "directory": "/home/eli/projects/other/misc/corelib",
+    "file": "/home/eli/projects/other/misc/corelib/src/os/time.cpp",
+    "output": "/home/eli/projects/other/misc/corelib/build/src/os/time.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/clang++",
+      "-c",
+      "-Isrc",
+      "-O3",
+      "-g",
+      "-std=c++20",
+      "-Wall",
+      "-Wextra",
+      "-Wno-unused-parameter",
+      "-Wno-missing-field-initializers",
+      "-DDEBUG",
+      "-o",
+      "build/src/os/memory.o",
+      "src/os/memory.cpp"
+    ],
+    "directory": "/home/eli/projects/other/misc/corelib",
+    "file": "/home/eli/projects/other/misc/corelib/src/os/memory.cpp",
+    "output": "/home/eli/projects/other/misc/corelib/build/src/os/memory.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/clang++",
+      "-c",
+      "-Isrc",
+      "-O3",
+      "-g",
+      "-std=c++20",
+      "-Wall",
+      "-Wextra",
+      "-Wno-unused-parameter",
+      "-Wno-missing-field-initializers",
+      "-DDEBUG",
+      "-o",
+      "build/src/os/linux/time.o",
+      "src/os/linux/time.cpp"
+    ],
+    "directory": "/home/eli/projects/other/misc/corelib",
+    "file": "/home/eli/projects/other/misc/corelib/src/os/linux/time.cpp",
+    "output": "/home/eli/projects/other/misc/corelib/build/src/os/linux/time.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/clang++",
+      "-c",
+      "-Isrc",
+      "-O3",
+      "-g",
+      "-std=c++20",
+      "-Wall",
+      "-Wextra",
+      "-Wno-unused-parameter",
+      "-Wno-missing-field-initializers",
+      "-DDEBUG",
+      "-o",
+      "build/src/os/linux/memory.o",
+      "src/os/linux/memory.cpp"
+    ],
+    "directory": "/home/eli/projects/other/misc/corelib",
+    "file": "/home/eli/projects/other/misc/corelib/src/os/linux/memory.cpp",
+    "output": "/home/eli/projects/other/misc/corelib/build/src/os/linux/memory.o"
   }
 ]

@@ -10,7 +10,8 @@ str8 to_str8(Os os) {
   }[(usize)os];
 }
 
-template <> Maybe<Os> from_hstr8(hstr8 h) {
+template <>
+Maybe<Os> from_hstr8(hstr8 h) {
   switch (h.hash) {
   case "windows"_h:
     return Os::Windows;

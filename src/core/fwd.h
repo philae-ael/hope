@@ -13,7 +13,8 @@ struct hstr8;
 struct string8;
 struct string_builder;
 
-template <class T> Maybe<T> from_hstr8(hstr8);
+template <class T>
+Maybe<T> from_hstr8(hstr8);
 
 } // namespace core
 

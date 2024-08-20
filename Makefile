@@ -1,26 +1,31 @@
-CC=gcc
-CXX=g++
+CC=clang
+CXX=clang++
 
 OBJDIR := build
 DEPDIR := build
 
-CXXFLAGS := $(CXXFLAGS) -O0 -g -std=c++20
-CXXFLAGS := $(CXXFLAGS) -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers
-CXXFLAGS := $(CXXFLAGS) -DDEBUG
-# CXXFLAGS := $(CXXFLAGS) -DARENA_DEBUG 
-# CXXFLAGS := $(CXXFLAGS) -DSCRATCH_DEBUG 
-# CXXFLAGS := $(CXXFLAGS) -fsanitize=address 
+CXXFLAGS:=$(CXXFLAGS) -O3 -g -std=c++20
+CXXFLAGS:=$(CXXFLAGS) -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers
+CXXFLAGS:=$(CXXFLAGS) -DDEBUG
+# CXXFLAGS:=$(CXXFLAGS) -DARENA_DEBUG 
+# CXXFLAGS:=$(CXXFLAGS) -DMEM_DEBUG 
+# CXXFLAGS:=$(CXXFLAGS) -DMEM_USE_MALLOC
+# CXXFLAGS:=$(CXXFLAGS) -DSCRATCH_DEBUG 
+# CXXFLAGS:=$(CXXFLAGS) -fno-omit-frame-pointer
+# CXXFLAGS:=$(CXXFLAGS) -fsanitize=address 
+# CXXFLAGS:=$(CXXFLAGS) -flto
 
 # clang only
-# CXXFLAGS := $(CXXFLAGS) -ftime-trace
+# CXXFLAGS:=$(CXXFLAGS) -ftime-trace
  	
 LDFLAGS:=$(LDFLAGS) -rdynamic 
 LDLIBS:=$(LDLIBS) -lstdc++exp 
 
 DEPFLAGS= -MM -MG -MF 
 
-SRCS := main.cpp
--include core/core.mk
+SRCS := src/main.cpp
+-include src/core/core.mk
+-include src/os/os.mk
 
 OBJS := $(patsubst %,$(OBJDIR)/%.o,$(basename $(SRCS)))
 DEPENDS := $(patsubst %,$(DEPDIR)/%.d,$(basename $(SRCS)))

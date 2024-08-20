@@ -1,13 +1,11 @@
 #include "core.h"
 
-const char *VEC2_FMT_FLAGS[]{
-    "{%*.*g, %*.*g}",           "{%-*.*g, %-*.*g}",
-    "{\n  %*.*g,\n  %*.*g,\n}", "{\n  %-*.*g,\n  %-*.*g,\n}",
-    "{%*.*f, %*.*f}",           "{%-*.*f, %-*.*f}",
-    "{\n  %*.*f,\n  %*.*f,\n}", "{\n  %-*.*f,\n  %-*.*f,\n}",
+const char* VEC2_FMT_FLAGS[]{
+    "{%*.*g, %*.*g}", "{%-*.*g, %-*.*g}", "{\n  %*.*g,\n  %*.*g,\n}", "{\n  %-*.*g,\n  %-*.*g,\n}",
+    "{%*.*f, %*.*f}", "{%-*.*f, %-*.*f}", "{\n  %*.*f,\n  %*.*f,\n}", "{\n  %-*.*f,\n  %-*.*f,\n}",
 };
 
-const char *VEC4_FMT_FLAGS[]{
+const char* VEC4_FMT_FLAGS[]{
     "{%*.*g, %*.*g, %*.*g, %*.*g}",
     "{%-*.*g, %-*.*g, %-*.*g, %-*.*g}",
     "{\n  %*.*g,\n  %*.*g,\n  %*.*g,\n  %*.*g,\n}",
@@ -19,7 +17,7 @@ const char *VEC4_FMT_FLAGS[]{
 };
 
 namespace core {
-str8 to_str8(Arena &arena, Vec2 v, VectorFormat format) {
+str8 to_str8(Arena& arena, Vec2 v, VectorFormat format) {
   string_builder sb{};
   // clang-format off
     sb.pushf(arena, VEC2_FMT_FLAGS[(usize)format.flags & 0b111],
@@ -30,7 +28,7 @@ str8 to_str8(Arena &arena, Vec2 v, VectorFormat format) {
   return sb.commit(arena);
 }
 
-str8 to_str8(Arena &arena, Vec4 v, VectorFormat format) {
+str8 to_str8(Arena& arena, Vec4 v, VectorFormat format) {
   string_builder sb{};
   // clang-format off
     sb.pushf(arena, VEC4_FMT_FLAGS[(usize)format.flags & 0b111],

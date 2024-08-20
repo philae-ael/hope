@@ -1,4 +1,4 @@
-// IWYU pragma: private, include "core/core.h"
+// IWYU pragma: private
 
 #ifndef INCLUDE_CORE_MATH_H_
 #define INCLUDE_CORE_MATH_H_
@@ -9,7 +9,7 @@
 typedef f32 __m128 __attribute__((vector_size(16), aligned(16)));
 typedef f32 __m256 __attribute__((vector_size(32), aligned(32)));
 #else
-#include <immintrin.h>
+  #include <immintrin.h>
 #endif
 
 namespace core {
@@ -90,13 +90,13 @@ struct Vec4x8 {
 };
 
 enum class VectorFormatFlags : u8 {
-  PadLeft = 0x1,
+  PadLeft   = 0x1,
   Multiline = 0x2,
-  Alt = 0x4,
+  Alt       = 0x4,
 };
 
 struct VectorFormat {
-  u8 width = 0;
+  u8 width     = 0;
   u8 precision = 6;
   VectorFormatFlags flags{};
 };
@@ -105,13 +105,13 @@ constexpr VectorFormat VectorFormatMultiline{
     .flags = VectorFormatFlags::Multiline,
 };
 constexpr VectorFormat VectorFormatPretty{
-    .width = 6,
+    .width     = 6,
     .precision = 2,
-    .flags = VectorFormatFlags::Multiline | VectorFormatFlags::Alt,
+    .flags     = VectorFormatFlags::Multiline | VectorFormatFlags::Alt,
 };
 
-str8 to_str8(Arena &arena, Vec4 v, VectorFormat format = {});
-str8 to_str8(Arena &arena, Vec2 v, VectorFormat format = {});
+str8 to_str8(Arena& arena, Vec4 v, VectorFormat format = {});
+str8 to_str8(Arena& arena, Vec2 v, VectorFormat format = {});
 
 } // namespace core
 #endif // INCLUDE_CORE_MATH_H_
