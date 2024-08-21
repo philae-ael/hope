@@ -16,6 +16,12 @@
 
 #define MAX(a, b) ((a) > (b)) ? (a) : (b)
 #define MIN(a, b) ((a) < (b)) ? (a) : (b)
+#define SWAP(a, b)  \
+  do {              \
+    auto tmp = b;   \
+    b        = a;   \
+    a        = tmp; \
+  } while (0)
 
 #define KB(x) ((x) * 1024)
 #define MB(x) ((x) * 1024 * 1024)

@@ -107,11 +107,11 @@ constexpr VectorFormat VectorFormatMultiline{
 constexpr VectorFormat VectorFormatPretty{
     .width     = 6,
     .precision = 2,
-    .flags     = VectorFormatFlags::Multiline | VectorFormatFlags::Alt,
+    .flags     = enum_helpers::enum_or(VectorFormatFlags::Multiline, VectorFormatFlags::Alt),
 };
 
-str8 to_str8(Arena& arena, Vec4 v, VectorFormat format = {});
-str8 to_str8(Arena& arena, Vec2 v, VectorFormat format = {});
+str8 to_str8(arena& arena, Vec4 v, VectorFormat format = {});
+str8 to_str8(arena& arena, Vec2 v, VectorFormat format = {});
 
 } // namespace core
 #endif // INCLUDE_CORE_MATH_H_

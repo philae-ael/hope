@@ -19,7 +19,7 @@ duration_info duration_info::from_time(time t) {
   };
 }
 
-str8 to_str8(Arena& arena, duration_info duration_info, TimeFormat format) {
+str8 to_str8(arena& arena, duration_info duration_info, TimeFormat format) {
   core::string_builder sb{};
   switch (format) {
   case TimeFormat::HH_MM_SS_MMM_UUU:
@@ -55,7 +55,7 @@ str8 to_str8(Arena& arena, duration_info duration_info, TimeFormat format) {
   return sb.commit(arena);
 }
 
-core::str8 to_str8(core::Arena& arena, time t, TimeFormat format) {
+core::str8 to_str8(core::arena& arena, time t, TimeFormat format) {
   return to_str8(arena, duration_info::from_time(t), format);
 }
 } // namespace os

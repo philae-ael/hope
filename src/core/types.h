@@ -53,10 +53,9 @@ struct Maybe {
 template <class F>
 struct defer_t : F {
   ~defer_t() {
-    F::operator()();
+    (*this)();
   }
 };
-
 struct defer_builder_t {
   constexpr auto operator+(auto f) const {
     return defer_t{FWD(f)};
@@ -101,14 +100,27 @@ struct TaggedPtr {
       : TaggedPtr(p, 0) {}
 };
 
-// TODO: MOVE THAT
-usize thread_id();
+/// \cond internal
+namespace detail_ {
+template <class T, class underlying>
+struct handle_impl {
+  enum class handle_t : underlying {};
+};
+} // namespace detail_
+/// \endcond
 
-} // namespace core
+template <class T, class underlying = usize>
+using handle_t = detail_::handle_impl<T, underlying>::handle_t;
 
+template <class T, class underlying>
+underlying to_underlying(handle_t<T, underlying> h) {
+  return static_cast<underlying>(h);
+}
+
+namespace enum_helpers {
 template <class T>
   requires std::is_enum_v<T>
-constexpr T operator|(T lhs, T rhs) {
+constexpr T enum_or(T lhs, T rhs) {
   return static_cast<T>(
       static_cast<std::underlying_type<T>::type>(lhs) |
       static_cast<std::underlying_type<T>::type>(rhs)
@@ -117,7 +129,7 @@ constexpr T operator|(T lhs, T rhs) {
 
 template <class T>
   requires std::is_enum_v<T>
-constexpr T operator&(T lhs, T rhs) {
+constexpr T enum_and(T lhs, T rhs) {
   return static_cast<T>(
       static_cast<std::underlying_type<T>::type>(lhs) &
       static_cast<std::underlying_type<T>::type>(rhs)
@@ -126,8 +138,23 @@ constexpr T operator&(T lhs, T rhs) {
 
 template <class T>
   requires std::is_enum_v<T>
+constexpr T operator|(T lhs, T rhs) {
+  return enum_or(lhs, rhs);
+}
+
+template <class T>
+  requires std::is_enum_v<T>
+constexpr T operator&(T lhs, T rhs) {
+  return enum_and(lhs, rhs);
+}
+
+template <class T>
+  requires std::is_enum_v<T>
 constexpr bool any(T t) {
   return static_cast<std::underlying_type_t<T>>(t) != 0;
 }
+
+} // namespace enum_helpers
+} // namespace core
 
 #endif // INCLUDE_CORE_TYPE_H_

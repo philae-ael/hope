@@ -11,7 +11,7 @@ namespace core {
 
 /* FORMATTERS */
 
-log_entry default_log_formatter(void*, Arena& arena, log_entry entry) {
+log_entry default_log_formatter(void*, arena& arena, log_entry entry) {
   entry.builder = string_builder{}
                       .push(arena, entry.level)
                       .push(arena, ": ")
@@ -21,7 +21,7 @@ log_entry default_log_formatter(void*, Arena& arena, log_entry entry) {
 }
 
 #define ESCAPE "\x1B"
-core::str8 LEVEL_COLOR[]{
+static core::str8 LEVEL_COLOR[]{
     ""_s,            // Trace,
     ""_s,            // Debug,
     ESCAPE "[34m"_s, // Info, blue
@@ -29,9 +29,9 @@ core::str8 LEVEL_COLOR[]{
     ESCAPE "[31m"_s, // Error, red
 };
 
-core::str8 COLOR_RESET = ESCAPE "[0m"_s;
+static core::str8 COLOR_RESET = ESCAPE "[0m"_s;
 
-log_entry log_fancy_formatter(void*, core::Arena& arena, core::log_entry entry) {
+log_entry log_fancy_formatter(void*, core::arena& arena, core::log_entry entry) {
   entry.builder = core::string_builder{}
                       .pushf(arena, "%s:%d - ", entry.loc.file_name(), entry.loc.line())
                       .push(arena, LEVEL_COLOR[(usize)entry.level])
@@ -49,10 +49,11 @@ void default_log_writer(void*, str8 msg) {
 
 /* REGISTRATION */
 
-log_writer global_log_writer        = default_log_writer;
-void* global_log_writer_userdata    = nullptr;
-log_formatter global_log_formatter  = default_log_formatter;
-void* global_log_formatter_userdata = nullptr;
+static log_writer global_log_writer        = default_log_writer;
+static void* global_log_writer_userdata    = nullptr;
+static log_formatter global_log_formatter  = default_log_formatter;
+static void* global_log_formatter_userdata = nullptr;
+static LogLevel global_log_level           = LOG_DEFAULT_GLOBAL_LEVEL;
 
 void log_register_global_writer(log_writer w, void* user) {
   global_log_writer          = w;
@@ -63,16 +64,14 @@ void log_register_global_formatter(log_formatter f, void* user) {
   global_log_formatter_userdata = user;
 }
 
-LogLevel global_level = LOG_DEFAULT_GLOBAL_LEVEL;
-
 void log_set_global_level(LogLevel level) {
-  global_level = level;
+  global_log_level = level;
 }
 bool log_filter(LogLevel level) {
-  return (usize)level >= (usize)global_level;
+  return (usize)level >= (usize)global_log_level;
 }
 
-void log_emit(Arena& arena, log_entry& entry) {
+void log_emit(arena& arena, log_entry& entry) {
   str8 msg =
       global_log_formatter(global_log_formatter_userdata, arena, entry).builder.commit(arena);
   global_log_writer(global_log_writer_userdata, msg);

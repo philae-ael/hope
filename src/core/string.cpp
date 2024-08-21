@@ -4,7 +4,7 @@
 
 namespace core {
 
-string_builder& string_builder::pushf(Arena& arena, const char* fmt, ...) {
+string_builder& string_builder::pushf(arena& arena, const char* fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
   vpushf(arena, fmt, ap);
@@ -12,7 +12,7 @@ string_builder& string_builder::pushf(Arena& arena, const char* fmt, ...) {
   return *this;
 }
 
-string_builder& string_builder::vpushf(Arena& arena, const char* fmt, va_list ap) {
+string_builder& string_builder::vpushf(arena& arena, const char* fmt, va_list ap) {
   va_list ap_copy;
 
   va_copy(ap_copy, ap);
@@ -32,7 +32,7 @@ string_builder& string_builder::vpushf(Arena& arena, const char* fmt, va_list ap
   return *this;
 }
 
-str8 string_builder::commit(Arena& arena) const {
+str8 string_builder::commit(arena& arena) const {
   if (first != nullptr && first->next == nullptr && arena.owns((void*)first->str.data)) {
     return first->str;
   }
@@ -53,7 +53,7 @@ str8 string_builder::commit(Arena& arena) const {
   return str8{total_len, data};
 }
 
-string_builder& string_builder::push_str8(Arena& arena, str8 str) {
+string_builder& string_builder::push_str8(arena& arena, str8 str) {
   return push_str8(arena.allocate<string_node>(), str);
 }
 
@@ -95,7 +95,7 @@ string_builder& string_builder::append(string_builder& sb) {
   return *this;
 }
 
-const char* str8::cstring(Arena& arena) {
+const char* str8::cstring(arena& arena) {
   u8* cstr = (u8*)data;
   if (!arena.try_resize((void*)data, len, len + 1)) {
     cstr = (u8*)arena.allocate(len + 1, alignof(char));

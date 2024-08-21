@@ -3,7 +3,6 @@
 #ifndef INCLUDE_CORE_PLATFORM_H_
 #define INCLUDE_CORE_PLATFORM_H_
 
-/// ** Compiler **
 namespace core {
 
 #if defined(__clang__)
@@ -16,7 +15,6 @@ namespace core {
   #error Unknown Compiler
 #endif
 
-/// ** OS **
 #if defined(__linux__)
   #define LINUX 1
 #elif defined(__WIN32)
@@ -24,8 +22,6 @@ namespace core {
 #else
   #error Unknown OS
 #endif
-
-// ** Architecture **
 
 #if defined(__x86_64__)
   #define X86_64 1

@@ -1,3 +1,5 @@
+// IWYU pragma: private
+
 #ifndef INCLUDE_CORE_SYNC_H_
 #define INCLUDE_CORE_SYNC_H_
 
@@ -5,6 +7,7 @@
 #include <atomic>
 
 namespace core::sync {
+usize thread_id();
 
 // Treiber stack
 template <class T, usize alignement = alignof(T)>
@@ -41,8 +44,6 @@ struct stack {
     return top.load().ptr() == nullptr;
   }
 };
-
-template struct stack<int>;
 
 } // namespace core::sync
 

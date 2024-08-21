@@ -41,8 +41,8 @@ enum class TimeFormat {
 };
 
 core::str8 to_str8(
-    core::Arena& arena, duration_info duration_info, TimeFormat format = TimeFormat::HH_MM_SS_MMM
+    core::arena& arena, duration_info duration_info, TimeFormat format = TimeFormat::HH_MM_SS_MMM
 );
-core::str8 to_str8(core::Arena& arena, time t, TimeFormat format = TimeFormat::MM_SS_MMM_UUU);
+core::str8 to_str8(core::arena& arena, time t, TimeFormat format = TimeFormat::MM_SS_MMM_UUU);
 } // namespace os
 #endif // INCLUDE_OS_TIME_H_

@@ -1,10 +1,11 @@
-#include <atomic>
 #include <cstdio>
 #include <cstdlib>
 
 #include "../os/memory.h"
 #include "core.h"
 #include "debug.h"
+
+using namespace core::enum_helpers;
 
 #ifdef DEBUG
   #include <bit>
@@ -32,10 +33,10 @@ usize arena_page_size() {
 #endif
 }
 
-bool Arena::owns(void* ptr) {
+bool arena::owns(void* ptr) {
   return ptr >= base && ptr < mem;
 }
-bool Arena::try_resize(void* ptr, usize cur_size, usize new_size) {
+bool arena::try_resize(void* ptr, usize cur_size, usize new_size) {
   if (!owns(ptr)) {
     return false;
   }
@@ -53,7 +54,7 @@ bool Arena::try_resize(void* ptr, usize cur_size, usize new_size) {
   return true;
 }
 
-void* Arena::allocate(usize size, usize alignement) {
+void* arena::allocate(usize size, usize alignement) {
   ARENA_DEBUG_STMT(
       printf("Arena: trying to allocate %zu, %zu available\n", size, capacity - (usize)(mem - base))
   );
@@ -97,7 +98,7 @@ void* Arena::allocate(usize size, usize alignement) {
   return aligned;
 }
 
-void Arena::deallocate(usize size) {
+void arena::deallocate(usize size) {
   ASSERT((usize)(mem - base) >= size);
   mem -= size;
   ASAN_POISON_MEMORY_REGION(mem, capacity - (mem - base));
@@ -112,9 +113,9 @@ void Arena::deallocate(usize size) {
   }
 }
 
-Arena* arena_alloc(usize capacity) {
+arena* arena_alloc(usize capacity) {
   usize page_size        = arena_page_size();
-  const usize alloc_size = ALIGN_UP(sizeof(Arena) + capacity, page_size);
+  const usize alloc_size = ALIGN_UP(sizeof(arena) + capacity, page_size);
 
   u8* memory = (u8*)os::mem_allocate(nullptr, alloc_size, os::MemAllocationFlags::Reserve);
   ARENA_DEBUG_STMT(printf("Arena: got range [%p, %p)\n", memory, memory + alloc_size));
@@ -122,131 +123,118 @@ Arena* arena_alloc(usize capacity) {
 
   os::mem_allocate(memory, page_size, os::MemAllocationFlags::Commit);
 
-  capacity        = alloc_size - sizeof(Arena);
+  capacity         = alloc_size - sizeof(arena);
 
-  Arena* arena    = (Arena*)memory;
-  arena->capacity = capacity;
-  arena->mem = arena->base = memory + sizeof(Arena);
-  arena->committed         = memory + page_size;
+  arena* arena_    = (arena*)memory;
+  arena_->capacity = capacity;
+  arena_->mem = arena_->base = memory + sizeof(arena);
+  arena_->committed          = memory + page_size;
 
-  ASAN_POISON_MEMORY_REGION(arena->mem, arena->capacity);
-  return arena;
+  ASAN_POISON_MEMORY_REGION(arena_->mem, arena_->capacity);
+  return arena_;
 }
 
-void arena_dealloc(Arena* arena) {
-  if (arena == nullptr) {
+void arena_dealloc(arena* arena_) {
+  if (arena_ == nullptr) {
     return;
   }
 
-  usize page_size        = arena_page_size();
-  const usize alloc_size = ALIGN_UP(sizeof(Arena) + arena->capacity, page_size);
+  const usize alloc_size = sizeof(arena) + arena_->capacity;
 
-  ARENA_DEBUG_STMT(printf("Arena: realeasing range [%p, %p)\n", arena, arena + alloc_size));
-  os::mem_deallocate(arena, alloc_size, os::MemDeallocationFlags::Release);
+  ARENA_DEBUG_STMT(printf("Arena: realeasing range [%p, %p)\n", arena_, arena_ + alloc_size));
+  os::mem_deallocate(arena_, alloc_size, os::MemDeallocationFlags::Release);
 }
 
-void Arena::pop_pos(u64 pos) {
+void arena::pop_pos(u64 pos) {
   ASSERT(mem > (u8*)pos);
   deallocate(mem - (u8*)pos);
 }
-u64 Arena::pos() {
+u64 arena::pos() {
   return (u64)mem;
 }
 void ArenaTemp::retire() {
-  arena->pop_pos(old_pos);
-  arena = nullptr;
+  arena_->pop_pos(old_pos);
+  arena_ = nullptr;
 }
-ArenaTemp Arena::make_temp() {
+ArenaTemp arena::make_temp() {
   return ArenaTemp{
       this,
       pos(),
   };
 }
 
-/// NOTES:
-/// scratch_* are reentrant
-/// The memory barrier part of the atomics are not needed (bc it's thread
-/// local) Only the atomicity of the operation is needed BUT it's easier
-/// (relaxed should be okay but well)
-/// ...
-/// Hum... thread local is not core local so i guess it should be fine?
-/// Still signals and interrupts?
-/// Well after thinking, i think the atomicity is not needed
-/// Pfff... a recursive mutex would be better i think
-///
-/// I decided to remove all atomic access, it's easier and it wont be an issue
+// NOTES:
+// scratch_* are reentrant
+// The memory barrier part of the atomics are not needed (bc it's thread
+// local) Only the atomicity of the operation is needed BUT it's easier
+// (relaxed should be okay but well)
+// ...
+// Hum... thread local is not core local so i guess it should be fine?
+// Still signals and interrupts?
+// Well after thinking, i think the atomicity is not needed
+// Pfff... a recursive mutex would be better i think
+//
+// I decided to remove all atomic access, it's easier and it wont be an issue
 
-thread_local Arena* scratch_storage[SCRATCH_ARENA_AMOUNT]{};
+thread_local arena* scratch_storage[SCRATCH_ARENA_AMOUNT]{};
+// This is not called, sometimes... it doesn't matter that much but it's annoying
 thread_local auto clear_arena_ = defer_builder + [] {
+  SCRATCH_DEBUG_STMT(printf("Scratch: cleaning storage for thread %zu\n", sync::thread_id()));
   for (usize i = 0; i < SCRATCH_ARENA_AMOUNT; i++) {
     if (scratch_storage[i] != nullptr) {
+      SCRATCH_DEBUG_STMT(
+          printf("Scratch: thread %zu is releasing scratch %zu\n", sync::thread_id(), i)
+      );
       arena_dealloc(scratch_storage[i]);
     }
   }
 };
 
-#define SWAP(a, b)  \
-  do {              \
-    auto tmp = b;   \
-    b        = a;   \
-    a        = tmp; \
-  } while (0)
-
-ArenaScratch scratch_get() {
+scratch scratch_get() {
   if (scratch_storage[0] == nullptr) {
+    SCRATCH_DEBUG_STMT(printf("Scratch: initialize storage for thread %zu\n", sync::thread_id()));
     for (usize i = 0; i < SCRATCH_ARENA_AMOUNT; i++) {
-      Arena* arena       = arena_alloc();
+      arena* arena       = arena_alloc();
       scratch_storage[i] = arena;
     }
   }
 
   for (usize i = 0; i < SCRATCH_ARENA_AMOUNT; i++) {
     usize j      = SCRATCH_ARENA_AMOUNT - 1 - i;
-    Arena* arena = nullptr;
+    arena* arena = nullptr;
     SWAP(scratch_storage[j], arena);
 
     if (arena != nullptr) {
       SCRATCH_DEBUG_STMT(
-          printf("Scratch: thread %zu, got scratch %zu at %p\n", thread_id(), j, arena->base)
+          printf("Scratch: thread %zu, got scratch %zu at %p\n", sync::thread_id(), j, arena->base)
       );
 
-      return ArenaScratch{.arena = arena, .old_pos = arena->pos()};
+      return scratch{.arena_ = arena, .old_pos = arena->pos()};
     }
   }
   panic("no scratch arena available");
 }
 
-void scratch_retire(ArenaScratch& scratch) {
-  scratch->pop_pos(scratch.old_pos);
-  Arena* arena  = scratch.arena;
-  scratch.arena = nullptr;
+void scratch_retire(scratch& scr) {
+  scr->pop_pos(scr.old_pos);
+  arena* arena_ = scr.arena_;
+  scr.arena_    = nullptr;
 
   for (usize i = 0; i < SCRATCH_ARENA_AMOUNT; i++) {
     if (scratch_storage[i] != nullptr) {
       continue;
     }
 
-    Arena* out = nullptr;
-    SWAP(out, arena);
+    SCRATCH_DEBUG_STMT(printf(
+        "Scratch: thread %zu, retire scratch %zu at %p\n", sync::thread_id(), i, arena_->base
+    ));
+    arena* out = nullptr;
+    SWAP(out, arena_);
 
-    SCRATCH_DEBUG_STMT(
-        printf("Scratch: thread %zu, retire scratch %zu at %p\n", thread_id(), i, arena->base)
-    );
     return;
   }
 
-  arena_dealloc(arena);
-}
-
-std::atomic<usize> thread_counter;
-
-thread_local usize thread_id_ = (usize)-1;
-
-usize thread_id() {
-  if (thread_id_ == (usize)-1) {
-    thread_id_ = thread_counter.fetch_add(1);
-  }
-  return thread_id_;
+  arena_dealloc(arena_);
 }
 
 } // namespace core

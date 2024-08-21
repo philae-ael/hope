@@ -1,5 +1,4 @@
 // IWYU pragma: private
-
 #ifndef INCLUDE_CORE_MEMORY_H_
 #define INCLUDE_CORE_MEMORY_H_
 
@@ -42,7 +41,7 @@
 
 namespace core {
 struct ArenaTemp;
-struct Arena {
+struct arena {
   u8* base;
   u8* mem;
   u8* committed;
@@ -66,75 +65,60 @@ private:
   void deallocate(usize size);
 };
 
-Arena* arena_alloc(usize capacity = DEFAULT_ARENA_CAPACITY);
-void arena_dealloc(Arena* arena);
+arena* arena_alloc(usize capacity = DEFAULT_ARENA_CAPACITY);
+void arena_dealloc(arena* arena);
 
 struct ArenaTemp {
-  Arena* arena;
+  arena* arena_;
   u64 old_pos;
 
   void retire();
 
-  Arena* operator->() {
+  arena* operator->() {
     check();
-    return arena;
+    return arena_;
   }
-  Arena& operator*() {
+  arena& operator*() {
     check();
-    return *arena;
+    return *arena_;
   }
   void check() {
-    ASSERT(arena != nullptr);
+    ASSERT(arena_ != nullptr);
   }
 };
 
-struct ArenaScratch;
-ArenaScratch scratch_get();
-void scratch_retire(ArenaScratch&);
+struct scratch;
+scratch scratch_get();
+void scratch_retire(scratch&);
 
-struct ArenaScratch {
-  Arena* arena;
+struct scratch {
+  arena* arena_;
   u64 old_pos;
 
   void retire() {
     check();
     scratch_retire(*this);
   }
-  Arena* operator->() {
+  arena* operator->() {
     check();
-    return arena;
+    return arena_;
   }
-  Arena& operator*() {
+  arena& operator*() {
     check();
-    return *arena;
+    return *arena_;
   }
 
   void check() {
-    ASSERTM(arena != nullptr, "scratch has already been already retired");
+    ASSERTM(arena_ != nullptr, "scratch has already been already retired");
   }
 };
 
-namespace detail {
-template <class T, class underlying>
-struct handle_impl {
-  enum class handle_t : underlying {};
-};
-} // namespace detail
-
-template <class T, class underlying = usize>
-using handle_t = detail::handle_impl<T, underlying>::handle_t;
-
-template <class T, class underlying>
-underlying to_underlying(handle_t<T, underlying> h) {
-  return static_cast<underlying>(h);
-}
-
 template <class T, usize size_ = sizeof(T), usize alignement_ = alignof(T)>
-struct Pool {
+struct pool {
   static constexpr usize size       = size_;
   static constexpr usize alignement = alignement_;
 
-  Arena* arena;
+  arena* arena_;
 
   struct node {
     node* next;
@@ -152,10 +136,10 @@ struct Pool {
       tail.next = n->next;
       return (T*)n;
     }
-    return arena->allocate<T>();
+    return arena_->allocate<T>();
   }
   void deallocate(T* t) {
-    if (arena->try_resize(t, size, 0)) {
+    if (arena_->try_resize(t, size, 0)) {
       return;
     }
 
@@ -165,8 +149,6 @@ struct Pool {
     head       = n;
   }
 };
-
-template struct Pool<u64>;
 
 } // namespace core
 #endif // INCLUDE_CORE_MEMORY_H_

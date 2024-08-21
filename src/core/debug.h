@@ -40,13 +40,11 @@
 
 #define todo(...) ::core::panic(__VA_ARGS__);
 
-#define NORETURN [[noreturn]]
-
 namespace core {
 
-NORETURN
-PRINTF_ATTRIBUTE(1, 3)
-void panic(const char* msg, std::source_location loc = std::source_location::current(), ...);
+[[noreturn]] void
+panic(const char* msg, std::source_location loc = std::source_location::current(), ...)
+    PRINTF_ATTRIBUTE(1, 3);
 
 void dump_backtrace(int skip = 1);
 

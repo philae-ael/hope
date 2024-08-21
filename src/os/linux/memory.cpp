@@ -10,6 +10,8 @@
 
 #ifndef MEM_USE_MALLOC
 
+using namespace core::enum_helpers;
+
 namespace os {
 
 void* mem_allocate(void* ptr, usize size, MemAllocationFlags flags) {
