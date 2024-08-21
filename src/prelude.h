@@ -3,6 +3,7 @@
 
 // IWYU pragma: begin_exports
 #include "core/core.h"
+#include "os/os.h"
 
 using namespace core;
 using namespace core::literals;

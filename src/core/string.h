@@ -4,6 +4,7 @@
 #define INCLUDE_CORE_STRING_H_
 #include <cstdarg>
 
+#include "base.h"
 #include "memory.h"
 #include "types.h"
 

@@ -19,7 +19,7 @@
 namespace core {
 
 #ifdef ARENA_DEBUG
-  #define ARENA_DEBUG_STMT(f) DEBUG_STMT(f)
+  #define ARENA_DEBUG_STMT(f) f
 #else
   #define ARENA_DEBUG_STMT(f)
 #endif
@@ -63,7 +63,7 @@ void* Arena::allocate(usize size, usize alignement) {
     return nullptr;
   }
 
-  u8* aligned = (u8*)ALIGN_UP(mem, alignement);
+  u8* aligned = ALIGN_UP(mem, alignement);
   ARENA_DEBUG_STMT(printf(
       "Arena: padding for %zu byte for alignement, alignement is %zu\n", (usize)(aligned - mem),
       alignement
@@ -80,12 +80,17 @@ void* Arena::allocate(usize size, usize alignement) {
   ARENA_DEBUG_STMT(printf("Arena: allocated region [%p, %p)\n", aligned, mem));
 
   if (mem > committed) {
+    ARENA_DEBUG_STMT(printf("Arena: Region need being committed!\n"));
     usize page_size = arena_page_size();
-    u8* aligned     = (u8*)ALIGN_UP(mem, page_size);
-    usize size      = (usize)ALIGN_DOWN(aligned - committed, page_size);
+    usize size      = ALIGN_UP(mem, page_size) - committed;
 
-    os::mem_allocate(aligned, size, os::MemAllocationFlags::Commit);
-    committed = aligned + size;
+    os::mem_allocate(committed, size, os::MemAllocationFlags::Commit);
+    ARENA_DEBUG_STMT(printf("Arena: commited region [%p, %p)\n", committed, committed + size));
+    committed += size;
+  } else {
+    ARENA_DEBUG_STMT(
+        printf("Arena: no need to commit region already committed until %p\n", committed)
+    );
   }
 
   ASAN_UNPOISON_MEMORY_REGION(aligned, size);
@@ -99,8 +104,8 @@ void Arena::deallocate(usize size) {
 
   usize page_size = arena_page_size();
   if (mem + page_size < committed) {
-    u8* aligned = (u8*)ALIGN_UP(mem, page_size);
-    usize size  = (usize)ALIGN_DOWN(committed - aligned, page_size);
+    u8* aligned = ALIGN_UP(mem, page_size);
+    usize size  = ALIGN_DOWN(committed - aligned, page_size);
 
     os::mem_deallocate(aligned, size, os::MemDeallocationFlags::Decommit);
     committed = aligned;

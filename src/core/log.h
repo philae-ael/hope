@@ -9,7 +9,7 @@
 #include <cstdarg>
 #include <source_location>
 
-#define LOG_DEFAULT_GLOBAL_LEVEL core::LogLevel::Trace
+#define LOG_DEFAULT_GLOBAL_LEVEL ::core::LogLevel::Trace
 
 namespace core {
 enum class LogLevel {
@@ -65,22 +65,22 @@ struct log_builder {
   log_builder(LogLevel level, std::source_location loc = std::source_location::current());
 };
 
-core::log_entry log_fancy_formatter(void*, core::Arena& arena, core::log_entry entry);
+log_entry log_fancy_formatter(void*, core::Arena& arena, core::log_entry entry);
 
 #define LOG_BUILDER(level, instr) \
   (log_filter(level) ? core::log_builder(level).instr.emit() : (void)0)
 
 #define LOG(level, fmt, ...) LOG_BUILDER(level, pushf(fmt __VA_OPT__(, __VA_ARGS__)))
 
-#define LOG_DEBUG(fmt, ...) LOG(core::LogLevel::Debug, fmt __VA_OPT__(, __VA_ARGS__))
+#define LOG_DEBUG(fmt, ...) LOG(::core::LogLevel::Debug, fmt __VA_OPT__(, __VA_ARGS__))
 
-#define LOG_INFO(fmt, ...) LOG(core::LogLevel::Info, fmt __VA_OPT__(, __VA_ARGS__))
+#define LOG_INFO(fmt, ...) LOG(::core::LogLevel::Info, fmt __VA_OPT__(, __VA_ARGS__))
 
-#define LOG_TRACE(fmt, ...) LOG(core::LogLevel::Trace, fmt __VA_OPT__(, __VA_ARGS__))
+#define LOG_TRACE(fmt, ...) LOG(::core::LogLevel::Trace, fmt __VA_OPT__(, __VA_ARGS__))
 
-#define LOG_WARNING(fmt, ...) LOG(core::LogLevel::Warning, fmt __VA_OPT__(, __VA_ARGS__))
+#define LOG_WARNING(fmt, ...) LOG(::core::LogLevel::Warning, fmt __VA_OPT__(, __VA_ARGS__))
 
-#define LOG_ERROR(fmt, ...) LOG(core::LogLevel::Error, fmt __VA_OPT__(, __VA_ARGS__))
+#define LOG_ERROR(fmt, ...) LOG(::core::LogLevel::Error, fmt __VA_OPT__(, __VA_ARGS__))
 } // namespace core
 
 #endif // INCLUDE_CORE_LOG_H_

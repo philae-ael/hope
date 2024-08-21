@@ -3,8 +3,8 @@
 #ifndef INCLUDE_CORE_MEMORY_H_
 #define INCLUDE_CORE_MEMORY_H_
 
+#include "base.h"
 #include "debug.h"
-#include "types.h"
 
 #ifndef SCRATCH_ARENA_AMOUNT
   #define SCRATCH_ARENA_AMOUNT 3
@@ -26,10 +26,10 @@
 #endif // !ARENA_PAGE_SIZE
 
 #define ALIGN_MASK_DOWN(x, mask) ((x) & ~(mask))
-#define ALIGN_DOWN(x, AMOUNT) ALIGN_MASK_DOWN((uptr)(x), AMOUNT - 1)
+#define ALIGN_DOWN(x, AMOUNT) ((decltype(x))ALIGN_MASK_DOWN((uptr)(x), AMOUNT - 1))
 
 #define ALIGN_MASK_UP(x, mask) (((x) + (mask)) & (~(mask)))
-#define ALIGN_UP(x, AMOUNT) ALIGN_MASK_UP((uptr)(x), AMOUNT - 1)
+#define ALIGN_UP(x, AMOUNT) ((decltype(x))ALIGN_MASK_UP((uptr)(x), AMOUNT - 1))
 
 #if __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
   #include <sanitizer/asan_interface.h>
@@ -146,7 +146,7 @@ struct Pool {
   node tail{};
   node* head = &tail;
 
-  T* alloc() {
+  T* allocate() {
     if (tail.next != nullptr) {
       node* n   = tail.next;
       tail.next = n->next;
@@ -154,7 +154,7 @@ struct Pool {
     }
     return arena->allocate<T>();
   }
-  void dealloc(T* t) {
+  void deallocate(T* t) {
     if (arena->try_resize(t, size, 0)) {
       return;
     }

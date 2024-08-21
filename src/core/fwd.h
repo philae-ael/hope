@@ -2,6 +2,7 @@
 #define INCLUDE_CORE_FWD_H_
 
 // IWYU pragma: begin_exports
+#include "base.h"
 #include "types.h"
 // IWYU pragma: end_exports
 

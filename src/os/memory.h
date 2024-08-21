@@ -5,7 +5,7 @@
 #include "../core/fwd.h"
 
 #ifdef MEM_DEBUG
-  #define MEM_DEBUG_STMT(f) DEBUG_STMT(f)
+  #define MEM_DEBUG_STMT(f) f
 #else
   #define MEM_DEBUG_STMT(f)
 #endif

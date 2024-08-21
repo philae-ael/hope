@@ -8,19 +8,9 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-namespace os {
-
 #ifndef MEM_USE_MALLOC
 
-MEM_DEBUG_STMT(std::atomic<usize> alloc_count = 0);
-MEM_DEBUG_STMT(auto check_alloc_count = core ::defer_builder_t{} + [] {
-  ASSERTM(
-      alloc_count == 0,
-      "A total of %zu bytes has been a leaked! (although a big part can be "
-      "not provisioned)",
-      alloc_count.load()
-  );
-});
+namespace os {
 
 void* mem_allocate(void* ptr, usize size, MemAllocationFlags flags) {
   if (any(flags & MemAllocationFlags::Reserve)) {
@@ -38,7 +28,6 @@ void* mem_allocate(void* ptr, usize size, MemAllocationFlags flags) {
     ASAN_POISON_MEMORY_REGION(ptr, alloc_size);
 
     MEM_DEBUG_STMT(ptr = (void*)((char*)ptr + mem_page_size()));
-    MEM_DEBUG_STMT(alloc_count += alloc_size);
   }
 
   if (any(flags & MemAllocationFlags::Commit)) {
@@ -74,7 +63,6 @@ void mem_deallocate(void* ptr, usize size, MemDeallocationFlags flags) {
       panic("%s", std::source_location::current(), strerror(errno));
     }
     ASAN_POISON_MEMORY_REGION(ptr, alloc_size);
-    MEM_DEBUG_STMT(alloc_count -= alloc_size);
   }
   return;
 }
@@ -86,5 +74,5 @@ usize mem_page_size() {
   return page_size_;
 }
 
-#endif // MEM_USE_MALLOC
 } // namespace os
+#endif // MEM_USE_MALLOC

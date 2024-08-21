@@ -3,7 +3,7 @@
 #ifndef INCLUDE_CORE_ASSERT_H_
 #define INCLUDE_CORE_ASSERT_H_
 
-#include "types.h"
+#include "base.h"
 #include <source_location>
 
 #if GCC || CLANG
@@ -12,21 +12,21 @@
   #error NOT IMPLEMENTED
 #endif
 
-#define ASSERT(cond)                                         \
-  do {                                                       \
-    if (!(cond)) [[unlikely]] {                              \
-      core::panic("assertion `" STRINGIFY(cond) "` failed"); \
-    }                                                        \
+#define ASSERT(cond)                                           \
+  do {                                                         \
+    if (!(cond)) [[unlikely]] {                                \
+      ::core::panic("assertion `" STRINGIFY(cond) "` failed"); \
+    }                                                          \
   } while (0)
 
-#define ASSERTM(cond, fmt, ...)                                     \
-  do {                                                              \
-    if (!(cond)) [[unlikely]] {                                     \
-      core::panic(                                                  \
-          "assertion `" STRINGIFY(cond) "` failed:\n" fmt,          \
-          std::source_location::current() __VA_OPT__(, __VA_ARGS__) \
-      );                                                            \
-    }                                                               \
+#define ASSERTM(cond, fmt, ...)                                       \
+  do {                                                                \
+    if (!(cond)) [[unlikely]] {                                       \
+      ::core::panic(                                                  \
+          "assertion `" STRINGIFY(cond) "` failed:\n" fmt,            \
+          ::std::source_location::current() __VA_OPT__(, __VA_ARGS__) \
+      );                                                              \
+    }                                                                 \
   } while (0)
 
 #ifdef DEBUG
@@ -38,7 +38,7 @@
 #define DEBUG_ASSERT(...) DEBUG_STMT(ASSERT(__VA_ARGS__))
 #define DEBUG_ASSERTM(...) DEBUG_STMT(ASSERTM(__VA_ARGS__))
 
-#define todo(...) core::panic(__VA_ARGS__);
+#define todo(...) ::core::panic(__VA_ARGS__);
 
 #define NORETURN [[noreturn]]
 

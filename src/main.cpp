@@ -1,4 +1,3 @@
-#include "os/os.h"
 #include "prelude.h"
 
 log_entry timed_formatter(void* u, Arena& arena, log_entry entry) {

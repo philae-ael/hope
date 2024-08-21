@@ -3,6 +3,7 @@
 
 // IWYU pragma: begin_exports
 
+#include "base.h"
 #include "debug.h"
 #include "log.h"
 #include "math.h"
@@ -10,6 +11,7 @@
 #include "platform.h"
 #include "string.h"
 #include "types.h"
+
 // IWYU pragma: end_exports
 
 #endif // INCLUDE_CORE_H_
