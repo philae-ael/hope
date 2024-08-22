@@ -1,6 +1,8 @@
+#include <csignal>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
+#include <iostream>
 #include <source_location>
 
 #include <version>
@@ -73,6 +75,17 @@ void dump_backtrace(int skip) {
 #else
   dump_backtrace_fallback(skip + 1);
 #endif
+}
+
+void crash_handler(int sig) {
+  ::signal(sig, SIG_DFL);
+  dump_backtrace(2);
+  ::raise(sig);
+}
+
+void setup_crash_handler() {
+  ::signal(SIGSEGV, crash_handler);
+  ::signal(SIGABRT, crash_handler);
 }
 
 } // namespace core

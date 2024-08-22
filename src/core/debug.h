@@ -47,6 +47,7 @@ panic(const char* msg, std::source_location loc = std::source_location::current(
     PRINTF_ATTRIBUTE(1, 3);
 
 void dump_backtrace(int skip = 1);
+void setup_crash_handler();
 
 } // namespace core
 

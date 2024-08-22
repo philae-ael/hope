@@ -1,5 +1,6 @@
+#include "core/core.h"
 #include "prelude.h"
-#include <thread>
+#include <csignal>
 
 log_entry timed_formatter(void* u, arena& arena, log_entry entry) {
   entry         = log_fancy_formatter(nullptr, arena, entry);
@@ -10,11 +11,18 @@ log_entry timed_formatter(void* u, arena& arena, log_entry entry) {
   return entry;
 }
 
-int main(int argc, char* argv[]) {
-  log_register_global_formatter(timed_formatter, nullptr);
-  std::jthread{[] {
-    LOG_INFO("H");
-  }}.join();
+inline void blackbox(auto& x) {
+  asm volatile("nop" : "+r"(x));
+}
 
-  return 0;
+int main(int argc, char* argv[]) {
+  setup_crash_handler();
+  log_register_global_formatter(timed_formatter, nullptr);
+
+  LOG_INFO("BUBUBUB");
+  int arr[] = {0, 1, 2};
+  usize x   = 5000000;
+  // blackbox(x);
+
+  return arr[x];
 }

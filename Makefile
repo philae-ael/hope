@@ -6,14 +6,17 @@ DEPDIR := build
 
 CXXFLAGS:=$(CXXFLAGS) -O3 -g -std=c++23
 CXXFLAGS:=$(CXXFLAGS) -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers
-CXXFLAGS:=$(CXXFLAGS) -DDEBUG
-CXXFLAGS:=$(CXXFLAGS) -DARENA_DEBUG 
-CXXFLAGS:=$(CXXFLAGS) -DMEM_DEBUG 
-CXXFLAGS:=$(CXXFLAGS) -DMEM_USE_MALLOC
-CXXFLAGS:=$(CXXFLAGS) -DSCRATCH_DEBUG 
-CXXFLAGS:=$(CXXFLAGS) -fno-omit-frame-pointer
+# CXXFLAGS:=$(CXXFLAGS) -DDEBUG
+# CXXFLAGS:=$(CXXFLAGS) -DARENA_DEBUG 
+# CXXFLAGS:=$(CXXFLAGS) -DMEM_DEBUG 
+# CXXFLAGS:=$(CXXFLAGS) -DMEM_USE_MALLOC
+# CXXFLAGS:=$(CXXFLAGS) -DSCRATCH_DEBUG 
+# CXXFLAGS:=$(CXXFLAGS) -fno-omit-frame-pointer
 # CXXFLAGS:=$(CXXFLAGS) -fsanitize=address 
 # CXXFLAGS:=$(CXXFLAGS) -flto
+
+CXXFLAGS:=$(CXXFLAGS) -fno-stack-protector
+CXXFLAGS:=$(CXXFLAGS) -fstack-protector-all
 
 # clang only
 # CXXFLAGS:=$(CXXFLAGS) -ftime-trace
