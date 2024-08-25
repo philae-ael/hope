@@ -10,7 +10,6 @@
 #include "memory.h"
 #include "platform.h"
 #include "string.h"
-#include "sync.h"
 #include "types.h"
 
 // IWYU pragma: end_exports

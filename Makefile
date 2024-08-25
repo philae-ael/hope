@@ -7,7 +7,7 @@ DEPDIR := build
 CXXFLAGS:=$(CXXFLAGS) -O3 -g -std=c++23
 CXXFLAGS:=$(CXXFLAGS) -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers
 # CXXFLAGS:=$(CXXFLAGS) -DDEBUG
-# CXXFLAGS:=$(CXXFLAGS) -DARENA_DEBUG 
+CXXFLAGS:=$(CXXFLAGS) -DARENA_DEBUG 
 # CXXFLAGS:=$(CXXFLAGS) -DMEM_DEBUG 
 # CXXFLAGS:=$(CXXFLAGS) -DMEM_USE_MALLOC
 # CXXFLAGS:=$(CXXFLAGS) -DSCRATCH_DEBUG 
@@ -28,6 +28,7 @@ DEPFLAGS= -MM -MG -MF
 
 SRCS := src/main.cpp
 -include src/core/core.mk
+-include src/containers/containers.mk
 -include src/os/os.mk
 
 OBJS := $(patsubst %,$(OBJDIR)/%.o,$(basename $(SRCS)))

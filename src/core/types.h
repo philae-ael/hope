@@ -155,6 +155,7 @@ constexpr bool any(T t) {
 }
 
 } // namespace enum_helpers
+
 } // namespace core
 
 #endif // INCLUDE_CORE_TYPE_H_

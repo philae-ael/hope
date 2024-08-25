@@ -3,7 +3,7 @@
 #ifndef INCLUDE_CORE_SYNC_H_
 #define INCLUDE_CORE_SYNC_H_
 
-#include "fwd.h"
+#include "../core/fwd.h"
 #include <atomic>
 
 namespace core::sync {

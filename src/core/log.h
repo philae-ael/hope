@@ -3,7 +3,7 @@
 #ifndef INCLUDE_CORE_LOG_H_
 #define INCLUDE_CORE_LOG_H_
 
-#include "fwd.h"
+#include "memory.h"
 #include "string.h"
 
 #include <cstdarg>

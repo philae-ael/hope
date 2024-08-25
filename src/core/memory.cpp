@@ -1,6 +1,6 @@
 #include <cstdio>
-#include <cstdlib>
 
+#include "../containers/sync.h"
 #include "../os/memory.h"
 #include "core.h"
 #include "debug.h"
@@ -36,7 +36,7 @@ usize arena_page_size() {
 bool arena::owns(void* ptr) {
   return ptr >= base && ptr < mem;
 }
-bool arena::try_resize(void* ptr, usize cur_size, usize new_size) {
+bool arena::try_resize(void* ptr, usize cur_size, usize new_size, const char* src) {
   if (!owns(ptr)) {
     return false;
   }
@@ -46,7 +46,7 @@ bool arena::try_resize(void* ptr, usize cur_size, usize new_size) {
   }
 
   if (new_size >= cur_size) {
-    allocate(new_size - cur_size, 1);
+    allocate(new_size - cur_size, 1, src);
   } else {
     deallocate(cur_size - new_size);
   }
@@ -54,10 +54,11 @@ bool arena::try_resize(void* ptr, usize cur_size, usize new_size) {
   return true;
 }
 
-void* arena::allocate(usize size, usize alignement) {
-  ARENA_DEBUG_STMT(
-      printf("Arena: trying to allocate %zu, %zu available\n", size, capacity - (usize)(mem - base))
-  );
+void* arena::allocate(usize size, usize alignement, const char* src) {
+  ARENA_DEBUG_STMT(printf(
+      "Arena: trying to allocate %zu from %s, %zu available\n", size, src,
+      capacity - (usize)(mem - base)
+  ));
   DEBUG_ASSERT(std::popcount(alignement) == 1);
 
   if (size == 0) {

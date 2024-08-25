@@ -8,6 +8,7 @@
 
 namespace core {
 struct arena;
+struct scratch;
 
 struct str8;
 struct hstr8;

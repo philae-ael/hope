@@ -32,6 +32,12 @@
 #define CONCAT_(a, b) a##b
 #define CONCAT(a, b) CONCAT_(a, b)
 
+#define ALIGN_MASK_DOWN(x, mask) ((x) & ~(mask))
+#define ALIGN_DOWN(x, AMOUNT) ((decltype(x))ALIGN_MASK_DOWN((uptr)(x), AMOUNT - 1))
+
+#define ALIGN_MASK_UP(x, mask) (((x) + (mask)) & (~(mask)))
+#define ALIGN_UP(x, AMOUNT) ((decltype(x))ALIGN_MASK_UP((uptr)(x), AMOUNT - 1))
+
 using u8 = unsigned char;
 static_assert(CHAR_BIT == 8);
 using u16 = unsigned short;

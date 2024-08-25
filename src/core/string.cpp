@@ -1,3 +1,4 @@
+#include "string.h"
 #include "core.h"
 #include <cstdio>
 #include <cstring>
@@ -20,7 +21,8 @@ string_builder& string_builder::vpushf(arena& arena, const char* fmt, va_list ap
   va_end(ap_copy);
 
   string_node* n = (string_node*)arena.allocate(
-      sizeof(string_node) + len + 1
+      sizeof(string_node) + len + 1, alignof(string_node),
+      "string_buffer::vpushf"
   ); // vsnprintf writes a \0 at the end!
   n->str.len      = len;
   n->str.data     = (u8*)n + sizeof(string_node);

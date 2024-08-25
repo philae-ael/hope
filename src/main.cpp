@@ -1,6 +1,8 @@
-#include "core/core.h"
+#include "containers/vec.h"
+#include "core/fwd.h"
+#include "core/log.h"
+#include "core/memory.h"
 #include "prelude.h"
-#include <csignal>
 
 log_entry timed_formatter(void* u, arena& arena, log_entry entry) {
   entry         = log_fancy_formatter(nullptr, arena, entry);
@@ -18,11 +20,15 @@ inline void blackbox(auto& x) {
 int main(int argc, char* argv[]) {
   setup_crash_handler();
   log_register_global_formatter(timed_formatter, nullptr);
+  log_set_global_level(LogLevel::Debug);
 
-  LOG_INFO("BUBUBUB");
-  int arr[] = {0, 1, 2};
-  usize x   = 5000000;
-  // blackbox(x);
+  vec v{type_info<u32>().layout};
 
-  return arr[x];
+  auto s = scratch_get();
+  for (usize i = 0; i < 500; i++) {
+    v.push(*s, u32(i));
+  }
+  for (usize i = 0; i < 500; i++) {
+    v.pop<u32>(*s);
+  }
 }

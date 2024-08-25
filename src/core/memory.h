@@ -4,6 +4,10 @@
 
 #include "base.h"
 #include "debug.h"
+#include "string.h"
+#include "type_info.h"
+#include "types.h"
+#include <typeinfo>
 
 #ifndef SCRATCH_ARENA_AMOUNT
   #define SCRATCH_ARENA_AMOUNT 3
@@ -24,12 +28,6 @@
   #define ARENA_PAGE_SIZE MB(1)
 #endif // !ARENA_PAGE_SIZE
 
-#define ALIGN_MASK_DOWN(x, mask) ((x) & ~(mask))
-#define ALIGN_DOWN(x, AMOUNT) ((decltype(x))ALIGN_MASK_DOWN((uptr)(x), AMOUNT - 1))
-
-#define ALIGN_MASK_UP(x, mask) (((x) + (mask)) & (~(mask)))
-#define ALIGN_UP(x, AMOUNT) ((decltype(x))ALIGN_MASK_UP((uptr)(x), AMOUNT - 1))
-
 #if __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
   #include <sanitizer/asan_interface.h>
   #define ASAN_POISON_MEMORY_REGION(addr, size) __asan_poison_memory_region((addr), (size))
@@ -40,6 +38,7 @@
 #endif
 
 namespace core {
+struct layout_info;
 struct ArenaTemp;
 struct arena {
   u8* base;
@@ -47,12 +46,16 @@ struct arena {
   u8* committed;
   usize capacity;
 
-  void* allocate(usize size, usize alignement = ARENA_BLOCK_ALIGNEMENT);
-  bool try_resize(void* ptr, usize cur_size, usize new_size);
+  void*
+  allocate(usize size, usize alignement = ARENA_BLOCK_ALIGNEMENT, const char* src = "<unknown>");
+  void* allocate(layout_info layout, const char* src = "<unknown>") {
+    return allocate(layout.size, layout.alignement, src);
+  }
+  bool try_resize(void* ptr, usize cur_size, usize new_size, const char* src = "<unknown>");
 
   template <class T>
   T* allocate() {
-    return static_cast<T*>(allocate(sizeof(T), alignof(T)));
+    return static_cast<T*>(allocate(default_layout_of<T>(), type_name<T>()));
   }
 
   u64 pos();
@@ -139,7 +142,7 @@ struct pool {
     return arena_->allocate<T>();
   }
   void deallocate(T* t) {
-    if (arena_->try_resize(t, size, 0)) {
+    if (arena_->try_resize(t, size, 0, "pool")) {
       return;
     }
 

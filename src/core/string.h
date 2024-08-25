@@ -3,9 +3,10 @@
 #ifndef INCLUDE_CORE_STRING_H_
 #define INCLUDE_CORE_STRING_H_
 #include <cstdarg>
+#include <cstring>
 
 #include "base.h"
-#include "memory.h"
+#include "fwd.h"
 #include "types.h"
 
 namespace core {
@@ -65,6 +66,10 @@ inline str8 to_str8(str8 s) {
 template <size_t len>
 str8 to_str8(const char (&a)[len]) {
   return core::str8::from(a);
+}
+
+inline str8 to_str8(const char* a) {
+  return core::str8::from(a, strlen(a));
 }
 
 struct string_node {

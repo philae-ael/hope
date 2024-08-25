@@ -5,4 +5,4 @@ SRCS:=$(SRCS) \
 	  src/core/memory.cpp \
 	  src/core/platform.cpp \
 	  src/core/string.cpp \
-	  src/core/sync.cpp 
+	  src/core/type_info.cpp
