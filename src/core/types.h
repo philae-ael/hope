@@ -172,18 +172,18 @@ constexpr bool any(T t) {
 
 template <class S = u8>
 struct storage {
-  usize size{};
+  usize capacity{};
   S* data{};
 
   storage() = default;
 
   template <usize len>
   storage(S (&a)[len])
-      : size(len)
+      : capacity(len)
       , data(a) {}
 
   storage(usize size, S* data)
-      : size(size)
+      : capacity(size)
       , data(data) {}
 
   template <class T>
@@ -193,25 +193,10 @@ struct storage {
   }
 
   storage<u8> into_bytes() {
-    return {sizeof(S) * size, (u8*)data};
+    return {sizeof(S) * capacity, (u8*)data};
   }
 
   S& operator[](usize index) {
-    return data[index];
-  }
-};
-
-template <class S = u8>
-struct const_storage {
-  usize size;
-  const S* data;
-
-  template <class T>
-  static const_storage from(unsafe_t, const T& t) {
-    static_assert(sizeof(T) % sizeof(S) == 0);
-    return {sizeof(T), (S*)&t};
-  }
-  const S& operator[](usize index) const {
     return data[index];
   }
 };

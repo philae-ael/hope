@@ -2,7 +2,6 @@
 #define INCLUDE_CORE_TYPE_INFO_H_
 
 #include "fwd.h"
-#include "platform.h"
 
 #if LINUX
   #include <cxxabi.h>

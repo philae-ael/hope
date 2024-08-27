@@ -2,7 +2,7 @@
 #ifndef INCLUDE_CORE_BASE_H_
 #define INCLUDE_CORE_BASE_H_
 
-#include "platform.h"
+#include "platform.h" // IWYU pragma: export
 #include <cstddef>
 #include <limits.h>
 

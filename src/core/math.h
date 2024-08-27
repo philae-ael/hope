@@ -4,7 +4,6 @@
 #define INCLUDE_CORE_MATH_H_
 
 #include "fwd.h"
-#include "platform.h"
 #include <cmath>
 
 #if GCC || CLANG
@@ -125,7 +124,7 @@ struct data_series {
   f32 m;
   f32 M2;
 
-  void add_sample(f32 sample) {
+  constexpr void add_sample(f32 sample) {
     count      += 1;
     f32 delta   = sample - m;
     m          += delta / (f32)count;
@@ -136,23 +135,23 @@ struct data_series {
   /// This is an unbiaised estimator of the population variance
   /// eg for $x_i$ samples of a VA of variance $\sigma$,
   /// $E\left[\text{variance}(x_1, \cdots, x_n)\right] = \sigma$
-  f32 variance() const {
+  constexpr f32 variance() const {
     return M2 / ((f32)count - 1);
   }
 
   /// This is the variance of the samples, it doesn't mean much more i think
-  f32 sample_variance() const {
+  constexpr f32 sample_variance() const {
     return M2 / (f32)count;
   }
 
   /// This is both the mean of the samples and an unbiased estimator of the mean of the population
   /// eg for $x_i$ samples of a VA of mean $m$,
   /// $E\left[\text{mean}(x_1, \cdots, x_n)\right] = m$
-  f32 mean() const {
+  constexpr f32 mean() const {
     return m;
   }
 
-  data_series merge(const data_series& other) const {
+  constexpr data_series merge(const data_series& other) const {
     return {
         count + other.count,
         m + other.m,
@@ -171,32 +170,32 @@ struct windowed_series {
   f32 sum{};
   f32 sum2{};
 
-  void add_sample(f32 sample) {
-    if (count == store.size) {
+  constexpr void add_sample(f32 sample) {
+    if (count == store.capacity) {
       // remove sample due to overflow
       f32 old_sample  = store[start];
       sum            -= old_sample;
       sum2           -= old_sample * old_sample;
-      start           = (start + 1) % store.size;
+      start           = (start + 1) % store.capacity;
       count          -= 1;
     }
-    store[(start + count) % store.size]  = sample;
-    count                               += 1;
+    store[(start + count) % store.capacity]  = sample;
+    count                                   += 1;
 
-    sum                                 += sample;
-    sum2                                += sample * sample;
+    sum                                     += sample;
+    sum2                                    += sample * sample;
   }
 
-  f32 mean() const {
+  constexpr f32 mean() const {
     return sum / f32(count);
   }
-  f32 variance() const {
+  constexpr f32 variance() const {
     f32 c = f32(count);
-    return (sum / c - sum2) / c;
+    return (sum2 - sum * sum / c) / c;
   }
 };
 
-inline bool f32_close_enough(f32 a, f32 b, f32 epsilon = 1e-5f) {
+constexpr bool f32_close_enough(f32 a, f32 b, f32 epsilon = 1e-5f) {
   return fabs(b - a) <= epsilon;
 }
 

@@ -8,89 +8,52 @@
 #include <cstring>
 
 namespace core {
-struct vec {
-  storage<u8> store;
+struct raw_vec {
   layout_info layout;
+  storage<u8> store;
 
   usize size{};
 
-  template <class T>
-  vec(identity<T>)
-      : layout(default_layout_of<T>()) {}
-
-  vec(layout_info layout)
-      : layout(layout) {}
-
-  template <class T>
-  vec(storage<T> s, layout_info layout = default_layout_of<T>())
-      : store(s.into_bytes())
-      , layout(layout) {}
-
-  template <class T>
-  void push(arena& ar, const T& t) {
-    ASSERT(default_layout_of<T>() == layout);
-    push_d(ar, const_storage<u8>::from(unsafe, t));
-  }
-  template <class T>
-  void push(noalloc_t, const T& t) {
-    ASSERT(default_layout_of<T>() == layout);
-    push_d(noalloc, const_storage<u8>::from(unsafe, t));
-  }
-
-  template <class T>
-  T pop(noalloc_t) {
-    T t;
-    pop_d(storage<u8>::from(unsafe, t));
-    return t;
-  }
-  template <class T>
-  T pop(arena& ar) {
-    T t;
-    ASSERT(type_info<T>().layout == layout);
-    pop_d(ar, storage<u8>::from(unsafe, t));
-    return t;
-  }
-  void pop_d(arena& ar, storage<u8> d) {
-    pop_d(noalloc, d);
+  constexpr void pop(arena& ar, storage<u8> d) {
+    pop(noalloc, d);
     if (capacity() > 8 && capacity() > 2 * size) {
       resize(ar, size);
     }
   }
 
-  void pop_d(noalloc_t, storage<u8> d) {
-    DEBUG_ASSERT(d.size == layout.size);
+  constexpr void pop(noalloc_t, storage<u8> d) {
+    DEBUG_ASSERT(d.capacity == layout.size);
     if (size == 0) {
-      panic("Trying to pop empty vec");
+      panic("Trying to pop empty raw_vec");
     }
 
-    memcpy(d.data, store.data + layout.array(size - 1).size, d.size);
-
+    memcpy(d.data, store.data + layout.array(size - 1).size, d.capacity);
     size -= 1;
   }
 
-  void push_d(arena& ar, const_storage<u8> d) {
-    DEBUG_ASSERT(d.size == layout.size);
+  constexpr void push(arena& ar, storage<const u8> d) {
+    DEBUG_ASSERT(d.capacity == layout.size);
 
     if (size == capacity()) {
       resize(ar, MAX(4, capacity() * 2));
     }
 
-    push_d(noalloc, d);
+    push(noalloc, d);
   }
 
-  void push_d(noalloc_t, const_storage<u8> d) {
-    ASSERTM(size < capacity(), "No more capacity in vec");
+  constexpr void push(noalloc_t, storage<const u8> d) {
+    ASSERTM(size < capacity(), "No more capacity in raw_vec");
     memcpy(store.data + layout.array(size).size, d.data, layout.size);
     size += 1;
   }
 
   void resize(arena& ar, usize new_capacity) {
-    if (ar.try_resize(store.data, store.size, new_capacity * layout.size, "vec::resize")) {
-      store.size = new_capacity * layout.size;
+    if (ar.try_resize(store.data, store.capacity, new_capacity * layout.size, "raw_vec::resize")) {
+      store.capacity = new_capacity * layout.size;
       return;
     }
 
-    auto new_store = ar.allocate_array(layout, new_capacity, "vec::resize");
+    auto new_store = ar.allocate_array(layout, new_capacity, "raw_vec::resize");
     memcpy(new_store.data, store.data, size * layout.size);
     store = new_store;
   }
@@ -99,10 +62,62 @@ struct vec {
     resize(ar, capacity());
   }
 
-  usize capacity() const {
-    return store.size / layout.size;
+  constexpr usize capacity() const {
+    return store.capacity / layout.size;
   }
 };
+
+template <class T>
+struct vec {
+  raw_vec inner{default_layout_of<T>()};
+
+  vec(layout_info layout = default_layout_of<T>())
+      : inner(layout) {}
+  vec(storage<T> s, layout_info layout = default_layout_of<T>())
+      : inner(layout, s.into_bytes()) {}
+
+  constexpr T pop(noalloc_t) {
+    T t;
+    inner.pop(storage<u8>::from(unsafe, t));
+    return t;
+  }
+
+  constexpr T pop(arena& ar) {
+    T t;
+    ASSERT(type_info<T>().layout == inner.layout);
+    inner.pop(ar, storage<u8>::from(unsafe, t));
+    return t;
+  }
+
+  constexpr void push(arena& ar, const T& t) {
+    ASSERT(default_layout_of<T>() == inner.layout);
+    inner.push(ar, storage<const u8>::from(unsafe, t));
+  }
+
+  constexpr void push(noalloc_t, const T& t) {
+    ASSERT(default_layout_of<T>() == inner.layout);
+    inner.push(noalloc, storage<const u8>::from(unsafe, t));
+  }
+
+  void resize(arena& ar, usize new_capacity) {
+    return inner.resize(ar, new_capacity);
+  }
+
+  void move(arena& ar) {
+    return inner.move(ar);
+  }
+
+  constexpr usize capacity() const {
+    return inner.capacity();
+  }
+
+  constexpr usize size() const {
+    return inner.size;
+  }
+};
+
+template <class T, usize N>
+vec(T (&a)[N]) -> vec<T>;
 
 } // namespace core
 

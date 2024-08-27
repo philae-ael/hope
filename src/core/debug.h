@@ -19,6 +19,18 @@
     }                                                          \
   } while (0)
 
+#define ASSERTEQ(a, b)                                                           \
+  do {                                                                           \
+    auto __a          = (a);                                                     \
+    decltype(__a) __b = (b);                                                     \
+    if (!(__a == __b)) [[unlikely]] {                                            \
+      ::core::panic(                                                             \
+          "assertion `" STRINGIFY(a) " == " STRINGIFY(b) "` failed: `%g != %g`", \
+          ::std::source_location::current(), (f32)__a, (f32)__b                  \
+      );                                                                         \
+    }                                                                            \
+  } while (0)
+
 #define ASSERTM(cond, fmt, ...)                                       \
   do {                                                                \
     if (!(cond)) [[unlikely]] {                                       \
@@ -48,6 +60,15 @@ panic(const char* msg, std::source_location loc = std::source_location::current(
 
 void dump_backtrace(usize skip = 1);
 void setup_crash_handler();
+
+inline void blackbox(auto& x) {
+  void* ptr = &x;
+#if LINUX
+  asm volatile("nop" : "+rm"(ptr));
+#else
+  #error Plaform not supported
+#endif
+}
 
 } // namespace core
 
