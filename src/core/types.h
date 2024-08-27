@@ -11,10 +11,24 @@
 #include "debug.h"
 namespace core {
 
-namespace tag {
 struct inplace_t {};
 constexpr inplace_t inplace{};
-} // namespace tag
+
+struct unsafe_t {};
+constexpr unsafe_t unsafe{};
+
+struct noalloc_t {};
+constexpr noalloc_t noalloc{};
+
+template <class T>
+struct identity {
+  using type = T;
+};
+
+template <class T>
+using identity_t = identity<T>::type;
+template <class T>
+constexpr identity_t<T> identity_v;
 
 template <class T>
 struct Maybe {
@@ -27,7 +41,7 @@ struct Maybe {
       : d(Discriminant::Some)
       , t(t) {}
   template <class... Args>
-  Maybe(tag::inplace_t, Args&&... args)
+  Maybe(inplace_t, Args&&... args)
       : d(Discriminant::Some)
       , t(FWD(args)...) {}
   Maybe()
@@ -155,6 +169,52 @@ constexpr bool any(T t) {
 }
 
 } // namespace enum_helpers
+
+template <class S = u8>
+struct storage {
+  usize size{};
+  S* data{};
+
+  storage() = default;
+
+  template <usize len>
+  storage(S (&a)[len])
+      : size(len)
+      , data(a) {}
+
+  storage(usize size, S* data)
+      : size(size)
+      , data(data) {}
+
+  template <class T>
+  static storage from(unsafe_t, T& t) {
+    static_assert(sizeof(T) % sizeof(S) == 0);
+    return {sizeof(T) / sizeof(S), (S*)&t};
+  }
+
+  storage<u8> into_bytes() {
+    return {sizeof(S) * size, (u8*)data};
+  }
+
+  S& operator[](usize index) {
+    return data[index];
+  }
+};
+
+template <class S = u8>
+struct const_storage {
+  usize size;
+  const S* data;
+
+  template <class T>
+  static const_storage from(unsafe_t, const T& t) {
+    static_assert(sizeof(T) % sizeof(S) == 0);
+    return {sizeof(T), (S*)&t};
+  }
+  const S& operator[](usize index) const {
+    return data[index];
+  }
+};
 
 } // namespace core
 

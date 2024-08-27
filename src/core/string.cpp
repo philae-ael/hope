@@ -17,7 +17,7 @@ string_builder& string_builder::vpushf(arena& arena, const char* fmt, va_list ap
   va_list ap_copy;
 
   va_copy(ap_copy, ap);
-  usize len = vsnprintf(nullptr, 0, fmt, ap_copy);
+  usize len = (usize)vsnprintf(nullptr, 0, fmt, ap_copy);
   va_end(ap_copy);
 
   string_node* n = (string_node*)arena.allocate(
@@ -27,7 +27,7 @@ string_builder& string_builder::vpushf(arena& arena, const char* fmt, va_list ap
   n->str.len      = len;
   n->str.data     = (u8*)n + sizeof(string_node);
 
-  usize len_wrote = vsnprintf((char*)n->str.data, len + 1, fmt, ap);
+  usize len_wrote = (usize)vsnprintf((char*)n->str.data, len + 1, fmt, ap);
   ASSERT(len_wrote == len);
 
   push_node(n);

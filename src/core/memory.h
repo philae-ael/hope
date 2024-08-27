@@ -1,13 +1,10 @@
-// IWYU pragma: private
+// IWYU pragma: privatememh
 #ifndef INCLUDE_CORE_MEMORY_H_
 #define INCLUDE_CORE_MEMORY_H_
 
-#include "base.h"
 #include "debug.h"
-#include "string.h"
+#include "fwd.h"
 #include "type_info.h"
-#include "types.h"
-#include <typeinfo>
 
 #ifndef SCRATCH_ARENA_AMOUNT
   #define SCRATCH_ARENA_AMOUNT 3
@@ -56,6 +53,23 @@ struct arena {
   template <class T>
   T* allocate() {
     return static_cast<T*>(allocate(default_layout_of<T>(), type_name<T>()));
+  }
+
+  storage<u8>
+  allocate_array(layout_info layout, usize element_count, const char* src = "<unknown>") {
+    auto arr_layout = layout.array(element_count);
+    return {
+        arr_layout.size,
+        (u8*)allocate(arr_layout, src),
+    };
+  }
+  template <class T>
+  storage<T> allocate_array(usize element_count) {
+    auto arr_layout = default_layout_of<T>().array(element_count);
+    return {
+        arr_layout,
+        (T*)allocate(arr_layout, type_name<T>()),
+    };
   }
 
   u64 pos();

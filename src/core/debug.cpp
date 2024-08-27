@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <csignal>
 #include <cstdarg>
 #include <cstdio>
@@ -33,26 +34,26 @@ void panic(const char* msg, std::source_location loc, ...) {
 }
 
 #ifndef __cpp_lib_stacktrace
-void dump_backtrace_fallback(int skip) {
+void dump_backtrace_fallback(usize skip) {
   #if LINUX
   // https://gist.github.com/fmela/591333/c64f4eb86037bb237862a8283df70cdfc25f01d3
   void* callstack[128];
   const int nMaxFrames = sizeof(callstack) / sizeof(callstack[0]);
   int nFrames          = backtrace(callstack, nMaxFrames);
   char** symbols       = backtrace_symbols(callstack, nFrames);
-  for (int i = skip; i < nFrames; i++) {
+  for (usize i = skip; i < nFrames; i++) {
     Dl_info info;
     if (dladdr(callstack[i], &info)) {
       char* demangled = NULL;
       int status;
       demangled = abi::__cxa_demangle(info.dli_sname, NULL, 0, &status);
       fprintf(
-          stderr, "%3d %s %s + %ld\n", i - skip, info.dli_fname,
+          stderr, "%3zu %s %s + %ld\n", i - skip, info.dli_fname,
           status == 0 ? demangled : info.dli_sname, (char*)callstack[i] - (char*)info.dli_saddr
       );
       free(demangled);
     } else {
-      fprintf(stderr, "%3d %p\n", i, callstack[i]);
+      fprintf(stderr, "%3zu %p\n", i, callstack[i]);
     }
   }
   free(symbols);
@@ -62,10 +63,10 @@ void dump_backtrace_fallback(int skip) {
 }
 #endif
 
-void dump_backtrace(int skip) {
+void dump_backtrace(usize skip) {
 #ifdef __cpp_lib_stacktrace
   std::stacktrace s = std::stacktrace::current();
-  for (usize i = skip; i < s.size(); i++) {
+  for (auto i = (std::stacktrace::size_type)skip; i < s.size(); i++) {
     auto& entry = s[i];
     fprintf(
         stderr, "%3zu %s:%d in %s\n", i - skip, entry.source_file().c_str(), entry.source_line(),

@@ -1,6 +1,3 @@
-#include <cstdio>
-
-#include "../containers/sync.h"
 #include "../os/memory.h"
 #include "core.h"
 #include "debug.h"
@@ -84,7 +81,7 @@ void* arena::allocate(usize size, usize alignement, const char* src) {
   if (mem > committed) {
     ARENA_DEBUG_STMT(printf("Arena: Region need being committed!\n"));
     usize page_size = arena_page_size();
-    usize size      = ALIGN_UP(mem, page_size) - committed;
+    usize size      = usize(ALIGN_UP(mem, page_size) - committed);
 
     os::mem_allocate(committed, size, os::MemAllocationFlags::Commit);
     ARENA_DEBUG_STMT(printf("Arena: commited region [%p, %p)\n", committed, committed + size));
@@ -102,12 +99,12 @@ void* arena::allocate(usize size, usize alignement, const char* src) {
 void arena::deallocate(usize size) {
   ASSERT((usize)(mem - base) >= size);
   mem -= size;
-  ASAN_POISON_MEMORY_REGION(mem, capacity - (mem - base));
+  ASAN_POISON_MEMORY_REGION(mem, capacity - usize(mem - base));
 
   usize page_size = arena_page_size();
   if (mem + page_size < committed) {
     u8* aligned = ALIGN_UP(mem, page_size);
-    usize size  = ALIGN_DOWN(committed - aligned, page_size);
+    usize size  = ALIGN_DOWN(usize(committed - aligned), page_size);
 
     os::mem_deallocate(aligned, size, os::MemDeallocationFlags::Decommit);
     committed = aligned;
@@ -148,7 +145,7 @@ void arena_dealloc(arena* arena_) {
 
 void arena::pop_pos(u64 pos) {
   ASSERT(mem > (u8*)pos);
-  deallocate(mem - (u8*)pos);
+  deallocate(usize(mem - (u8*)pos));
 }
 u64 arena::pos() {
   return (u64)mem;

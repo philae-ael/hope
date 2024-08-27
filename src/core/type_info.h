@@ -2,33 +2,13 @@
 #define INCLUDE_CORE_TYPE_INFO_H_
 
 #include "fwd.h"
+#include "platform.h"
 
 #if LINUX
   #include <cxxabi.h>
 #endif
 
 namespace core {
-
-struct data {
-  usize size;
-  void* data;
-
-  template <class T>
-  static struct data from(T& t) {
-    return {sizeof(T), (void*)&t};
-  }
-};
-
-struct const_data {
-  usize size;
-  const void* data;
-
-  template <class T>
-  static const_data from(const T& t) {
-    return {sizeof(T), (void*)&t};
-  }
-};
-
 template <class T>
 const char* type_name() {
   static const char* n = nullptr;
@@ -36,7 +16,7 @@ const char* type_name() {
     const char* type_name = typeid(T).name();
 #if LINUX
     int status;
-    const char* t = abi::__cxa_demangle(type_name, NULL, 0, &status);
+    const char* t = abi::__cxa_demangle(type_name, nullptr, 0, &status);
     type_name     = t;
 #endif
     n = type_name;
@@ -49,7 +29,7 @@ struct layout_info {
   usize alignement;
   layout_info array(usize size) {
     return {
-        ALIGN_UP(this->size, alignement) * size,
+        this->size * size,
         alignement,
     };
   }

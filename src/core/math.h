@@ -4,6 +4,8 @@
 #define INCLUDE_CORE_MATH_H_
 
 #include "fwd.h"
+#include "platform.h"
+#include <cmath>
 
 #if GCC || CLANG
 typedef f32 __m128 __attribute__((vector_size(16), aligned(16)));
@@ -112,6 +114,91 @@ constexpr VectorFormat VectorFormatPretty{
 
 str8 to_str8(arena& arena, Vec4 v, VectorFormat format = {});
 str8 to_str8(arena& arena, Vec2 v, VectorFormat format = {});
+
+/// Compute
+/// - mean,
+/// - variance
+/// - sample_count
+/// Using Welford's algorithm
+struct data_series {
+  u32 count;
+  f32 m;
+  f32 M2;
+
+  void add_sample(f32 sample) {
+    count      += 1;
+    f32 delta   = sample - m;
+    m          += delta / (f32)count;
+    f32 delta2  = sample - m;
+    M2         += delta * delta2;
+  }
+
+  /// This is an unbiaised estimator of the population variance
+  /// eg for $x_i$ samples of a VA of variance $\sigma$,
+  /// $E\left[\text{variance}(x_1, \cdots, x_n)\right] = \sigma$
+  f32 variance() const {
+    return M2 / ((f32)count - 1);
+  }
+
+  /// This is the variance of the samples, it doesn't mean much more i think
+  f32 sample_variance() const {
+    return M2 / (f32)count;
+  }
+
+  /// This is both the mean of the samples and an unbiased estimator of the mean of the population
+  /// eg for $x_i$ samples of a VA of mean $m$,
+  /// $E\left[\text{mean}(x_1, \cdots, x_n)\right] = m$
+  f32 mean() const {
+    return m;
+  }
+
+  data_series merge(const data_series& other) const {
+    return {
+        count + other.count,
+        m + other.m,
+        M2 + other.M2,
+    };
+  }
+};
+
+/// Compute
+/// - mean
+/// of an online process
+/// storing K samples
+struct windowed_series {
+  core::storage<f32> store;
+  usize start{}, count;
+  f32 sum{};
+  f32 sum2{};
+
+  void add_sample(f32 sample) {
+    if (count == store.size) {
+      // remove sample due to overflow
+      f32 old_sample  = store[start];
+      sum            -= old_sample;
+      sum2           -= old_sample * old_sample;
+      start           = (start + 1) % store.size;
+      count          -= 1;
+    }
+    store[(start + count) % store.size]  = sample;
+    count                               += 1;
+
+    sum                                 += sample;
+    sum2                                += sample * sample;
+  }
+
+  f32 mean() const {
+    return sum / f32(count);
+  }
+  f32 variance() const {
+    f32 c = f32(count);
+    return (sum / c - sum2) / c;
+  }
+};
+
+inline bool f32_close_enough(f32 a, f32 b, f32 epsilon = 1e-5f) {
+  return fabs(b - a) <= epsilon;
+}
 
 } // namespace core
 #endif // INCLUDE_CORE_MATH_H_

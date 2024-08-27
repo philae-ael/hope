@@ -70,7 +70,7 @@ void mem_deallocate(void* ptr, usize size, MemDeallocationFlags flags) {
 }
 
 const usize page_size_ = [] {
-  return sysconf(_SC_PAGESIZE);
+  return (usize)sysconf(_SC_PAGESIZE);
 }();
 usize mem_page_size() {
   return page_size_;
