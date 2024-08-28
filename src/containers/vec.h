@@ -17,25 +17,25 @@ struct raw_vec {
   constexpr void pop(arena& ar, storage<u8> d) {
     pop(noalloc, d);
     if (capacity() > 8 && capacity() > 2 * size) {
-      resize(ar, size);
+      set_capacity(ar, size);
     }
   }
 
   constexpr void pop(noalloc_t, storage<u8> d) {
-    DEBUG_ASSERT(d.capacity == layout.size);
+    DEBUG_ASSERT(d.size == layout.size);
     if (size == 0) {
       panic("Trying to pop empty raw_vec");
     }
 
-    memcpy(d.data, store.data + layout.array(size - 1).size, d.capacity);
+    memcpy(d.data, store.data + layout.array(size - 1).size, d.size);
     size -= 1;
   }
 
   constexpr void push(arena& ar, storage<const u8> d) {
-    DEBUG_ASSERT(d.capacity == layout.size);
+    DEBUG_ASSERT(d.size == layout.size);
 
     if (size == capacity()) {
-      resize(ar, MAX(4, capacity() * 2));
+      set_capacity(ar, MAX(4, capacity() * 2));
     }
 
     push(noalloc, d);
@@ -47,9 +47,9 @@ struct raw_vec {
     size += 1;
   }
 
-  void resize(arena& ar, usize new_capacity) {
-    if (ar.try_resize(store.data, store.capacity, new_capacity * layout.size, "raw_vec::resize")) {
-      store.capacity = new_capacity * layout.size;
+  void set_capacity(arena& ar, usize new_capacity) {
+    if (ar.try_resize(store.data, store.size, new_capacity * layout.size, "raw_vec::resize")) {
+      store.size = new_capacity * layout.size;
       return;
     }
 
@@ -59,11 +59,11 @@ struct raw_vec {
   }
 
   void move(arena& ar) {
-    resize(ar, capacity());
+    set_capacity(ar, capacity());
   }
 
   constexpr usize capacity() const {
-    return store.capacity / layout.size;
+    return store.size / layout.size;
   }
 };
 
@@ -73,6 +73,11 @@ struct vec {
 
   vec(layout_info layout = default_layout_of<T>())
       : inner(layout) {}
+
+  template <usize len>
+  vec(T (&a)[len], layout_info layout = default_layout_of<T>())
+      : inner(layout, storage{a}.into_bytes(), len) {}
+
   vec(storage<T> s, layout_info layout = default_layout_of<T>())
       : inner(layout, s.into_bytes()) {}
 
@@ -99,8 +104,12 @@ struct vec {
     inner.push(noalloc, storage<const u8>::from(unsafe, t));
   }
 
-  void resize(arena& ar, usize new_capacity) {
-    return inner.resize(ar, new_capacity);
+  void set_size(usize new_size) {
+    ASSERT(new_size <= capacity());
+    inner.size = new_size;
+  }
+  void set_capacity(arena& ar, usize new_capacity) {
+    inner.set_capacity(ar, new_capacity);
   }
 
   void move(arena& ar) {
@@ -114,10 +123,29 @@ struct vec {
   constexpr usize size() const {
     return inner.size;
   }
-};
+  constexpr T* data() {
+    return (T*)inner.store.data;
+  }
+  constexpr const T* data() const {
+    return (T*)inner.store.data;
+  }
 
-template <class T, usize N>
-vec(T (&a)[N]) -> vec<T>;
+  constexpr operator storage<T>() {
+    return {size(), data()};
+  }
+  constexpr operator storage<const T>() const {
+    return {size(), data()};
+  }
+
+  constexpr const T& operator[](usize i) const {
+    ASSERT(i < size());
+    return *(data() + i);
+  }
+  constexpr T& operator[](usize i) {
+    ASSERT(i < size());
+    return *(data() + i);
+  }
+};
 
 } // namespace core
 

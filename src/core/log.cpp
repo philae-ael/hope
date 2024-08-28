@@ -121,21 +121,30 @@ log_builder& log_builder::push_str8(str8 msg) {
   return *this;
 }
 
+using namespace core::enum_helpers;
+
 void log_builder::emit() {
   log_emit(*arena, entry);
 
-  if (collect_backtrace) {
+  if (any(flags & flags_t::stacktrace)) {
     dump_backtrace(2);
   }
   scratch_retire(arena);
+  if (any(flags & flags_t::panic)) {
+    ::core::panic("can't continue");
+  }
 }
 
 log_builder::log_builder(LogLevel level, std::source_location loc)
     : arena(scratch_get())
     , entry{.level = level, .loc = loc} {}
 
-log_builder log_builder::with_stacktrace() {
-  collect_backtrace = true;
+log_builder& log_builder::with_stacktrace() {
+  flags = flags | flags_t::stacktrace;
+  return *this;
+}
+log_builder& log_builder::panic() {
+  flags = flags | flags_t::panic;
   return *this;
 }
 

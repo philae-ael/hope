@@ -97,6 +97,10 @@ void* arena::allocate(usize size, usize alignement, const char* src) {
 }
 
 void arena::deallocate(usize size) {
+  if (size == 0) {
+    return;
+  }
+
   ASSERT((usize)(mem - base) >= size);
   mem -= size;
   ASAN_POISON_MEMORY_REGION(mem, capacity - usize(mem - base));
@@ -144,7 +148,7 @@ void arena_dealloc(arena* arena_) {
 }
 
 void arena::pop_pos(u64 pos) {
-  ASSERT(mem > (u8*)pos);
+  ASSERT(mem >= (u8*)pos);
   deallocate(usize(mem - (u8*)pos));
 }
 u64 arena::pos() {

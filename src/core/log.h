@@ -3,6 +3,7 @@
 #ifndef INCLUDE_CORE_LOG_H_
 #define INCLUDE_CORE_LOG_H_
 
+#include "fwd.h"
 #include "memory.h"
 #include "string.h"
 
@@ -45,7 +46,10 @@ struct log_builder {
   scratch arena;
   log_entry entry;
 
-  bool collect_backtrace = false;
+  enum class flags_t {
+    stacktrace = 0x1,
+    panic      = 0x2,
+  } flags = {};
 
   template <class T, class... Args>
   log_builder& push(T&& t, Args&&... args) {
@@ -58,7 +62,8 @@ struct log_builder {
   log_builder& vpushf(const char* fmt, va_list ap);
   log_builder& push_str8(str8 msg);
 
-  log_builder with_stacktrace();
+  log_builder& with_stacktrace();
+  log_builder& panic();
 
   void emit();
 

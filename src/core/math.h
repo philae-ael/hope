@@ -171,19 +171,19 @@ struct windowed_series {
   f32 sum2{};
 
   constexpr void add_sample(f32 sample) {
-    if (count == store.capacity) {
+    if (count == store.size) {
       // remove sample due to overflow
       f32 old_sample  = store[start];
       sum            -= old_sample;
       sum2           -= old_sample * old_sample;
-      start           = (start + 1) % store.capacity;
+      start           = (start + 1) % store.size;
       count          -= 1;
     }
-    store[(start + count) % store.capacity]  = sample;
-    count                                   += 1;
+    store[(start + count) % store.size]  = sample;
+    count                               += 1;
 
-    sum                                     += sample;
-    sum2                                    += sample * sample;
+    sum                                 += sample;
+    sum2                                += sample * sample;
   }
 
   constexpr f32 mean() const {

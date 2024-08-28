@@ -1,9 +1,7 @@
-#include <algorithm>
 #include <csignal>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
-#include <iostream>
 #include <source_location>
 
 #include <version>
@@ -26,6 +24,8 @@ namespace core {
 void panic(const char* msg, std::source_location loc, ...) {
   va_list ap;
   va_start(ap, loc);
+  fflush(stdout);
+
   fprintf(stderr, "Panic in %s:%d: ", loc.file_name(), loc.line());
   vfprintf(stderr, msg, ap);
   fprintf(stderr, "\n");
