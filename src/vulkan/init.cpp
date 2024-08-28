@@ -177,45 +177,53 @@ Result<instance> create_default_instance(
 
   {
     const auto instance_layer_properties = enumerate_instance_layer_properties(*ar);
-    for (usize i = 0; i < instance_layer_properties.size(); i++) {
-      auto instance_layer_property = instance_layer_properties[i];
+    for (auto instance_layer_property : instance_layer_properties.iter()) {
       LOG_INFO(
           "available layer: \"%s\" (%s)", instance_layer_property.layerName,
           instance_layer_property.description
       );
     }
 
-    for (usize l = 0; l < layers.size(); l++) {
+    for (auto layer : layers.iter()) {
       bool layer_found = false;
-      for (usize il = 0; il < instance_layer_properties.size(); il++) {
-        if (strcmp(layers[l], instance_layer_properties[il].layerName) == 0) {
+      for (auto instance_layer_property : instance_layer_properties.iter()) {
+        if (strcmp(layer, instance_layer_property.layerName) == 0) {
           layer_found = true;
           break;
         }
       }
-      ASSERTM(layer_found, "layer required but not found: %s", layers[l]);
-      LOG_INFO("layer found: %s", layers[l]);
+      ASSERTM(layer_found, "layer required but not found: %s", layer);
+      LOG_INFO("layer found: %s", layer);
     }
   }
 
-  extensions.push(*ar, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+  {
+    bool has_debug_util_ext = false;
+    for (auto extension : extensions.iter()) {
+      if (strcmp(extension, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0) {
+        has_debug_util_ext = true;
+      }
+    }
+    if (!has_debug_util_ext) {
+      extensions.push(*ar, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    }
+  }
   {
     const auto instance_extension_properties = enumerate_instance_extension_properties(*ar);
-    for (usize i = 0; i < instance_extension_properties.size(); i++) {
-      auto instance_layer_property = instance_extension_properties[i];
-      LOG_INFO("available extension: \"%s\"", instance_layer_property.extensionName);
+    for (auto instance_extension_property : instance_extension_properties.iter()) {
+      LOG_INFO("available extension: \"%s\"", instance_extension_property.extensionName);
     }
 
-    for (usize l = 0; l < extensions.size(); l++) {
+    for (auto extension : extensions.iter()) {
       bool extension_found = false;
-      for (usize il = 0; il < instance_extension_properties.size(); il++) {
-        if (strcmp(extensions[l], instance_extension_properties[il].extensionName) == 0) {
+      for (auto instance_extension_property : instance_extension_properties.iter()) {
+        if (strcmp(extension, instance_extension_property.extensionName) == 0) {
           extension_found = true;
           break;
         }
       }
-      ASSERTM(extension_found, "extension required but not found: %s", extensions[l]);
-      LOG_INFO("extension found: %s", extensions[l]);
+      ASSERTM(extension_found, "extension required but not found: %s", extension);
+      LOG_INFO("extension found: %s", extension);
     }
   }
 

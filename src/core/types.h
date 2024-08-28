@@ -31,10 +31,61 @@ template <class T>
 constexpr identity_t<T> identity_v;
 
 template <class T>
+struct ref_wrapper {
+  T* ref;
+  ref_wrapper(T& t)
+      : ref(&t) {}
+
+  T& operator*() {
+    return *ref;
+  }
+  const T& operator*() const {
+    return *ref;
+  }
+  T* operator->() {
+    return ref;
+  }
+  const T* operator->() const {
+    return ref;
+  }
+  operator T*() {
+    return ref;
+  }
+  operator T&() {
+    return *ref;
+  }
+  operator T*() const {
+    return ref;
+  }
+  operator T&() const {
+    return *ref;
+  }
+};
+
+namespace detail_ {
+template <class T>
+struct maybe_traits {
+  using type      = T;
+  using pointer   = T*;
+  using reference = T&;
+};
+
+template <class T>
+struct maybe_traits<T&> {
+  using type      = ref_wrapper<T>;
+  using pointer   = T*;
+  using reference = T&;
+};
+} // namespace detail_
+
+template <class T>
 struct Maybe {
+  using pointer   = typename detail_::maybe_traits<T>::pointer;
+  using reference = typename detail_::maybe_traits<T>::reference;
+
   enum class Discriminant : u8 { None, Some } d;
   union {
-    T t;
+    typename detail_::maybe_traits<T>::type t;
   };
 
   Maybe(T t)
@@ -46,6 +97,13 @@ struct Maybe {
       , t(FWD(args)...) {}
   Maybe()
       : d(Discriminant::None) {}
+  template <class C>
+  Maybe(Maybe<C>& c)
+      : Maybe(T(c)) {}
+  Maybe(const Maybe&)            = default;
+  Maybe(Maybe&&)                 = default;
+  Maybe& operator=(const Maybe&) = default;
+  Maybe& operator=(Maybe&&)      = default;
 
   inline bool is_some() {
     return d == Discriminant::Some;
@@ -53,13 +111,13 @@ struct Maybe {
   inline bool is_none() {
     return d == Discriminant::None;
   }
-  inline T& value() {
+  inline reference value() {
     return t;
   }
-  inline T& operator*() {
+  inline reference operator*() {
     return value();
   }
-  inline T* operator->() {
+  inline pointer operator->() {
     return &t;
   }
 };

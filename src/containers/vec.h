@@ -3,6 +3,7 @@
 
 #include "../core/debug.h"
 #include "../core/fwd.h"
+#include "../core/iterator.h"
 #include "../core/memory.h"
 #include "../core/type_info.h"
 #include <cstring>
@@ -144,6 +145,31 @@ struct vec {
   constexpr T& operator[](usize i) {
     ASSERT(i < size());
     return *(data() + i);
+  }
+
+  template <class U = T, class V = vec<U>>
+  struct vec_iter : cpp_iter<U&, vec_iter<U>> {
+    ref_wrapper<V> v;
+    range<usize>::range_iter it;
+
+    vec_iter(V& v, range<usize>::range_iter it)
+        : v(v)
+        , it(it) {}
+
+    Maybe<U&> next() {
+      auto idx = it.next();
+      if (idx.is_none()) {
+        return {};
+      }
+      return {(*v)[idx.value()]};
+    }
+  };
+
+  vec_iter<T> iter() {
+    return {*this, range{0zu, size()}.iter()};
+  }
+  vec_iter<const T, const vec<T>> iter() const {
+    return {*this, range{0zu, size()}.iter()};
   }
 };
 

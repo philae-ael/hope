@@ -31,6 +31,7 @@ int main(int argc, char* argv[]) {
   const char* layers[] = {
       "VK_LAYER_KHRONOS_validation",
   };
+
   vk::instance instance =
       vk::create_default_instance(*s, vec{layers}, {}).expect("can't create instance");
 
