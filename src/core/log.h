@@ -32,13 +32,13 @@ struct log_entry {
   std::source_location loc;
 };
 
-using log_formatter = log_entry (*)(void*, arena&, log_entry);
+using log_formatter = log_entry (*)(void*, Arena&, log_entry);
 void log_register_global_formatter(log_formatter, void* user);
 
 using log_writer = void (*)(void*, str8);
 
 void log_register_global_writer(log_writer, void* user);
-void log_emit(arena&, log_entry&);
+void log_emit(Arena&, log_entry&);
 bool log_filter(LogLevel level);
 void log_set_global_level(LogLevel level);
 
@@ -70,7 +70,7 @@ struct log_builder {
   log_builder(LogLevel level, std::source_location loc = std::source_location::current());
 };
 
-log_entry log_fancy_formatter(void*, core::arena& arena, core::log_entry entry);
+log_entry log_fancy_formatter(void*, core::Arena& arena, core::log_entry entry);
 
 #define LOG_BUILDER(level, instr) \
   (log_filter(level) ? core::log_builder(level).instr.emit() : (void)0)

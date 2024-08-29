@@ -30,10 +30,10 @@ usize arena_page_size() {
 #endif
 }
 
-bool arena::owns(void* ptr) {
+bool Arena::owns(void* ptr) {
   return ptr >= base && ptr < mem;
 }
-bool arena::try_resize(void* ptr, usize cur_size, usize new_size, const char* src) {
+bool Arena::try_resize(void* ptr, usize cur_size, usize new_size, const char* src) {
   if (!owns(ptr)) {
     return false;
   }
@@ -51,7 +51,7 @@ bool arena::try_resize(void* ptr, usize cur_size, usize new_size, const char* sr
   return true;
 }
 
-void* arena::allocate(usize size, usize alignement, const char* src) {
+void* Arena::allocate(usize size, usize alignement, const char* src) {
   ARENA_DEBUG_STMT(printf(
       "Arena: trying to allocate %zu from %s, %zu available\n", size, src,
       capacity - (usize)(mem - base)
@@ -96,7 +96,7 @@ void* arena::allocate(usize size, usize alignement, const char* src) {
   return aligned;
 }
 
-void arena::deallocate(usize size) {
+void Arena::deallocate(usize size) {
   if (size == 0) {
     return;
   }
@@ -115,9 +115,9 @@ void arena::deallocate(usize size) {
   }
 }
 
-arena* arena_alloc(usize capacity) {
+Arena* arena_alloc(usize capacity) {
   usize page_size        = arena_page_size();
-  const usize alloc_size = ALIGN_UP(sizeof(arena) + capacity, page_size);
+  const usize alloc_size = ALIGN_UP(sizeof(Arena) + capacity, page_size);
 
   u8* memory = (u8*)os::mem_allocate(nullptr, alloc_size, os::MemAllocationFlags::Reserve);
   ARENA_DEBUG_STMT(printf("Arena: got range [%p, %p)\n", memory, memory + alloc_size));
@@ -125,40 +125,40 @@ arena* arena_alloc(usize capacity) {
 
   os::mem_allocate(memory, page_size, os::MemAllocationFlags::Commit);
 
-  capacity         = alloc_size - sizeof(arena);
+  capacity         = alloc_size - sizeof(Arena);
 
-  arena* arena_    = (arena*)memory;
+  Arena* arena_    = (Arena*)memory;
   arena_->capacity = capacity;
-  arena_->mem = arena_->base = memory + sizeof(arena);
+  arena_->mem = arena_->base = memory + sizeof(Arena);
   arena_->committed          = memory + page_size;
 
   ASAN_POISON_MEMORY_REGION(arena_->mem, arena_->capacity);
   return arena_;
 }
 
-void arena_dealloc(arena* arena_) {
+void arena_dealloc(Arena* arena_) {
   if (arena_ == nullptr) {
     return;
   }
 
-  const usize alloc_size = sizeof(arena) + arena_->capacity;
+  const usize alloc_size = sizeof(Arena) + arena_->capacity;
 
   ARENA_DEBUG_STMT(printf("Arena: realeasing range [%p, %p)\n", arena_, arena_ + alloc_size));
   os::mem_deallocate(arena_, alloc_size, os::MemDeallocationFlags::Release);
 }
 
-void arena::pop_pos(u64 pos) {
+void Arena::pop_pos(u64 pos) {
   ASSERT(mem >= (u8*)pos);
   deallocate(usize(mem - (u8*)pos));
 }
-u64 arena::pos() {
+u64 Arena::pos() {
   return (u64)mem;
 }
 void ArenaTemp::retire() {
   arena_->pop_pos(old_pos);
   arena_ = nullptr;
 }
-ArenaTemp arena::make_temp() {
+ArenaTemp Arena::make_temp() {
   return ArenaTemp{
       this,
       pos(),
@@ -178,7 +178,7 @@ ArenaTemp arena::make_temp() {
 //
 // I decided to remove all atomic access, it's easier and it wont be an issue
 
-thread_local arena* scratch_storage[SCRATCH_ARENA_AMOUNT]{};
+thread_local Arena* scratch_storage[SCRATCH_ARENA_AMOUNT]{};
 // This is not called, sometimes... it doesn't matter that much but it's annoying
 thread_local auto clear_arena_ = defer_builder + [] {
   SCRATCH_DEBUG_STMT(printf("Scratch: cleaning storage for thread %zu\n", sync::thread_id()));
@@ -196,14 +196,14 @@ scratch scratch_get() {
   if (scratch_storage[0] == nullptr) {
     SCRATCH_DEBUG_STMT(printf("Scratch: initialize storage for thread %zu\n", sync::thread_id()));
     for (usize i = 0; i < SCRATCH_ARENA_AMOUNT; i++) {
-      arena* arena       = arena_alloc();
+      Arena* arena       = arena_alloc();
       scratch_storage[i] = arena;
     }
   }
 
   for (usize i = 0; i < SCRATCH_ARENA_AMOUNT; i++) {
     usize j      = SCRATCH_ARENA_AMOUNT - 1 - i;
-    arena* arena = nullptr;
+    Arena* arena = nullptr;
     SWAP(scratch_storage[j], arena);
 
     if (arena != nullptr) {
@@ -219,7 +219,7 @@ scratch scratch_get() {
 
 void scratch_retire(scratch& scr) {
   scr->pop_pos(scr.old_pos);
-  arena* arena_ = scr.arena_;
+  Arena* arena_ = scr.arena_;
   scr.arena_    = nullptr;
 
   for (usize i = 0; i < SCRATCH_ARENA_AMOUNT; i++) {
@@ -230,7 +230,7 @@ void scratch_retire(scratch& scr) {
     SCRATCH_DEBUG_STMT(printf(
         "Scratch: thread %zu, retire scratch %zu at %p\n", sync::thread_id(), i, arena_->base
     ));
-    arena* out = nullptr;
+    Arena* out = nullptr;
     SWAP(out, arena_);
 
     return;

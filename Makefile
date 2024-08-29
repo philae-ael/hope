@@ -19,6 +19,7 @@ CXXFLAGS:=$(CXXFLAGS) -DDEBUG
 CXXFLAGS:=$(CXXFLAGS) -fno-stack-protector
 CXXFLAGS:=$(CXXFLAGS) -fstack-protector-all
 
+
 # clang only
 # CXXFLAGS:=$(CXXFLAGS) -ftime-trace
 
@@ -26,7 +27,7 @@ CXXFLAGS:=$(CXXFLAGS) -fstack-protector-all
 LDFLAGS:=$(LDFLAGS) -rdynamic 
 LDLIBS:=$(LDLIBS) -lstdc++exp 
 
-LDLIBS:=$(LDLIBS) -lvulkan 
+LDLIBS:=$(LDLIBS) -lvulkan -lSDL2
 
 DEPFLAGS= -MM -MG -MF 
 

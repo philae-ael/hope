@@ -111,8 +111,8 @@ constexpr VectorFormat VectorFormatPretty{
     .flags     = enum_helpers::enum_or(VectorFormatFlags::Multiline, VectorFormatFlags::Alt),
 };
 
-str8 to_str8(arena& arena, Vec4 v, VectorFormat format = {});
-str8 to_str8(arena& arena, Vec2 v, VectorFormat format = {});
+str8 to_str8(Arena& arena, Vec4 v, VectorFormat format = {});
+str8 to_str8(Arena& arena, Vec2 v, VectorFormat format = {});
 
 /// Compute
 /// - mean,

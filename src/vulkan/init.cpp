@@ -4,6 +4,7 @@
 #include "../containers/vec.h"
 #include "../core/core.h"
 #include <cstring>
+#include <vulkan/vulkan_core.h>
 
 namespace {
 void notloaded() {
@@ -22,7 +23,8 @@ namespace {
 VkBool32 debug_utils_messenger_callback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageTypes,
-    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData
+    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+    void* pUserData
 ) {
   core::LogLevel level = core::LogLevel::Debug;
   switch (messageSeverity) {
@@ -30,7 +32,7 @@ VkBool32 debug_utils_messenger_callback(
     level = core::LogLevel::Trace;
     break;
   case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-    level = core::LogLevel::Info;
+    level = core::LogLevel::Debug;
     break;
   case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
     level = core::LogLevel::Warning;
@@ -83,7 +85,7 @@ void load_extensions(VkInstance instance) {
 #undef LOAD
 }
 
-VkResult setup_debug_messenger(instance& inst) {
+Result<VkDebugUtilsMessengerEXT> setup_debug_messenger(VkInstance instance) {
   VkDebugUtilsMessengerCreateInfoEXT debug_create_info{
       .sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
       .pNext           = nullptr,
@@ -98,12 +100,21 @@ VkResult setup_debug_messenger(instance& inst) {
       .pfnUserCallback = debug_utils_messenger_callback,
       .pUserData       = nullptr,
   };
-  return vkCreateDebugUtilsMessengerEXT(*inst, &debug_create_info, nullptr, &inst.debug_messenger);
+  VkDebugUtilsMessengerEXT debug_messenger;
+  VkResult err =
+      vkCreateDebugUtilsMessengerEXT(instance, &debug_create_info, nullptr, &debug_messenger);
+
+  if (err != VK_SUCCESS) {
+    return err;
+  }
+  return debug_messenger;
 }
 
-Result<instance>
-create_instance(core::storage<const char*> layers, core::storage<const char*> extensions) {
-  instance inst;
+Result<VkInstance> create_instance(
+    core::storage<const char*> layers,
+    core::storage<const char*> extensions
+) {
+  VkInstance inst;
   VkApplicationInfo app_info{
       .sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO,
       .pNext              = nullptr,
@@ -139,14 +150,14 @@ create_instance(core::storage<const char*> layers, core::storage<const char*> ex
   };
   VK_PUSH_NEXT(instance_create_info, debug_create_info);
 
-  VkResult res = vkCreateInstance(&instance_create_info, nullptr, &inst.inner);
+  VkResult res = vkCreateInstance(&instance_create_info, nullptr, &inst);
   if (res != VK_SUCCESS) {
     return res;
   }
   return inst;
 }
 
-core::vec<VkLayerProperties> enumerate_instance_layer_properties(core::arena& ar) {
+core::vec<VkLayerProperties> enumerate_instance_layer_properties(core::Arena& ar) {
   u32 layer_count;
   vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
 
@@ -157,7 +168,7 @@ core::vec<VkLayerProperties> enumerate_instance_layer_properties(core::arena& ar
 
   return v;
 }
-core::vec<VkExtensionProperties> enumerate_instance_extension_properties(core::arena& ar) {
+core::vec<VkExtensionProperties> enumerate_instance_extension_properties(core::Arena& ar) {
   u32 layer_count;
   vkEnumerateInstanceExtensionProperties(nullptr, &layer_count, nullptr);
 
@@ -169,8 +180,10 @@ core::vec<VkExtensionProperties> enumerate_instance_extension_properties(core::a
   return v;
 }
 
-Result<instance> create_default_instance(
-    core::arena& ar_, core::vec<const char*> layers, core::vec<const char*> extensions
+Result<Instance> create_default_instance(
+    core::Arena& ar_,
+    core::vec<const char*> layers,
+    core::vec<const char*> extensions
 ) {
   auto ar = ar_.make_temp();
   defer { ar.retire(); };
@@ -179,7 +192,7 @@ Result<instance> create_default_instance(
     const auto instance_layer_properties = enumerate_instance_layer_properties(*ar);
     for (auto instance_layer_property : instance_layer_properties.iter()) {
       LOG_INFO(
-          "available layer: \"%s\" (%s)", instance_layer_property.layerName,
+          "available instance layer: \"%s\" (%s)", instance_layer_property.layerName,
           instance_layer_property.description
       );
     }
@@ -192,8 +205,8 @@ Result<instance> create_default_instance(
           break;
         }
       }
-      ASSERTM(layer_found, "layer required but not found: %s", layer);
-      LOG_INFO("layer found: %s", layer);
+      ASSERTM(layer_found, "instance layer required but not found: %s", layer);
+      LOG_INFO("instance layer found: %s", layer);
     }
   }
 
@@ -211,7 +224,7 @@ Result<instance> create_default_instance(
   {
     const auto instance_extension_properties = enumerate_instance_extension_properties(*ar);
     for (auto instance_extension_property : instance_extension_properties.iter()) {
-      LOG_INFO("available extension: \"%s\"", instance_extension_property.extensionName);
+      LOG_INFO("available instance extension: \"%s\"", instance_extension_property.extensionName);
     }
 
     for (auto extension : extensions.iter()) {
@@ -222,27 +235,300 @@ Result<instance> create_default_instance(
           break;
         }
       }
-      ASSERTM(extension_found, "extension required but not found: %s", extension);
-      LOG_INFO("extension found: %s", extension);
+      ASSERTM(extension_found, "instance extension required but not found: %s", extension);
+      LOG_INFO("instance extension found: %s", extension);
     }
   }
 
   auto instance = create_instance(layers, extensions);
   if (instance.is_err()) {
-    return instance;
+    return instance.err();
   }
-  load_extensions(*instance.value());
-  VkResult res = setup_debug_messenger(*instance);
+  load_extensions(instance.value());
+  auto debug_messenger = setup_debug_messenger(instance.value());
+  if (debug_messenger.is_err()) {
+    return debug_messenger.err();
+  }
+
+  return {
+      {
+          *instance,
+          *debug_messenger,
+      },
+  };
+}
+
+void destroy_instance(Instance& inst) {
+  vkDestroyDebugUtilsMessengerEXT(inst.instance, inst.debug_messenger, nullptr);
+  vkDestroyInstance(inst.instance, nullptr);
+}
+
+core::vec<VkPhysicalDevice> enumerate_physical_devices(core::Arena& ar, VkInstance instance) {
+  core::vec<VkPhysicalDevice> v;
+  u32 physical_device_count;
+
+  vkEnumeratePhysicalDevices(instance, &physical_device_count, nullptr);
+  v.set_capacity(ar, physical_device_count);
+  vkEnumeratePhysicalDevices(instance, &physical_device_count, v.data());
+  v.set_size(physical_device_count);
+
+  return v;
+}
+
+core::vec<VkQueueFamilyProperties> enumerate_physical_device_queue_family_properties(
+    core::Arena& ar,
+    VkPhysicalDevice physical_device
+) {
+  core::vec<VkQueueFamilyProperties> v;
+  u32 queue_family_properties_count;
+  vkGetPhysicalDeviceQueueFamilyProperties(
+      physical_device, &queue_family_properties_count, nullptr
+  );
+  v.set_capacity(ar, queue_family_properties_count);
+  vkGetPhysicalDeviceQueueFamilyProperties(
+      physical_device, &queue_family_properties_count, v.data()
+  );
+  v.set_size(queue_family_properties_count);
+  return v;
+}
+
+core::Maybe<core::vec<queue_creation_info>> find_physical_device_queue_allocation(
+    core::Arena& ar,
+    VkPhysicalDevice physical_device,
+    const physical_device_features& required_features
+) {
+  auto queue_family_properties =
+      enumerate_physical_device_queue_family_properties(ar, physical_device);
+
+  auto queue_requests = core::vec{required_features.queues}.clone(ar);
+  core::vec<queue_creation_info> queues;
+  for (auto [family_index, queue_family_property] :
+       core::enumerate{queue_family_properties.iter()}) {
+
+    LOG_BUILDER(
+        core::LogLevel::Debug, pushf(
+                                   "queue family %zu with count %u and flags ", family_index,
+                                   queue_family_property->queueCount
+                               )
+                                   .push(queue_flags, queue_family_property->queueFlags)
+    );
+
+    for (auto [request_index, queue_request] : core::enumerate{queue_requests.iter()}) {
+
+      if (queue_family_property->queueCount == 0) {
+        break;
+      }
+      if (queue_request->count == 0) {
+        continue;
+      }
+      if (queue_request->surface_to_support != nullptr) {
+        VkBool32 supported;
+        VkResult res = vkGetPhysicalDeviceSurfaceSupportKHR(
+            physical_device, (u32)family_index, queue_request->surface_to_support, &supported
+        );
+        ASSERT(res == VK_SUCCESS);
+        if (supported != VK_TRUE) {
+          LOG_DEBUG(
+              "presentation requested but not available in queue family with index %zu",
+              family_index
+          );
+          continue;
+        }
+      }
+
+      if ((queue_request->flags & queue_family_property->queueFlags) != 0) {
+        u32 queue_count = MIN(queue_family_property->queueCount, queue_request->count);
+        queue_family_property->queueCount -= queue_count;
+        queue_request->count              -= queue_count;
+        queues.push(
+            ar,
+            {
+                .queue_request_index = (u32)request_index,
+                .family_index        = (u32)family_index,
+                .count               = queue_count,
+            }
+        );
+      }
+    }
+  }
+  for (auto [queue_request_index, queue_request] : core::enumerate{queue_requests.iter()}) {
+    if (queue_request->count != 0) {
+      LOG_DEBUG("queue request of index %zu not satisfied!", queue_request_index);
+      return {};
+    }
+  }
+  return queues;
+}
+
+core::Maybe<physical_device> find_physical_device(
+    core::Arena& ar,
+    VkInstance instance,
+    const physical_device_features& required_features
+) {
+  const auto physical_devices = enumerate_physical_devices(ar, instance);
+  for (auto physical_device : physical_devices.iter()) {
+    VkPhysicalDeviceProperties2 physical_device_properties2{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+    };
+    vkGetPhysicalDeviceProperties2(physical_device, &physical_device_properties2);
+
+    if (!required_features.check_features(physical_device_properties2)) {
+      LOG_DEBUG("physical device rejected: required features not satisfied");
+      continue;
+    }
+    auto queue_creation_infos =
+        find_physical_device_queue_allocation(ar, physical_device, required_features);
+    if (queue_creation_infos.is_none()) {
+      LOG_DEBUG("physical device rejected: can't allocate requested queues");
+      continue;
+    }
+
+    return {{
+        physical_device,
+        queue_creation_infos.value(),
+    }};
+  }
+  LOG_WARNING("no physical_device found");
+  return {};
+}
+
+core::vec<VkExtensionProperties> enumerate_device_extension_properties(
+    core::Arena& ar,
+    VkPhysicalDevice device
+) {
+  core::vec<VkExtensionProperties> v;
+  u32 device_extension_count;
+
+  vkEnumerateDeviceExtensionProperties(device, nullptr, &device_extension_count, nullptr);
+  v.set_capacity(ar, device_extension_count);
+  vkEnumerateDeviceExtensionProperties(device, nullptr, &device_extension_count, v.data());
+  v.set_size(device_extension_count);
+
+  return v;
+}
+
+Result<VkDevice> create_device(
+    core::Arena& ar_,
+    VkPhysicalDevice physical_device,
+    physical_device_features& features,
+    core::storage<const char*> extensions,
+    core::storage<queue_creation_info> queue_create_infos
+) {
+  core::ArenaTemp ar = ar_.make_temp();
+  defer { ar.retire(); };
+
+  core::vec<VkDeviceQueueCreateInfo> queue_device_create_infos;
+  for (auto queue_creation_info : queue_create_infos.iter()) {
+    auto priorities = ar->allocate_array<f32>(queue_creation_info.count);
+    for (auto i : core::range{0zu, (usize)queue_creation_info.count}.iter()) {
+      priorities[i] = 1.0;
+    }
+    queue_device_create_infos.push(
+        *ar,
+        {
+            .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+            .queueFamilyIndex = queue_creation_info.family_index,
+            .queueCount       = 1,
+            .pQueuePriorities = priorities.data,
+        }
+    );
+  }
+
+  VkPhysicalDeviceFeatures2 requested_features2 = features.into_vk_physical_device_features2();
+  VkDeviceCreateInfo device_create_info{
+      .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+      .queueCreateInfoCount    = (u32)queue_device_create_infos.size(),
+      .pQueueCreateInfos       = queue_device_create_infos.data(),
+      .enabledExtensionCount   = (u32)extensions.size,
+      .ppEnabledExtensionNames = extensions.data,
+  };
+  VK_PUSH_NEXT(device_create_info, requested_features2);
+  VkDevice device;
+  VkResult res = vkCreateDevice(physical_device, &device_create_info, nullptr, &device);
   if (res != VK_SUCCESS) {
     return res;
   }
-
-  return instance;
+  return device;
 }
 
-void destroy_instance(instance& inst) {
-  vkDestroyDebugUtilsMessengerEXT(*inst, inst.debug_messenger, nullptr);
-  vkDestroyInstance(*inst, nullptr);
+Result<Device> create_default_device(
+    core::Arena& ar_,
+    VkInstance instance,
+    VkSurfaceKHR surface,
+    core::vec<const char*> extensions
+) {
+  core::ArenaTemp ar = ar_.make_temp();
+  defer { ar.retire(); };
+
+  queue_request queues[]{
+      {
+          .flags = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT,
+          .count = 1,
+          .surface_to_support = surface,
+      },
+  };
+  physical_device_features requested_features{
+      .queues = queues,
+  };
+  auto [physical_device, queues_creation_infos] = [&] {
+    auto physical_device = find_physical_device(*ar, instance, requested_features);
+    ASSERTM(physical_device.is_some(), "no physical device found");
+    return *physical_device;
+  }();
+
+  ASSERT(queues_creation_infos.size == 1);
+
+  auto device_extension_properties = enumerate_device_extension_properties(*ar, physical_device);
+  for (auto& extension : extensions.iter()) {
+    bool found = false;
+    for (auto& device_extension_property : device_extension_properties.iter()) {
+      if (strcmp(extension, device_extension_property.extensionName) == 0) {
+        found = true;
+      }
+    }
+    ASSERTM(found, "device extension required but not found: %s", extension);
+    LOG_INFO("device extension found: %s", extension);
+  }
+  auto device =
+      create_device(*ar, physical_device, requested_features, extensions, queues_creation_infos);
+  if (device.is_err()) {
+    return device.err();
+  }
+
+  VkQueue omniQueue;
+  u32 omniQueueFamilyIndex = queues_creation_infos[0].family_index;
+  vkGetDeviceQueue(*device, omniQueueFamilyIndex, 0, &omniQueue);
+  return Device{
+      physical_device,
+      device.value(),
+      omniQueueFamilyIndex,
+      omniQueue,
+
+  };
 }
 
+VkPhysicalDeviceFeatures2 physical_device_features::into_vk_physical_device_features2() const {
+  return VkPhysicalDeviceFeatures2{
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+  };
+}
+bool physical_device_features::check_features(
+    const VkPhysicalDeviceProperties2& physical_device_properties2
+) const {
+  auto s = (const VkBaseInStructure*)physical_device_properties2.pNext;
+  while (s != nullptr) {
+    switch (s->sType) {
+    default:
+      LOG_BUILDER(
+          core::LogLevel::Error, pushf("Feature not supported in check_features").push(s->sType)
+      );
+    }
+    s = s->pNext;
+  }
+  return true;
+}
+
+void destroy_device(vk::Device device) {
+  vkDestroyDevice(device, nullptr);
+}
 } // namespace vk

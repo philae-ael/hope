@@ -8,7 +8,7 @@
 // IWYU pragma: end_exports
 
 namespace core {
-struct arena;
+struct Arena;
 struct scratch;
 
 struct str8;

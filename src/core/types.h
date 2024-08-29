@@ -17,6 +17,9 @@ constexpr inplace_t inplace{};
 struct unsafe_t {};
 constexpr unsafe_t unsafe{};
 
+struct clear_t {};
+constexpr clear_t clear{};
+
 struct noalloc_t {};
 constexpr noalloc_t noalloc{};
 
@@ -228,6 +231,70 @@ constexpr bool any(T t) {
 
 } // namespace enum_helpers
 
+struct iter_end_t {};
+constexpr iter_end_t iter_end{};
+
+template <class T>
+concept iterable = requires(T t) {
+  t.next();
+  typename T::Item;
+};
+
+template <class T, class PullIter, class S = T>
+struct cpp_iter {
+  T operator*() {
+    return iter_cur.value();
+  }
+  auto& operator++() {
+    iter_cur = _self().next();
+    return _self();
+  }
+
+  bool operator!=(iter_end_t) {
+    return iter_cur.is_some();
+  }
+
+  auto& begin() {
+    if (iter_cur.is_none()) {
+      ++*this;
+    }
+    return _self();
+  }
+  auto end() {
+    return iter_end;
+  }
+
+private:
+  Maybe<S> iter_cur;
+
+  PullIter& _self() {
+    return *static_cast<PullIter*>(this);
+  }
+};
+
+template <class Idx>
+struct range {
+  Idx begining;
+  Idx end;
+
+  struct range_iter : cpp_iter<Idx, range_iter> {
+    using Item = Idx;
+    Idx cur;
+    Idx end_;
+
+    Maybe<Item> next() {
+      if (cur < end_) {
+        return cur++;
+      }
+
+      return {};
+    }
+  };
+  range_iter iter() {
+    return {.cur = begining, .end_ = end};
+  }
+};
+
 template <class S = u8>
 struct storage {
   usize size{};
@@ -256,6 +323,64 @@ struct storage {
 
   S& operator[](usize index) {
     return data[index];
+  }
+
+  template <class U>
+  struct storage_iter : cpp_iter<U&, storage_iter<U>> {
+    using Item = U&;
+    U* v;
+    range<usize>::range_iter it;
+
+    storage_iter(U* v, range<usize>::range_iter it)
+        : v(v)
+        , it(it) {}
+
+    Maybe<Item> next() {
+      auto idx = it.next();
+      if (idx.is_none()) {
+        return {};
+      }
+      return {v[idx.value()]};
+    }
+  };
+  auto indices() const {
+    return range{0zu, size};
+  }
+  storage_iter<S> iter() {
+    return {data, range{0zu, size}.iter()};
+  }
+  storage_iter<const S> iter() const {
+    return {data, range{0zu, size}.iter()};
+  }
+};
+
+template <class Idx, iterable It>
+struct EnumerateItem {
+  usize _1;
+  typename detail_::maybe_traits<typename It::Item>::type _2;
+};
+template <iterable It, class Idx = usize>
+struct enumerate : cpp_iter<EnumerateItem<Idx, It>, enumerate<It, Idx>> {
+  It it;
+  Idx count{};
+
+  enumerate(It it)
+      : it(it) {}
+  enumerate(It it, Idx count)
+      : it(it)
+      , count(count) {}
+
+  using Item = EnumerateItem<Idx, It>;
+
+  Maybe<Item> next() {
+    auto n = it.next();
+    if (n.is_some()) {
+      return {{
+          count++,
+          n.value(),
+      }};
+    }
+    return {};
   }
 };
 

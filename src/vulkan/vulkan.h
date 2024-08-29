@@ -92,14 +92,18 @@ struct wrapper {
   }
 };
 
+struct queue_flags_t {};
+constexpr queue_flags_t queue_flags{};
+core::str8 to_str8(core::Arena& ar, queue_flags_t, VkQueueFlags struct_type);
 } // namespace vk
 
-#define VK_PUSH_NEXT(parent, child) \
-  do {                              \
-    child.pNext  = parent.pNext;    \
-    parent.pNext = &child;          \
+#define VK_PUSH_NEXT(parent, child)     \
+  do {                                  \
+    child.pNext  = (void*)parent.pNext; \
+    parent.pNext = &child;              \
   } while (0)
 
 core::str8 to_str8(VkResult res);
+core::str8 to_str8(VkStructureType struct_type);
 
 #endif // INCLUDE_VULKAN_VULKAN_H_

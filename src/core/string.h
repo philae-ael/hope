@@ -55,7 +55,7 @@ struct str8 {
     };
   }
 
-  const char* cstring(arena& arena);
+  const char* cstring(Arena& arena);
 };
 
 // For ADL purpose!
@@ -83,33 +83,36 @@ concept Str8ifiable = requires(T x) {
   { to_str8(x) };
 };
 
-template <class T>
-concept Str8ifiableDyn = requires(arena& arena, T x) {
-  { to_str8(arena, x) };
+template <class T, class... Args>
+concept Str8ifiableDyn = requires(Arena& arena, T x, Args... args) {
+  { to_str8(arena, x, args...) };
 } && !Str8ifiable<T>;
 
 struct string_builder {
   string_node* first;
   string_node* last;
   usize total_len;
+  usize node_count;
 
   string_builder& append(string_builder& sb);
   string_builder& push_node(string_node* node);
   string_builder& push_str8(string_node* node, str8 str);
-  string_builder& push_str8(arena& arena, str8 str);
+  string_builder& push_str8(Arena& arena, str8 str);
   template <Str8ifiable T, class... Args>
-  string_builder& push(arena& arena, T&& t, Args&&... args) {
+  string_builder& push(Arena& arena, T&& t, Args&&... args) {
     return push_str8(arena, to_str8(FWD(t), FWD(args)...));
   }
-  template <Str8ifiableDyn T, class... Args>
-  string_builder& push(arena& arena, T&& t, Args&&... args) {
+  template <class T, class... Args>
+  string_builder& push(Arena& arena, T&& t, Args&&... args)
+    requires Str8ifiableDyn<T, Args...>
+  {
     return push_str8(arena, to_str8(arena, FWD(t), FWD(args)...));
   }
 
   PRINTF_ATTRIBUTE(3, 4)
-  string_builder& pushf(arena& arena, const char* fmt, ...);
-  string_builder& vpushf(arena& arena, const char* fmt, va_list ap);
-  str8 commit(arena& arena) const;
+  string_builder& pushf(Arena& arena, const char* fmt, ...);
+  string_builder& vpushf(Arena& arena, const char* fmt, va_list ap);
+  str8 commit(Arena& arena, str8 join = {}) const;
 };
 
 namespace literals {
@@ -126,7 +129,7 @@ constexpr inline u64 operator""_h(const char* s, std::size_t len) {
 } // namespace literals
 
 template <class T>
-str8 to_str8(arena& arena, Maybe<T> m)
+str8 to_str8(Arena& arena, Maybe<T> m)
   requires Str8ifiable<T> || Str8ifiableDyn<T>
 {
   using namespace literals;

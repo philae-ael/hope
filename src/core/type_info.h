@@ -23,30 +23,30 @@ const char* type_name() {
   return n;
 }
 
-struct layout_info {
+struct LayoutInfo {
   usize size;
   usize alignement;
-  layout_info array(usize size) {
+  LayoutInfo array(usize size) {
     return {
         this->size * size,
         alignement,
     };
   }
 
-  bool operator==(layout_info& other) {
+  bool operator==(LayoutInfo& other) {
     return other.size == size && other.alignement == alignement;
   }
 };
 
-str8 to_str8(arena& ar, layout_info);
+str8 to_str8(Arena& ar, LayoutInfo);
 
 template <class T>
-constexpr layout_info default_layout_of() {
+constexpr LayoutInfo default_layout_of() {
   return {sizeof(T), alignof(T)};
 }
 
 struct type_info_t {
-  layout_info layout;
+  LayoutInfo layout;
   u64 type_id;
 };
 

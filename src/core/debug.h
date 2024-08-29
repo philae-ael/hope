@@ -54,9 +54,11 @@
 
 namespace core {
 
-[[noreturn]] void
-panic(const char* msg, std::source_location loc = std::source_location::current(), ...)
-    PRINTF_ATTRIBUTE(1, 3);
+[[noreturn]] void panic(
+    const char* msg,
+    std::source_location loc = std::source_location::current(),
+    ...
+) PRINTF_ATTRIBUTE(1, 3);
 
 void dump_backtrace(usize skip = 1);
 void setup_crash_handler();

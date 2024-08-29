@@ -11,7 +11,7 @@ namespace core {
 
 /* FORMATTERS */
 
-log_entry default_log_formatter(void*, arena& arena, log_entry entry) {
+log_entry default_log_formatter(void*, Arena& arena, log_entry entry) {
   entry.builder = string_builder{}
                       .push(arena, entry.level)
                       .push(arena, ": ")
@@ -31,7 +31,7 @@ static core::str8 LEVEL_COLOR[]{
 
 static core::str8 COLOR_RESET = ESCAPE "[0m"_s;
 
-log_entry log_fancy_formatter(void*, core::arena& arena, core::log_entry entry) {
+log_entry log_fancy_formatter(void*, core::Arena& arena, core::log_entry entry) {
   entry.builder = core::string_builder{}
                       .pushf(arena, "%s:%d - ", entry.loc.file_name(), entry.loc.line())
                       .push(arena, LEVEL_COLOR[(usize)entry.level])
@@ -71,7 +71,7 @@ bool log_filter(LogLevel level) {
   return (usize)level >= (usize)global_log_level;
 }
 
-void log_emit(arena& arena, log_entry& entry) {
+void log_emit(Arena& arena, log_entry& entry) {
   str8 msg =
       global_log_formatter(global_log_formatter_userdata, arena, entry).builder.commit(arena);
   global_log_writer(global_log_writer_userdata, msg);

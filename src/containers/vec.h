@@ -3,19 +3,18 @@
 
 #include "../core/debug.h"
 #include "../core/fwd.h"
-#include "../core/iterator.h"
 #include "../core/memory.h"
 #include "../core/type_info.h"
 #include <cstring>
 
 namespace core {
 struct raw_vec {
-  layout_info layout;
+  LayoutInfo layout;
   storage<u8> store;
 
   usize size{};
 
-  constexpr void pop(arena& ar, storage<u8> d) {
+  constexpr void pop(Arena& ar, storage<u8> d) {
     pop(noalloc, d);
     if (capacity() > 8 && capacity() > 2 * size) {
       set_capacity(ar, size);
@@ -32,7 +31,7 @@ struct raw_vec {
     size -= 1;
   }
 
-  constexpr void push(arena& ar, storage<const u8> d) {
+  constexpr void push(Arena& ar, storage<const u8> d) {
     DEBUG_ASSERT(d.size == layout.size);
 
     if (size == capacity()) {
@@ -48,8 +47,9 @@ struct raw_vec {
     size += 1;
   }
 
-  void set_capacity(arena& ar, usize new_capacity) {
-    if (ar.try_resize(store.data, store.size, new_capacity * layout.size, "raw_vec::resize")) {
+  void set_capacity(Arena& ar, usize new_capacity, bool try_grow = true) {
+    if (try_grow &&
+        ar.try_resize(store.data, store.size, new_capacity * layout.size, "raw_vec::resize")) {
       store.size = new_capacity * layout.size;
       return;
     }
@@ -59,8 +59,10 @@ struct raw_vec {
     store = new_store;
   }
 
-  void move(arena& ar) {
-    set_capacity(ar, capacity());
+  raw_vec clone(Arena& ar) {
+    raw_vec copy = *this;
+    copy.set_capacity(ar, capacity(), false);
+    return copy;
   }
 
   constexpr usize capacity() const {
@@ -72,14 +74,19 @@ template <class T>
 struct vec {
   raw_vec inner{default_layout_of<T>()};
 
-  vec(layout_info layout = default_layout_of<T>())
+  vec(unsafe_t, raw_vec v)
+      : inner(v) {}
+  vec(LayoutInfo layout = default_layout_of<T>())
       : inner(layout) {}
 
   template <usize len>
-  vec(T (&a)[len], layout_info layout = default_layout_of<T>())
+  vec(T (&a)[len], LayoutInfo layout = default_layout_of<T>())
       : inner(layout, storage{a}.into_bytes(), len) {}
 
-  vec(storage<T> s, layout_info layout = default_layout_of<T>())
+  vec(storage<T> s, LayoutInfo layout = default_layout_of<T>())
+      : inner(layout, s.into_bytes(), s.size) {}
+
+  vec(clear_t, storage<T> s, LayoutInfo layout = default_layout_of<T>())
       : inner(layout, s.into_bytes()) {}
 
   constexpr T pop(noalloc_t) {
@@ -88,14 +95,14 @@ struct vec {
     return t;
   }
 
-  constexpr T pop(arena& ar) {
+  constexpr T pop(Arena& ar) {
     T t;
     ASSERT(type_info<T>().layout == inner.layout);
     inner.pop(ar, storage<u8>::from(unsafe, t));
     return t;
   }
 
-  constexpr void push(arena& ar, const T& t) {
+  constexpr void push(Arena& ar, const T& t) {
     ASSERT(default_layout_of<T>() == inner.layout);
     inner.push(ar, storage<const u8>::from(unsafe, t));
   }
@@ -109,12 +116,12 @@ struct vec {
     ASSERT(new_size <= capacity());
     inner.size = new_size;
   }
-  void set_capacity(arena& ar, usize new_capacity) {
+  void set_capacity(Arena& ar, usize new_capacity) {
     inner.set_capacity(ar, new_capacity);
   }
 
-  void move(arena& ar) {
-    return inner.move(ar);
+  vec clone(Arena& ar) {
+    return {unsafe, inner.clone(ar)};
   }
 
   constexpr usize capacity() const {
@@ -147,29 +154,14 @@ struct vec {
     return *(data() + i);
   }
 
-  template <class U = T, class V = vec<U>>
-  struct vec_iter : cpp_iter<U&, vec_iter<U>> {
-    ref_wrapper<V> v;
-    range<usize>::range_iter it;
-
-    vec_iter(V& v, range<usize>::range_iter it)
-        : v(v)
-        , it(it) {}
-
-    Maybe<U&> next() {
-      auto idx = it.next();
-      if (idx.is_none()) {
-        return {};
-      }
-      return {(*v)[idx.value()]};
-    }
-  };
-
-  vec_iter<T> iter() {
-    return {*this, range{0zu, size()}.iter()};
+  auto indices() const {
+    return range{0zu, size()};
   }
-  vec_iter<const T, const vec<T>> iter() const {
-    return {*this, range{0zu, size()}.iter()};
+  auto iter() {
+    return storage<T>{*this}.iter();
+  }
+  auto iter() const {
+    return storage<const T>{*this}.iter();
   }
 };
 

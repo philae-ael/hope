@@ -10,17 +10,22 @@ AccessModifierOffset: -2
 IndentWidth: 2
 UseTab: Never
 
+PenaltyReturnTypeOnItsOwnLine: 1000
+
 AlignAfterOpenBracket: BlockIndent
 AlignEscapedNewlines: Left
+AllowAllArgumentsOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: false
 AllowShortFunctionsOnASingleLine: Empty
 AllowShortLambdasOnASingleLine: Inline
 AlwaysBreakTemplateDeclarations: true
+BinPackArguments: true
+BinPackParameters: false
 BreakConstructorInitializers: BeforeComma
 IndentPPDirectives: BeforeHash
 PointerAlignment: Left
 AttributeMacros:
   - defer
-  - deferc
 AlignConsecutiveAssignments:
   Enabled: true
   AcrossEmptyLines: true

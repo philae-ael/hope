@@ -35,17 +35,20 @@
 #endif
 
 namespace core {
-struct layout_info;
+struct LayoutInfo;
 struct ArenaTemp;
-struct arena {
+struct Arena {
   u8* base;
   u8* mem;
   u8* committed;
   usize capacity;
 
-  void*
-  allocate(usize size, usize alignement = ARENA_BLOCK_ALIGNEMENT, const char* src = "<unknown>");
-  void* allocate(layout_info layout, const char* src = "<unknown>") {
+  void* allocate(
+      usize size,
+      usize alignement = ARENA_BLOCK_ALIGNEMENT,
+      const char* src  = "<unknown>"
+  );
+  void* allocate(LayoutInfo layout, const char* src = "<unknown>") {
     return allocate(layout.size, layout.alignement, src);
   }
   bool try_resize(void* ptr, usize cur_size, usize new_size, const char* src = "<unknown>");
@@ -55,8 +58,11 @@ struct arena {
     return static_cast<T*>(allocate(default_layout_of<T>(), type_name<T>()));
   }
 
-  storage<u8>
-  allocate_array(layout_info layout, usize element_count, const char* src = "<unknown>") {
+  storage<u8> allocate_array(
+      LayoutInfo layout,
+      usize element_count,
+      const char* src = "<unknown>"
+  ) {
     auto arr_layout = layout.array(element_count);
     return {
         arr_layout.size,
@@ -67,7 +73,7 @@ struct arena {
   storage<T> allocate_array(usize element_count) {
     auto arr_layout = default_layout_of<T>().array(element_count);
     return {
-        arr_layout,
+        element_count,
         (T*)allocate(arr_layout, type_name<T>()),
     };
   }
@@ -82,20 +88,20 @@ private:
   void deallocate(usize size);
 };
 
-arena* arena_alloc(usize capacity = DEFAULT_ARENA_CAPACITY);
-void arena_dealloc(arena* arena);
+Arena* arena_alloc(usize capacity = DEFAULT_ARENA_CAPACITY);
+void arena_dealloc(Arena* arena);
 
 struct ArenaTemp {
-  arena* arena_;
+  Arena* arena_;
   u64 old_pos;
 
   void retire();
 
-  arena* operator->() {
+  Arena* operator->() {
     check();
     return arena_;
   }
-  arena& operator*() {
+  Arena& operator*() {
     check();
     return *arena_;
   }
@@ -109,18 +115,18 @@ scratch scratch_get();
 void scratch_retire(scratch&);
 
 struct scratch {
-  arena* arena_;
+  Arena* arena_;
   u64 old_pos;
 
   void retire() {
     check();
     scratch_retire(*this);
   }
-  arena* operator->() {
+  Arena* operator->() {
     check();
     return arena_;
   }
-  arena& operator*() {
+  Arena& operator*() {
     check();
     return *arena_;
   }
@@ -135,7 +141,7 @@ struct pool {
   static constexpr usize size       = size_;
   static constexpr usize alignement = alignement_;
 
-  arena* arena_;
+  Arena* arena_;
 
   struct node {
     node* next;
