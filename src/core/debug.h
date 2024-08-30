@@ -4,7 +4,6 @@
 #define INCLUDE_CORE_ASSERT_H_
 
 #include "base.h"
-#include <source_location>
 
 #if GCC || CLANG
   #define TRAP asm volatile("int $3")
@@ -19,26 +18,23 @@
     }                                                          \
   } while (0)
 
-#define ASSERTEQ(a, b)                                                           \
-  do {                                                                           \
-    auto __a          = (a);                                                     \
-    decltype(__a) __b = (b);                                                     \
-    if (!(__a == __b)) [[unlikely]] {                                            \
-      ::core::panic(                                                             \
-          "assertion `" STRINGIFY(a) " == " STRINGIFY(b) "` failed: `%g != %g`", \
-          ::std::source_location::current(), (f32)__a, (f32)__b                  \
-      );                                                                         \
-    }                                                                            \
+#define ASSERTEQ(a, b)                                                                     \
+  do {                                                                                     \
+    auto __a          = (a);                                                               \
+    decltype(__a) __b = (b);                                                               \
+    if (!(__a == __b)) [[unlikely]] {                                                      \
+      ::core::panic(                                                                       \
+          "assertion `" STRINGIFY(a) " == " STRINGIFY(b) "` failed: `%g != %g`", (f32)__a, \
+          (f32)__b                                                                         \
+      );                                                                                   \
+    }                                                                                      \
   } while (0)
 
-#define ASSERTM(cond, fmt, ...)                                       \
-  do {                                                                \
-    if (!(cond)) [[unlikely]] {                                       \
-      ::core::panic(                                                  \
-          "assertion `" STRINGIFY(cond) "` failed:\n" fmt,            \
-          ::std::source_location::current() __VA_OPT__(, __VA_ARGS__) \
-      );                                                              \
-    }                                                                 \
+#define ASSERTM(cond, fmt, ...)                                                                 \
+  do {                                                                                          \
+    if (!(cond)) [[unlikely]] {                                                                 \
+      ::core::panic("assertion `" STRINGIFY(cond) "` failed:\n" fmt __VA_OPT__(, __VA_ARGS__)); \
+    }                                                                                           \
   } while (0)
 
 #ifdef DEBUG
@@ -54,11 +50,18 @@
 
 namespace core {
 
-[[noreturn]] void panic(
-    const char* msg,
-    std::source_location loc = std::source_location::current(),
-    ...
-) PRINTF_ATTRIBUTE(1, 3);
+struct str8;
+struct source_location {
+  str8 file;
+  str8 func;
+  u32 line;
+};
+#define CURRENT_SOURCE_LOCATION                                          \
+  ::core::source_location {                                              \
+    ::core::str8::from(__FILE__), ::core::str8::from(__func__), __LINE__ \
+  }
+
+[[noreturn]] void panic(const char* msg, ...) PRINTF_ATTRIBUTE(1, 2);
 
 void dump_backtrace(usize skip = 1);
 void setup_crash_handler();

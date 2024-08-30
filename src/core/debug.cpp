@@ -2,7 +2,6 @@
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
-#include <source_location>
 
 #include <version>
 
@@ -21,12 +20,12 @@
 #endif
 
 namespace core {
-void panic(const char* msg, std::source_location loc, ...) {
+void panic(const char* msg, ...) {
   va_list ap;
-  va_start(ap, loc);
+  va_start(ap, msg);
   fflush(stdout);
 
-  fprintf(stderr, "Panic in %s:%d: ", loc.file_name(), loc.line());
+  fprintf(stderr, "Panic: ");
   vfprintf(stderr, msg, ap);
   fprintf(stderr, "\n");
   va_end(ap);

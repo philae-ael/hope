@@ -21,7 +21,6 @@ struct Instance {
   }
 };
 Result<Instance> create_default_instance(
-    core::Arena& arena,
     core::vec<const char*> layers,
     core::vec<const char*> extensions
 );
@@ -41,10 +40,10 @@ struct Device {
   VkPhysicalDevice physical;
   VkDevice logical;
 
-  u32 omniQueueFamilyIndex;
-  VkQueue omniQueue;
+  u32 omni_queue_family_index;
+  VkQueue omni_queue;
 
-  operator VkDevice() {
+  operator VkDevice() const {
     return logical;
   }
 };
@@ -66,8 +65,10 @@ struct queue_creation_info {
 
 struct physical_device_features {
   core::storage<queue_request> queues;
+  bool synchronization2;
+
   bool check_features(const VkPhysicalDeviceProperties2& physical_device_properties2) const;
-  VkPhysicalDeviceFeatures2 into_vk_physical_device_features2() const;
+  VkPhysicalDeviceFeatures2 into_vk_physical_device_features2(core::Arena& ar) const;
 };
 
 struct physical_device {
@@ -81,12 +82,59 @@ core::Maybe<physical_device> find_physical_device(
 );
 
 Result<Device> create_default_device(
-    core::Arena& ar_,
     VkInstance instance,
     VkSurfaceKHR surface,
     core::vec<const char*> extensions
 );
 
+struct SwapchainConfig {
+  u32 min_image_count;
+  VkExtent2D extent;
+  VkSurfaceFormatKHR surface_format;
+  VkPresentModeKHR present_mode;
+  VkImageUsageFlags image_usage_flags;
+};
+
+struct Swapchain {
+  VkSwapchainKHR swapchain;
+  SwapchainConfig config;
+  core::storage<VkImage> images;
+
+  operator VkSwapchainKHR() {
+    return swapchain;
+  }
+};
+
+core::vec<VkPresentModeKHR> enumerate_physical_device_surface_present_modes(
+    core::Arena& ar,
+    VkPhysicalDevice physical_device,
+    VkSurfaceKHR surface
+);
+
+core::vec<VkSurfaceFormatKHR> enumerate_physical_device_surface_formats(
+    core::Arena& ar,
+    VkPhysicalDevice physical_device,
+    VkSurfaceKHR surface
+);
+
+core::vec<VkImage> get_swapchain_images(core::Arena& ar, VkDevice device, VkSwapchainKHR swapchain);
+
+Result<VkSwapchainKHR> create_swapchain(
+    VkDevice device,
+    core::storage<const u32> queue_family_indices,
+    VkSurfaceKHR surface,
+    const SwapchainConfig& swapchain_config,
+    VkSwapchainKHR old_swapchain = VK_NULL_HANDLE
+);
+
+SwapchainConfig create_default_swapchain_config(const Device& device, VkSurfaceKHR surface);
+Result<Swapchain> create_default_swapchain(
+    core::Arena& ar,
+    const Device& device,
+    VkSurfaceKHR surface
+);
+
+void destroy_swapchain(VkDevice device, Swapchain& swapchain);
 } // namespace vk
 
 #endif // INCLUDE_VULKAN_INIT_H_

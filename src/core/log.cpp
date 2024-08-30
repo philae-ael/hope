@@ -4,7 +4,6 @@
 #include "fwd.h"
 #include <cstdarg>
 #include <cstdio>
-#include <source_location>
 
 using namespace core::literals;
 namespace core {
@@ -32,14 +31,20 @@ static core::str8 LEVEL_COLOR[]{
 static core::str8 COLOR_RESET = ESCAPE "[0m"_s;
 
 log_entry log_fancy_formatter(void*, core::Arena& arena, core::log_entry entry) {
-  entry.builder = core::string_builder{}
-                      .pushf(arena, "%s:%d - ", entry.loc.file_name(), entry.loc.line())
-                      .push(arena, LEVEL_COLOR[(usize)entry.level])
-                      .push(arena, entry.level)
-                      .push(arena, COLOR_RESET)
-                      .push(arena, ": ")
-                      .append(entry.builder)
-                      .push(arena, "\n");
+  auto old_builder = entry.builder;
+  entry.builder    = core::string_builder{}.push(arena, entry.loc.func);
+  if (entry.loc.line != u32(-1)) {
+    entry.builder.pushf(arena, ":%u ", entry.loc.line);
+  } else {
+    entry.builder.pushf(arena, " ");
+  }
+
+  entry.builder.push(arena, LEVEL_COLOR[(usize)entry.level])
+      .push(arena, entry.level)
+      .push(arena, COLOR_RESET)
+      .push(arena, ": ")
+      .append(old_builder)
+      .push(arena, "\n");
   return entry;
 }
 
@@ -135,7 +140,7 @@ void log_builder::emit() {
   }
 }
 
-log_builder::log_builder(LogLevel level, std::source_location loc)
+log_builder::log_builder(LogLevel level, source_location loc)
     : arena(scratch_get())
     , entry{.level = level, .loc = loc} {}
 

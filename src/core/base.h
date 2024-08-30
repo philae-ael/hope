@@ -67,4 +67,56 @@ static_assert(sizeof(f64) == 8);
 
 constexpr usize max_align_v = alignof(std::max_align_t);
 
+namespace core {
+
+struct hstr8 {
+  u64 hash;
+  usize len;
+  const u8* data;
+};
+
+constexpr u64 hash(const u8* data, size_t len) {
+  // implementation of fnv1
+  u64 h = 0xcbf29ce484222325;
+  for (usize i = 0; i < len; i++) {
+    h *= 0x100000001b3;
+    h ^= u64(data[i]);
+  }
+  return h;
+}
+constexpr u64 hash(const char* data, size_t len) {
+  // implementation of fnv1
+  u64 h = 0xcbf29ce484222325;
+  for (usize i = 0; i < len; i++) {
+    h *= 0x100000001b3;
+    h ^= u64(data[i]);
+  }
+  return h;
+}
+
+struct Arena;
+struct str8 {
+  usize len;
+  const u8* data;
+
+  template <size_t len>
+  static str8 from(const char (&d)[len]) {
+    return from(d, len - 1);
+  }
+  static str8 from(const char* d, size_t len) {
+    return str8{len, reinterpret_cast<const u8*>(d)};
+  }
+  hstr8 hash() const {
+    return {
+        ::core::hash(data, len),
+        len,
+        data,
+    };
+  }
+
+  const char* cstring(Arena& arena);
+};
+
+} // namespace core
+
 #endif // INCLUDE_CORE_BASE_H_

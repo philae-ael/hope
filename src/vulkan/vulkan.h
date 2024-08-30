@@ -97,10 +97,21 @@ constexpr queue_flags_t queue_flags{};
 core::str8 to_str8(core::Arena& ar, queue_flags_t, VkQueueFlags struct_type);
 } // namespace vk
 
-#define VK_PUSH_NEXT(parent, child)     \
-  do {                                  \
-    child.pNext  = (void*)parent.pNext; \
-    parent.pNext = &child;              \
+#define VK_PUSH_NEXT(parent, child)           \
+  do {                                        \
+    (child)->pNext  = (void*)(parent)->pNext; \
+    (parent)->pNext = (child);                \
+  } while (0)
+
+#define VK_ASSERT(x)                                                                               \
+  do {                                                                                             \
+    VkResult res = (x);                                                                            \
+    if (res != VK_SUCCESS) {                                                                       \
+      LOG_BUILDER(                                                                                 \
+          ::core::LogLevel::Error, push("expected VK_SUCCESS, " STRINGIFY(x) "returned").push(res) \
+      );                                                                                           \
+      ::core::panic("VK_ASSERT failed");                                                           \
+    }                                                                                              \
   } while (0)
 
 core::str8 to_str8(VkResult res);

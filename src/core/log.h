@@ -8,7 +8,6 @@
 #include "string.h"
 
 #include <cstdarg>
-#include <source_location>
 
 #define LOG_DEFAULT_GLOBAL_LEVEL ::core::LogLevel::Trace
 
@@ -29,7 +28,7 @@ str8 to_str8(LogLevel level);
 struct log_entry {
   LogLevel level;
   string_builder builder;
-  std::source_location loc;
+  source_location loc;
 };
 
 using log_formatter = log_entry (*)(void*, Arena&, log_entry);
@@ -67,13 +66,13 @@ struct log_builder {
 
   void emit();
 
-  log_builder(LogLevel level, std::source_location loc = std::source_location::current());
+  log_builder(LogLevel level, source_location loc);
 };
 
 log_entry log_fancy_formatter(void*, core::Arena& arena, core::log_entry entry);
 
 #define LOG_BUILDER(level, instr) \
-  (log_filter(level) ? core::log_builder(level).instr.emit() : (void)0)
+  (log_filter(level) ? core::log_builder(level, CURRENT_SOURCE_LOCATION).instr.emit() : (void)0)
 
 #define LOG(level, fmt, ...) LOG_BUILDER(level, pushf(fmt __VA_OPT__(, __VA_ARGS__)))
 

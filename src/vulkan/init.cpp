@@ -54,12 +54,18 @@ VkBool32 debug_utils_messenger_callback(
     message_type = "performance";
   }
 
-  LOG_BUILDER(
-      level, pushf(
-                 "vulkan  %s [%s:%d]: %s", message_type, pCallbackData->pMessageIdName,
-                 pCallbackData->messageIdNumber, pCallbackData->pMessage
-             )
-  );
+  if (log_filter(level)) {
+    core::log_builder(
+        level,
+        core::source_location{core::str8::from("VULKAN"), core::str8::from("VULKAN"), (u32)-1}
+    )
+        .pushf(
+            "vulkan  %s [%s:%d]: %s", message_type, pCallbackData->pMessageIdName,
+            pCallbackData->messageIdNumber, pCallbackData->pMessage
+        )
+        .emit();
+  }
+
   return VK_FALSE;
 }
 
@@ -148,7 +154,7 @@ Result<VkInstance> create_instance(
       .pfnUserCallback = debug_utils_messenger_callback,
       .pUserData       = nullptr,
   };
-  VK_PUSH_NEXT(instance_create_info, debug_create_info);
+  VK_PUSH_NEXT(&instance_create_info, &debug_create_info);
 
   VkResult res = vkCreateInstance(&instance_create_info, nullptr, &inst);
   if (res != VK_SUCCESS) {
@@ -181,11 +187,10 @@ core::vec<VkExtensionProperties> enumerate_instance_extension_properties(core::A
 }
 
 Result<Instance> create_default_instance(
-    core::Arena& ar_,
     core::vec<const char*> layers,
     core::vec<const char*> extensions
 ) {
-  auto ar = ar_.make_temp();
+  auto ar = core::scratch_get();
   defer { ar.retire(); };
 
   {
@@ -434,15 +439,15 @@ Result<VkDevice> create_device(
     );
   }
 
-  VkPhysicalDeviceFeatures2 requested_features2 = features.into_vk_physical_device_features2();
+  VkPhysicalDeviceFeatures2 requested_features2 = features.into_vk_physical_device_features2(*ar);
   VkDeviceCreateInfo device_create_info{
       .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+      .pNext                   = &requested_features2,
       .queueCreateInfoCount    = (u32)queue_device_create_infos.size(),
       .pQueueCreateInfos       = queue_device_create_infos.data(),
       .enabledExtensionCount   = (u32)extensions.size,
       .ppEnabledExtensionNames = extensions.data,
   };
-  VK_PUSH_NEXT(device_create_info, requested_features2);
   VkDevice device;
   VkResult res = vkCreateDevice(physical_device, &device_create_info, nullptr, &device);
   if (res != VK_SUCCESS) {
@@ -452,12 +457,11 @@ Result<VkDevice> create_device(
 }
 
 Result<Device> create_default_device(
-    core::Arena& ar_,
     VkInstance instance,
     VkSurfaceKHR surface,
     core::vec<const char*> extensions
 ) {
-  core::ArenaTemp ar = ar_.make_temp();
+  auto ar = core::scratch_get();
   defer { ar.retire(); };
 
   queue_request queues[]{
@@ -468,7 +472,8 @@ Result<Device> create_default_device(
       },
   };
   physical_device_features requested_features{
-      .queues = queues,
+      .queues           = queues,
+      .synchronization2 = true,
   };
   auto [physical_device, queues_creation_infos] = [&] {
     auto physical_device = find_physical_device(*ar, instance, requested_features);
@@ -478,6 +483,7 @@ Result<Device> create_default_device(
 
   ASSERT(queues_creation_infos.size == 1);
 
+  extensions.push(*ar, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
   auto device_extension_properties = enumerate_device_extension_properties(*ar, physical_device);
   for (auto& extension : extensions.iter()) {
     bool found = false;
@@ -507,10 +513,20 @@ Result<Device> create_default_device(
   };
 }
 
-VkPhysicalDeviceFeatures2 physical_device_features::into_vk_physical_device_features2() const {
-  return VkPhysicalDeviceFeatures2{
+VkPhysicalDeviceFeatures2 physical_device_features::into_vk_physical_device_features2(
+    core::Arena& ar
+) const {
+  auto physical_device_synchronization2_features =
+      ar.allocate<VkPhysicalDeviceSynchronization2Features>();
+  *physical_device_synchronization2_features = {
+      .sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES,
+      .synchronization2 = VK_TRUE,
+  };
+  VkPhysicalDeviceFeatures2 physical_device_features2{
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
   };
+  VK_PUSH_NEXT(&physical_device_features2, physical_device_synchronization2_features);
+  return physical_device_features2;
 }
 bool physical_device_features::check_features(
     const VkPhysicalDeviceProperties2& physical_device_properties2
@@ -530,5 +546,176 @@ bool physical_device_features::check_features(
 
 void destroy_device(vk::Device device) {
   vkDestroyDevice(device, nullptr);
+}
+core::vec<VkPresentModeKHR> enumerate_physical_device_surface_present_modes(
+    core::Arena& ar,
+    VkPhysicalDevice physical_device,
+    VkSurfaceKHR surface
+) {
+  core::vec<VkPresentModeKHR> v;
+  u32 present_mode_count;
+  vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, nullptr);
+  v.set_capacity(ar, present_mode_count);
+  vkGetPhysicalDeviceSurfacePresentModesKHR(
+      physical_device, surface, &present_mode_count, v.data()
+  );
+  v.set_size(present_mode_count);
+
+  return v;
+}
+
+core::vec<VkSurfaceFormatKHR> enumerate_physical_device_surface_formats(
+    core::Arena& ar,
+    VkPhysicalDevice physical_device,
+    VkSurfaceKHR surface
+) {
+  core::vec<VkSurfaceFormatKHR> v;
+  u32 surface_format_count;
+  vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &surface_format_count, nullptr);
+  v.set_capacity(ar, surface_format_count);
+  vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &surface_format_count, v.data());
+  v.set_size(surface_format_count);
+
+  return v;
+}
+
+core::vec<VkImage> get_swapchain_images(
+    core::Arena& ar,
+    VkDevice device,
+    VkSwapchainKHR swapchain
+) {
+  core::vec<VkImage> v;
+  u32 swapchain_image_count;
+  vkGetSwapchainImagesKHR(device, swapchain, &swapchain_image_count, nullptr);
+  v.set_capacity(ar, swapchain_image_count);
+  vkGetSwapchainImagesKHR(device, swapchain, &swapchain_image_count, v.data());
+  v.set_size(swapchain_image_count);
+
+  return v;
+}
+
+void destroy_swapchain(VkDevice device, Swapchain& swapchain) {
+  vkDestroySwapchainKHR(device, swapchain, nullptr);
+}
+Result<VkSwapchainKHR> create_swapchain(
+    VkDevice device,
+    core::storage<const u32> queue_family_indices,
+    VkSurfaceKHR surface,
+    const SwapchainConfig& swapchain_config,
+    VkSwapchainKHR old_swapchain
+) {
+  VkSwapchainCreateInfoKHR swapchain_create_info{
+      .sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+      .surface               = surface,
+      .minImageCount         = swapchain_config.min_image_count,
+      .imageFormat           = swapchain_config.surface_format.format,
+      .imageColorSpace       = swapchain_config.surface_format.colorSpace,
+      .imageExtent           = swapchain_config.extent,
+      .imageArrayLayers      = 1,
+      .imageUsage            = swapchain_config.image_usage_flags,
+      .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
+      .queueFamilyIndexCount = (u32)queue_family_indices.size,
+      .pQueueFamilyIndices   = queue_family_indices.data,
+      .preTransform          = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR,
+      .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+      .presentMode           = swapchain_config.present_mode,
+      .clipped               = VK_TRUE,
+      .oldSwapchain          = old_swapchain,
+  };
+
+  VkSwapchainKHR swapchain;
+  VkResult res = vkCreateSwapchainKHR(device, &swapchain_create_info, nullptr, &swapchain);
+  if (res != VK_SUCCESS) {
+    return res;
+  }
+  return swapchain;
+}
+SwapchainConfig create_default_swapchain_config(const Device& device, VkSurfaceKHR surface) {
+  auto ar = core::scratch_get();
+  defer { ar.retire(); };
+  VkSurfaceCapabilitiesKHR surface_capabilities;
+  VK_ASSERT(
+      vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device.physical, surface, &surface_capabilities)
+  );
+
+  SwapchainConfig swapchain_config{};
+  swapchain_config.extent = surface_capabilities.currentExtent.width == 0xFFFFFFFF
+                                ? surface_capabilities.maxImageExtent
+                                : surface_capabilities.currentExtent;
+  swapchain_config.min_image_count =
+      MAX(surface_capabilities.minImageCount,
+          surface_capabilities.maxImageCount == 0 ? 3 : MIN(3, surface_capabilities.maxImageCount));
+  swapchain_config.image_usage_flags = surface_capabilities.supportedUsageFlags;
+
+  {
+    auto present_modes =
+        enumerate_physical_device_surface_present_modes(*ar, device.physical, surface);
+    ASSERT(present_modes.size() > 0);
+    VkPresentModeKHR best_present_mode;
+    int best_score = -1;
+
+    for (auto present_mode : present_modes.iter()) {
+      int score = 0;
+      switch (present_mode) {
+      case VK_PRESENT_MODE_IMMEDIATE_KHR:
+        score = 1;
+        break;
+      case VK_PRESENT_MODE_MAILBOX_KHR:
+        score = 2;
+        break;
+      case VK_PRESENT_MODE_FIFO_KHR:
+        score = 3;
+        break;
+      case VK_PRESENT_MODE_FIFO_RELAXED_KHR:
+        score = 4;
+        break;
+      default:
+      }
+      if (score > best_score) {
+        best_present_mode = present_mode;
+        best_score        = score;
+      }
+    }
+
+    swapchain_config.present_mode = best_present_mode;
+  }
+
+  {
+    auto formats = enumerate_physical_device_surface_formats(*ar, device.physical, surface);
+    ASSERT(formats.size() > 0);
+    VkSurfaceFormatKHR best_format;
+    int best_score = -1;
+
+    for (auto format : formats.iter()) {
+      int score = 0;
+      if (score > best_score) {
+        best_format = format;
+        switch (format.format) {
+        case VK_FORMAT_R8G8B8A8_SRGB:
+          score = 1;
+          break;
+        default:
+        }
+      }
+      swapchain_config.surface_format = best_format;
+    }
+  }
+  return swapchain_config;
+}
+Result<Swapchain> create_default_swapchain(
+    core::Arena& ar,
+    const Device& device,
+    VkSurfaceKHR surface
+) {
+  auto swapchain_config = create_default_swapchain_config(device, surface);
+  auto swapchain        = create_swapchain(
+      device, core::storage<const u32>{1, &device.omni_queue_family_index}, surface,
+      swapchain_config
+  );
+  return {{
+      *swapchain,
+      swapchain_config,
+      get_swapchain_images(ar, device, *swapchain),
+  }};
 }
 } // namespace vk
