@@ -134,6 +134,12 @@ Result<Swapchain> create_default_swapchain(
     VkSurfaceKHR surface
 );
 
+Result<core::unit_t> rebuild_default_swapchain(
+    const Device& device,
+    VkSurfaceKHR surface,
+    Swapchain& swapchain
+);
+
 void destroy_swapchain(VkDevice device, Swapchain& swapchain);
 } // namespace vk
 

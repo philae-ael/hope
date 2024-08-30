@@ -4,7 +4,7 @@ CXX=clang++
 OBJDIR := build
 DEPDIR := build
 
-CXXFLAGS:=$(CXXFLAGS) -O0 -g -std=c++23
+CXXFLAGS:=$(CXXFLAGS) -O3 -g -std=c++23
 CXXFLAGS:=$(CXXFLAGS) -Wall -Wextra -Wconversion
 CXXFLAGS:=$(CXXFLAGS) -Wno-unused-parameter -Wno-missing-field-initializers
 CXXFLAGS:=$(CXXFLAGS) -DDEBUG

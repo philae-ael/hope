@@ -11,6 +11,9 @@
 #include "debug.h"
 namespace core {
 
+struct unit_t {};
+constexpr unit_t unit{};
+
 struct inplace_t {};
 constexpr inplace_t inplace{};
 

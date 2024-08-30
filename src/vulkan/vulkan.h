@@ -39,6 +39,7 @@ EVAL(EXTENSIONS)
 #undef LOAD
 
 namespace vk {
+
 template <class T>
 struct Result {
   enum class Discriminant : u8 { Err, Ok } d;

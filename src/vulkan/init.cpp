@@ -630,6 +630,7 @@ Result<VkSwapchainKHR> create_swapchain(
   }
   return swapchain;
 }
+
 SwapchainConfig create_default_swapchain_config(const Device& device, VkSurfaceKHR surface) {
   auto ar = core::scratch_get();
   defer { ar.retire(); };
@@ -708,14 +709,38 @@ Result<Swapchain> create_default_swapchain(
     VkSurfaceKHR surface
 ) {
   auto swapchain_config = create_default_swapchain_config(device, surface);
-  auto swapchain        = create_swapchain(
-      device, core::storage<const u32>{1, &device.omni_queue_family_index}, surface,
-      swapchain_config
-  );
+  u32 queue_families[]{device.omni_queue_family_index};
+  auto swapchain = create_swapchain(device, queue_families, surface, swapchain_config);
   return {{
       *swapchain,
       swapchain_config,
       get_swapchain_images(ar, device, *swapchain),
   }};
+}
+Result<core::unit_t> rebuild_default_swapchain(
+    const Device& device,
+    VkSurfaceKHR surface,
+    Swapchain& swapchain
+) {
+
+  auto new_swapchain_config = create_default_swapchain_config(device, surface);
+  ASSERTM(
+      new_swapchain_config.min_image_count == swapchain.config.min_image_count,
+      "min image count has changed..."
+  );
+  u32 queue_families[]{device.omni_queue_family_index};
+  auto new_swapchain =
+      create_swapchain(device, queue_families, surface, new_swapchain_config, swapchain);
+  if (new_swapchain.is_err()) {
+    return new_swapchain.err();
+  }
+
+  vkDestroySwapchainKHR(device, swapchain.swapchain, nullptr);
+  swapchain.swapchain = new_swapchain.value();
+  swapchain.config    = new_swapchain_config;
+  vkGetSwapchainImagesKHR(
+      device, swapchain, &swapchain.config.min_image_count, swapchain.images.data
+  );
+  return core::unit;
 }
 } // namespace vk
