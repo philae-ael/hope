@@ -1,4 +1,9 @@
-#include "core.h"
+#include "math.h"
+#include "string.h"
+
+namespace core {
+struct Arena;
+}  // namespace core
 
 const char* VEC2_FMT_FLAGS[]{
     "{%*.*g, %*.*g}", "{%-*.*g, %-*.*g}", "{\n  %*.*g,\n  %*.*g,\n}", "{\n  %-*.*g,\n  %-*.*g,\n}",

@@ -1,16 +1,17 @@
 #include "subsystems.h"
-#include "containers/vec.h"
-#include "core/core.h"
-
-#include "vulkan/frame.h"
-#include "vulkan/init.h"
-#include "vulkan/vulkan.h"
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_error.h>
 #include <SDL2/SDL_stdinc.h>
 #include <SDL2/SDL_video.h>
 #include <SDL2/SDL_vulkan.h>
+
+#include "containers/vec.h"
+#include "core/core.h"
+#include "vulkan/frame.h"
+#include "vulkan/init.h"
+#include "vulkan/vulkan.h"
+#include "core/fwd.h"
 
 core::vec<const char*> enumerate_SDL_vulkan_instance_extensions(
     core::Arena& ar,
@@ -31,6 +32,7 @@ EXPORT subsystem::video subsystem::init_video() {
 
   LOG_INFO("initializing video subsystem");
 
+  vk::init();
   SDL_Window* window = SDL_CreateWindow(
       "title", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 800, 600,
       SDL_WINDOW_VULKAN | SDL_WINDOW_BORDERLESS

@@ -5,6 +5,10 @@
 
 #include "../core/fwd.h"
 
+namespace core {
+struct Arena;
+}  // namespace core
+
 namespace os {
 struct time {
   u64 ns; // 580 years, should be enough

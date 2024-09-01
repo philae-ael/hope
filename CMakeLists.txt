@@ -9,6 +9,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} --ld-path=/usr/bin/mold")
 
 project("app")
+option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 
 function(target_compile_link_options target)
   target_compile_options(${target} ${ARGN})
@@ -18,7 +19,7 @@ endfunction()
 find_package(SDL2 REQUIRED CONFIG)
 find_package(Vulkan REQUIRED)
 
-add_library(core OBJECT
+add_library(core
   src/core/debug.cpp
   src/core/log.cpp
   src/core/math.cpp
@@ -32,7 +33,6 @@ add_library(core OBJECT
   src/vulkan/init.cpp
   src/vulkan/vulkan.cpp
   src/vulkan/frame.cpp
-
 )
 
 if (UNIX)
@@ -41,11 +41,11 @@ if (UNIX)
     src/os/linux/memory.cpp
   )
 endif()
-
 target_compile_options(core PUBLIC -O0 -g -fPIC)
 target_compile_options(core PUBLIC -Wall -Wextra -Wconversion)
 target_compile_options(core PUBLIC -Wno-unused-parameter -Wno-missing-field-initializers)
 target_compile_options(core PUBLIC -DDEBUG)
+target_link_options(core PUBLIC -rdynamic)
 target_compile_link_options(core PUBLIC -fno-omit-frame-pointer)
 # target_compile_link_options(core PUBLIC -fsanitize=address )
 target_compile_link_options(core PUBLIC -flto)
@@ -59,21 +59,24 @@ target_compile_link_options(core PUBLIC -fvisibility=hidden)
 target_link_libraries(core PUBLIC SDL2::SDL2 Vulkan::Vulkan stdc++exp)
 
 
-add_library(app MODULE
-  src/app.cpp
-)
-target_link_libraries(app PRIVATE core)
-add_custom_command(TARGET app POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:app> libapp-hotreloadable.so
-)
-set_property(
-  TARGET app
-  PROPERTY ADDITIONAL_CLEAN_FILES libapp_*.so
-)
-
-
 add_executable(main
   src/main.cpp
-  src/app_loader.cpp
 )
+
+if (BUILD_SHARED_LIBS)
+  target_compile_definitions(core PUBLIC -DSHARED=1)
+
+  add_library(app MODULE)
+  target_sources(main PRIVATE src/app_loader-shared.cpp)
+else()
+  add_library(app OBJECT)
+  target_sources(main PRIVATE src/app_loader-static.cpp)
+  target_link_libraries(main PRIVATE app)
+endif()
+target_link_libraries(app PUBLIC core)
+
+target_sources(app PRIVATE
+  src/app.cpp
+)
+
 target_link_libraries(main PRIVATE core)

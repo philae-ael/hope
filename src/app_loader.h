@@ -33,9 +33,12 @@ struct App {
 #undef PFN
 };
 
-inline const char* default_soname = "./libapp-hotreloadable.so";
+#if SHARED
+inline const char* default_soname = "./libapp.so";
 App init_app(const char* soname = default_soname);
-App init_app_stub();
+#else
+App init_app();
+#endif
 
 bool need_reload(App& app);
 void reload_app(App& app);

@@ -1,12 +1,17 @@
 #ifndef INCLUDE_SRC_SUBSYSTEMS_H_
 #define INCLUDE_SRC_SUBSYSTEMS_H_
 
+#include <SDL2/SDL_video.h>
+
 #include "containers/vec.h"
 #include "core/fwd.h"
 #include "vulkan/frame.h"
 #include "vulkan/init.h"
 #include "vulkan/vulkan.h"
-#include <SDL2/SDL_video.h>
+
+namespace core {
+struct Arena;
+}  // namespace core
 
 core::vec<const char*> enumerate_SDL_vulkan_instance_extensions(
     core::Arena& ar,

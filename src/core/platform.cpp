@@ -1,4 +1,6 @@
 #include "core.h"
+#include "string.h"
+#include "types.h"
 
 using namespace core::literals;
 

@@ -1,4 +1,4 @@
-// IWYU pragma: privatetype
+// IWYU pragma: private
 
 #ifndef INCLUDE_CORE_TYPE_H_
 #define INCLUDE_CORE_TYPE_H_

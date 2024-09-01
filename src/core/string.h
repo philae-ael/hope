@@ -10,6 +10,8 @@
 #include "types.h"
 
 namespace core {
+struct Arena;
+
 // For ADL purpose!
 inline str8 to_str8(str8 s) {
   return s;

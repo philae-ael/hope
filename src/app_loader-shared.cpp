@@ -117,10 +117,3 @@ void reload_app(App& app) {
   app = init_app(path);
   fs::remove(path);
 }
-
-App init_app_stub() {
-  last_ftime = std::chrono::file_clock::now();
-#define PFN(name, ret, ...) .name = [](__VA_ARGS__) -> ret { return (ret)(0); },
-  return App{.handle = nullptr, EVAL(APP_PFNS)};
-#undef PFN
-}

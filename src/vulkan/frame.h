@@ -4,6 +4,10 @@
 #include "../core/fwd.h"
 #include "vulkan.h"
 
+namespace core {
+struct Arena;
+}  // namespace core
+
 namespace vk {
 struct FrameSynchro {
   u32 inflight;

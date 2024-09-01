@@ -1,4 +1,5 @@
-#include "core.h"
+#include "type_info.h"
+#include "string.h"
 
 core::str8 core::to_str8(Arena& ar, LayoutInfo l) {
   string_builder sb{};

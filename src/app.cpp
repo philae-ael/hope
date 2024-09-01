@@ -1,13 +1,15 @@
-#include "core/core.h"
+#include <SDL2/SDL_events.h>
+#include <SDL2/SDL_keycode.h>
+#include <SDL2/SDL_video.h>
 
+#include "core/core.h"
 #include "app_loader.h"
 #include "subsystems.h"
 #include "vulkan/frame.h"
 #include "vulkan/vulkan.h"
-#include <SDL2/SDL_events.h>
-#include <SDL2/SDL_keycode.h>
-#include <SDL2/SDL_video.h>
-#include <csignal>
+#include "vulkan/init.h"
+#include "core/memory.h"
+#include "core/types.h"
 
 using namespace core::enum_helpers;
 extern "C" {

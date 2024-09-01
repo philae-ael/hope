@@ -1,10 +1,11 @@
 #ifndef INCLUDE_VULKAN_INIT_H_
 #define INCLUDE_VULKAN_INIT_H_
 
+#include <vulkan/vulkan_core.h>
+
 #include "../containers/vec.h"
 #include "../core/core.h"
 #include "vulkan.h"
-#include <vulkan/vulkan_core.h>
 
 namespace vk {
 // GENERAL

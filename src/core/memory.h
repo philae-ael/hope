@@ -27,6 +27,7 @@
 
 #if __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
   #include <sanitizer/asan_interface.h>
+
   #define ASAN_POISON_MEMORY_REGION(addr, size) __asan_poison_memory_region((addr), (size))
   #define ASAN_UNPOISON_MEMORY_REGION(addr, size) __asan_unpoison_memory_region((addr), (size))
 #else
@@ -37,6 +38,7 @@
 namespace core {
 struct LayoutInfo;
 struct ArenaTemp;
+
 struct Arena {
   u8* base;
   u8* mem;
@@ -111,6 +113,7 @@ struct ArenaTemp {
 };
 
 struct scratch;
+
 scratch scratch_get();
 void scratch_retire(scratch&);
 

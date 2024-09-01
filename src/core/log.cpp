@@ -1,9 +1,11 @@
 #include "log.h"
-#include "core.h"
-#include "debug.h"
-#include "fwd.h"
+
 #include <cstdarg>
 #include <cstdio>
+
+#include "core.h"
+#include "fwd.h"
+#include "memory.h"
 
 using namespace core::literals;
 namespace core {

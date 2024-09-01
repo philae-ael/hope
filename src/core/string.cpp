@@ -1,8 +1,10 @@
 #include "string.h"
-#include "core.h"
+
 #include <cstdarg>
 #include <cstdio>
 #include <cstring>
+
+#include "core.h"
 
 namespace core {
 

@@ -1,16 +1,16 @@
-#include "app_loader.h"
-#include "core/core.h"
-#include "core/debug.h"
-#include "core/log.h"
-#include "core/memory.h"
-#include "os/os.h"
-
 #include <SDL2/SDL.h>
 #include <SDL_events.h>
-#include <vulkan/vulkan_core.h>
 
+#include "app_loader.h"
+#include "core/core.h"
+#include "os/os.h"
 #include "subsystems.h"
-#include "vulkan/init.h"
+#include "core/memory.h"
+#include "core/string.h"
+#include "core/types.h"
+#include "vulkan/vulkan.h"
+
+struct Renderer;
 
 using namespace core;
 using namespace core::literals;
@@ -29,8 +29,6 @@ int main(int argc, char* argv[]) {
   setup_crash_handler();
   log_register_global_formatter(timed_formatter, nullptr);
   log_set_global_level(core::LogLevel::Trace);
-
-  vk::init();
 
   auto video = subsystem::init_video();
   App app    = init_app();
@@ -69,7 +67,6 @@ int main(int argc, char* argv[]) {
       app.uninit_renderer(video, renderer);
       app.uninit();
       reload_app(app);
-      LOG_TRACE("%p", app.handle);
       subsystem::video_rebuild_swapchain(video);
       renderer = app.init_renderer(ar, video);
     }

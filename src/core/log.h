@@ -3,12 +3,12 @@
 #ifndef INCLUDE_CORE_LOG_H_
 #define INCLUDE_CORE_LOG_H_
 
+#include <cstdarg>
+
 #include "debug.h"
 #include "fwd.h"
 #include "memory.h"
 #include "string.h"
-
-#include <cstdarg>
 
 #define LOG_DEFAULT_GLOBAL_LEVEL ::core::LogLevel::Trace
 

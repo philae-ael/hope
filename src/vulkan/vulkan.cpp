@@ -1,6 +1,8 @@
 
 #include "vulkan.h"
+
 #include "../core/core.h"
+#include "/home/eli/projects/other/misc/corelib/src/core/string.h"
 
 using namespace core::literals;
 

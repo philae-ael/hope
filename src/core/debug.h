@@ -5,10 +5,6 @@
 
 #include "base.h"
 
-#if LINUX
-  #include <setjmp.h>
-#endif
-
 #if GCC || CLANG
   #define TRAP asm volatile("int $3")
 #else
@@ -55,6 +51,7 @@
 namespace core {
 
 struct str8;
+
 struct source_location {
   str8 file;
   str8 func;

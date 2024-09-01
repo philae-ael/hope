@@ -3,8 +3,9 @@
 #ifndef INCLUDE_CORE_MATH_H_
 #define INCLUDE_CORE_MATH_H_
 
-#include "fwd.h"
 #include <cmath>
+
+#include "fwd.h"
 
 #if GCC || CLANG
 typedef f32 __m128 __attribute__((vector_size(16), aligned(16)));
@@ -14,6 +15,7 @@ typedef f32 __m256 __attribute__((vector_size(32), aligned(32)));
 #endif
 
 namespace core {
+struct Arena;
 
 using f32x4 = __m128;
 using f32x8 = __m128;

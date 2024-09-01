@@ -1,6 +1,8 @@
 #ifndef INCLUDE_CORE_TYPE_INFO_H_
 #define INCLUDE_CORE_TYPE_INFO_H_
 
+#include <typeinfo>
+
 #include "fwd.h"
 
 #if LINUX
@@ -8,6 +10,8 @@
 #endif
 
 namespace core {
+struct Arena;
+
 template <class T>
 const char* type_name() {
   static const char* n = nullptr;
