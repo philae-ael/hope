@@ -4,14 +4,15 @@
 #include "../core/core.h"
 
 namespace vk {
-void destroy_frame_synchro(VkDevice device, FrameSynchro& frame_synchro) {
+EXPORT void destroy_frame_synchro(VkDevice device, FrameSynchro& frame_synchro) {
   for (usize idx : core::range<u32>{0, frame_synchro.inflight}.iter()) {
     vkDestroySemaphore(device, frame_synchro.acquire_semaphores[idx], nullptr);
     vkDestroySemaphore(device, frame_synchro.render_semaphores[idx], nullptr);
     vkDestroyFence(device, frame_synchro.render_done_fences[idx], nullptr);
   }
 }
-Result<u32> begin_frame(VkDevice device, VkSwapchainKHR swapchain, FrameSynchro& sync) {
+
+EXPORT Result<Frame> begin_frame(VkDevice device, VkSwapchainKHR swapchain, FrameSynchro& sync) {
   auto frame_id = (sync.frame_id + 1) % sync.inflight;
 
   u32 swapchain_image_index;
@@ -28,26 +29,27 @@ Result<u32> begin_frame(VkDevice device, VkSwapchainKHR swapchain, FrameSynchro&
   }
   vkResetFences(device, 1, &sync.render_done_fences[frame_id]);
   sync.frame_id = frame_id;
-  return swapchain_image_index;
+  return {{
+      swapchain_image_index,
+      sync.acquire_semaphores[frame_id],
+      sync.render_semaphores[frame_id],
+      sync.render_done_fences[frame_id],
+  }};
 }
-VkResult end_frame(
-    VkDevice device,
-    VkQueue present_queue,
-    FrameSynchro& sync,
-    VkSwapchainKHR swapchain,
-    u32 swapchain_image_index
-) {
+
+EXPORT VkResult
+end_frame(VkDevice device, VkQueue present_queue, VkSwapchainKHR swapchain, Frame frame) {
   VkPresentInfoKHR present_infos{
       .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
       .waitSemaphoreCount = 1,
-      .pWaitSemaphores    = &sync.render_semaphores[sync.frame_id],
+      .pWaitSemaphores    = &frame.render_semaphore,
       .swapchainCount     = 1,
       .pSwapchains        = &swapchain,
-      .pImageIndices      = &swapchain_image_index,
+      .pImageIndices      = &frame.swapchain_image_index,
   };
   return vkQueuePresentKHR(present_queue, &present_infos);
 }
-FrameSynchro create_frame_synchro(core::Arena& ar, VkDevice device, u32 inflight) {
+EXPORT FrameSynchro create_frame_synchro(core::Arena& ar, VkDevice device, u32 inflight) {
   FrameSynchro frame_synchro{
       inflight,
       0,

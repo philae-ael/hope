@@ -16,7 +16,7 @@ using namespace core::literals;
 
 #define FLAG_STR(sb, flags, x) FLAG_STR_HELPER(sb, flags, x, CONCAT(n_, __COUNTER__))
 
-core::str8 to_str8(VkResult res) {
+EXPORT core::str8 to_str8(VkResult res) {
   switch (res) {
     CASE_STR(VK_SUCCESS)
     CASE_STR(VK_NOT_READY)
@@ -70,7 +70,7 @@ core::str8 to_str8(VkResult res) {
   }
 }
 
-core::str8 to_str8(VkStructureType struct_type) {
+EXPORT core::str8 to_str8(VkStructureType struct_type) {
   switch (struct_type) {
     CASE_STR(VK_STRUCTURE_TYPE_APPLICATION_INFO)
     CASE_STR(VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO)
@@ -973,7 +973,7 @@ core::str8 to_str8(VkStructureType struct_type) {
 }
 
 namespace vk {
-core::str8 to_str8(core::Arena& ar, queue_flags_t, VkQueueFlags flags) {
+EXPORT core::str8 to_str8(core::Arena& ar, queue_flags_t, VkQueueFlags flags) {
   core::string_builder sb{};
 
   FLAG_STR(sb, flags, VK_QUEUE_GRAPHICS_BIT)

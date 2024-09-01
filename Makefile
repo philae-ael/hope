@@ -1,87 +1,28 @@
-CC=clang
-CXX=clang++
+BUILD_TYPE?=Debug
+OUTPUT_DIR?=build
+CC:=clang
+CXX:=clang++
 
-OBJDIR := build
-DEPDIR := build
+.PHONY: all run clean format iwyu build-all
 
-CXXFLAGS:=$(CXXFLAGS) -O3 -g -std=c++23
-CXXFLAGS:=$(CXXFLAGS) -Wall -Wextra -Wconversion
-CXXFLAGS:=$(CXXFLAGS) -Wno-unused-parameter -Wno-missing-field-initializers
-CXXFLAGS:=$(CXXFLAGS) -DDEBUG
-# CXXFLAGS:=$(CXXFLAGS) -DARENA_DEBUG 
-# CXXFLAGS:=$(CXXFLAGS) -DMEM_DEBUG 
-# CXXFLAGS:=$(CXXFLAGS) -DMEM_USE_MALLOC
-# CXXFLAGS:=$(CXXFLAGS) -DSCRATCH_DEBUG 
-# CXXFLAGS:=$(CXXFLAGS) -fno-omit-frame-pointer
-# CXXFLAGS:=$(CXXFLAGS) -fsanitize=address 
-# CXXFLAGS:=$(CXXFLAGS) -flto
+all: build-all
 
-CXXFLAGS:=$(CXXFLAGS) -fno-stack-protector
-CXXFLAGS:=$(CXXFLAGS) -fstack-protector-all
+build-all: $(OUTPUT_DIR)/build.ninja
+	ninja -C$(OUTPUT_DIR) 
 
-
-# clang only
-# CXXFLAGS:=$(CXXFLAGS) -ftime-trace
-
-# for <stacktrace> support
-LDFLAGS:=$(LDFLAGS) -rdynamic 
-LDLIBS:=$(LDLIBS) -lstdc++exp 
-
-LDLIBS:=$(LDLIBS) -lvulkan -lSDL2
-
-DEPFLAGS= -MM -MG -MF 
-
-SRCS := src/main.cpp
--include src/core/core.mk
--include src/containers/containers.mk
--include src/os/os.mk
--include src/vulkan/vulkan.mk
-
-OBJS := $(patsubst %,$(OBJDIR)/%.o,$(basename $(SRCS)))
-DEPENDS := $(patsubst %,$(DEPDIR)/%.d,$(basename $(SRCS)))
-OUTPUT := main
-
-.SUFFIXES:
-.PHONY: all clean run doc open-doc open-doc-html doc-watch
-
-all:$(OUTPUT)
-
-$(OUTPUT): $(OBJS) 
-	$(CXX) $(LDFLAGS) $(CXXFLAGS) $^ $(LDLIBS) -o $@ 
-
-$(OBJDIR)/%.o: %.cpp Makefile
-	mkdir -p $(dir $@)
-	$(CXX) -c $< $(CXXFLAGS) -o $@
+run:  build-all
+	cd $(OUTPUT_DIR); ./main
 
 clean:
-	@rm -r $(OBJDIR)
-	@rm $(OUTPUT)
+	rm -rf ./$(OUTPUT_DIR)
 
-run: $(OUTPUT)
-	./$(OUTPUT)
+format:
+	./scripts/format-all.sh
 
-$(DEPDIR)/%.d:: %.cpp Makefile
-	mkdir -p $(dir $@)
-	$(CXX) $(DEPFLAGS) $@ $< -MP -MT $(<:%.cpp=$(OBJDIR)/%.o)
+iwyu: 
+	iwyu-tool -p ./compile_commands.json -- -Xiwyu --mapping_file=$(PWD)/iwyu-mapping.yaml
 
-doc:
-	doxygen
+cmake: $(OUTPUT_DIR)/build.ninja
 
-./build/doc/latex/refman.pdf: doc
-	make -C ./build/doc/latex
-
-open-doc-html: doc
-	xdg-open ./build/doc/html/index.html &
-
-doc-watch: doc
-	browser-sync start -w --ss ./build/doc/html/ -s ./build/doc/html/ --directory
-
-open-doc: ./build/doc/latex/refman.pdf
-	evince $< &
-
-
-compile_commands.json: Makefile
-	echo "regenerating compile_commands.json"
-	bear -- make -B
-
-include  $(DEPENDS)
+$(OUTPUT_DIR)/build.ninja: CMakeLists.txt
+	cmake -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DCMAKE_CXX_FLAGS="$(CXXFLAGS)" -DCMAKE_C_FLAGS="$(CFLAGS)" -B$(OUTPUT_DIR) -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -GNinja 

@@ -17,7 +17,7 @@ const char* VEC4_FMT_FLAGS[]{
 };
 
 namespace core {
-str8 to_str8(Arena& arena, Vec2 v, VectorFormat format) {
+EXPORT str8 to_str8(Arena& arena, Vec2 v, VectorFormat format) {
   string_builder sb{};
   // clang-format off
     sb.pushf(arena, VEC2_FMT_FLAGS[(usize)format.flags & 0b111],
@@ -28,7 +28,7 @@ str8 to_str8(Arena& arena, Vec2 v, VectorFormat format) {
   return sb.commit(arena);
 }
 
-str8 to_str8(Arena& arena, Vec4 v, VectorFormat format) {
+EXPORT str8 to_str8(Arena& arena, Vec4 v, VectorFormat format) {
   string_builder sb{};
   // clang-format off
     sb.pushf(arena, VEC4_FMT_FLAGS[(usize)format.flags & 0b111],

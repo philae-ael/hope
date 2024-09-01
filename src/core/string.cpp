@@ -6,7 +6,7 @@
 
 namespace core {
 
-string_builder& string_builder::pushf(Arena& arena, const char* fmt, ...) {
+EXPORT string_builder& string_builder::pushf(Arena& arena, const char* fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
   vpushf(arena, fmt, ap);
@@ -14,7 +14,7 @@ string_builder& string_builder::pushf(Arena& arena, const char* fmt, ...) {
   return *this;
 }
 
-string_builder& string_builder::vpushf(Arena& arena, const char* fmt, va_list ap) {
+EXPORT string_builder& string_builder::vpushf(Arena& arena, const char* fmt, va_list ap) {
   va_list ap_copy;
 
   va_copy(ap_copy, ap);
@@ -35,7 +35,7 @@ string_builder& string_builder::vpushf(Arena& arena, const char* fmt, va_list ap
   return *this;
 }
 
-str8 string_builder::commit(Arena& arena, str8 join) const {
+EXPORT str8 string_builder::commit(Arena& arena, str8 join) const {
   if (first != nullptr && first->next == nullptr && arena.owns((void*)first->str.data)) {
     return first->str;
   }
@@ -63,7 +63,7 @@ str8 string_builder::commit(Arena& arena, str8 join) const {
   return str8{expected_len, data};
 }
 
-string_builder& string_builder::push_str8(Arena& arena, str8 str) {
+EXPORT string_builder& string_builder::push_str8(Arena& arena, str8 str) {
   return push_str8(arena.allocate<string_node>(), str);
 }
 
@@ -78,7 +78,7 @@ string_builder& string_builder::push_str8(string_node* uninit_node, str8 str) {
   return *this;
 }
 
-string_builder& string_builder::push_node(string_node* node) {
+EXPORT string_builder& string_builder::push_node(string_node* node) {
   if (last != nullptr) {
     last->next = node;
     last       = node;
@@ -91,7 +91,7 @@ string_builder& string_builder::push_node(string_node* node) {
   return *this;
 }
 
-string_builder& string_builder::append(string_builder& sb) {
+EXPORT string_builder& string_builder::append(string_builder& sb) {
   if (sb.first == nullptr) {
     return *this;
   }
@@ -107,7 +107,7 @@ string_builder& string_builder::append(string_builder& sb) {
   return *this;
 }
 
-const char* str8::cstring(Arena& arena) {
+EXPORT const char* str8::cstring(Arena& arena) {
   u8* cstr = (u8*)data;
   if (!arena.try_resize((void*)data, len, len + 1)) {
     cstr = (u8*)arena.allocate(len + 1, alignof(char));

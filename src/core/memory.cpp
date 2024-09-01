@@ -22,7 +22,7 @@ namespace core {
   #define ARENA_DEBUG_STMT(f)
 #endif
 
-usize arena_page_size() {
+EXPORT usize arena_page_size() {
 #if ARENA_PAGE_SIZE == 0
   return os::mem_page_size();
 #else
@@ -30,10 +30,10 @@ usize arena_page_size() {
 #endif
 }
 
-bool Arena::owns(void* ptr) {
+EXPORT bool Arena::owns(void* ptr) {
   return ptr >= base && ptr < mem;
 }
-bool Arena::try_resize(void* ptr, usize cur_size, usize new_size, const char* src) {
+EXPORT bool Arena::try_resize(void* ptr, usize cur_size, usize new_size, const char* src) {
   if (!owns(ptr)) {
     return false;
   }
@@ -51,7 +51,7 @@ bool Arena::try_resize(void* ptr, usize cur_size, usize new_size, const char* sr
   return true;
 }
 
-void* Arena::allocate(usize size, usize alignement, const char* src) {
+EXPORT void* Arena::allocate(usize size, usize alignement, const char* src) {
   ARENA_DEBUG_STMT(printf(
       "Arena: trying to allocate %zu from %s, %zu available\n", size, src,
       capacity - (usize)(mem - base)
@@ -96,7 +96,7 @@ void* Arena::allocate(usize size, usize alignement, const char* src) {
   return aligned;
 }
 
-void Arena::deallocate(usize size) {
+EXPORT void Arena::deallocate(usize size) {
   if (size == 0) {
     return;
   }
@@ -115,7 +115,7 @@ void Arena::deallocate(usize size) {
   }
 }
 
-Arena* arena_alloc(usize capacity) {
+EXPORT Arena& arena_alloc(usize capacity) {
   usize page_size        = arena_page_size();
   const usize alloc_size = ALIGN_UP(sizeof(Arena) + capacity, page_size);
 
@@ -133,32 +133,28 @@ Arena* arena_alloc(usize capacity) {
   arena_->committed          = memory + page_size;
 
   ASAN_POISON_MEMORY_REGION(arena_->mem, arena_->capacity);
-  return arena_;
+  return *arena_;
 }
 
-void arena_dealloc(Arena* arena_) {
-  if (arena_ == nullptr) {
-    return;
-  }
+EXPORT void arena_dealloc(Arena& arena_) {
+  const usize alloc_size = sizeof(Arena) + arena_.capacity;
 
-  const usize alloc_size = sizeof(Arena) + arena_->capacity;
-
-  ARENA_DEBUG_STMT(printf("Arena: realeasing range [%p, %p)\n", arena_, arena_ + alloc_size));
-  os::mem_deallocate(arena_, alloc_size, os::MemDeallocationFlags::Release);
+  ARENA_DEBUG_STMT(printf("Arena: realeasing range [%p, %p)\n", &arena_, &arena_ + alloc_size));
+  os::mem_deallocate(&arena_, alloc_size, os::MemDeallocationFlags::Release);
 }
 
-void Arena::pop_pos(u64 pos) {
+EXPORT void Arena::pop_pos(u64 pos) {
   ASSERT(mem >= (u8*)pos);
   deallocate(usize(mem - (u8*)pos));
 }
-u64 Arena::pos() {
+EXPORT u64 Arena::pos() {
   return (u64)mem;
 }
-void ArenaTemp::retire() {
+EXPORT void ArenaTemp::retire() {
   arena_->pop_pos(old_pos);
   arena_ = nullptr;
 }
-ArenaTemp Arena::make_temp() {
+EXPORT ArenaTemp Arena::make_temp() {
   return ArenaTemp{
       this,
       pos(),
@@ -187,16 +183,16 @@ thread_local auto clear_arena_ = defer_builder + [] {
       SCRATCH_DEBUG_STMT(
           printf("Scratch: thread %zu is releasing scratch %zu\n", sync::thread_id(), i)
       );
-      arena_dealloc(scratch_storage[i]);
+      arena_dealloc(*scratch_storage[i]);
     }
   }
 };
 
-scratch scratch_get() {
+EXPORT scratch scratch_get() {
   if (scratch_storage[0] == nullptr) {
     SCRATCH_DEBUG_STMT(printf("Scratch: initialize storage for thread %zu\n", sync::thread_id()));
     for (usize i = 0; i < SCRATCH_ARENA_AMOUNT; i++) {
-      Arena* arena       = arena_alloc();
+      Arena* arena       = &arena_alloc();
       scratch_storage[i] = arena;
     }
   }
@@ -217,7 +213,7 @@ scratch scratch_get() {
   panic("no scratch arena available");
 }
 
-void scratch_retire(scratch& scr) {
+EXPORT void scratch_retire(scratch& scr) {
   scr->pop_pos(scr.old_pos);
   Arena* arena_ = scr.arena_;
   scr.arena_    = nullptr;
@@ -236,7 +232,7 @@ void scratch_retire(scratch& scr) {
     return;
   }
 
-  arena_dealloc(arena_);
+  arena_dealloc(*arena_);
 }
 
 } // namespace core

@@ -222,8 +222,20 @@ constexpr T operator|(T lhs, T rhs) {
 
 template <class T>
   requires std::is_enum_v<T>
+constexpr T& operator|=(T& lhs, T rhs) {
+  return lhs = lhs | rhs;
+}
+
+template <class T>
+  requires std::is_enum_v<T>
 constexpr T operator&(T lhs, T rhs) {
   return enum_and(lhs, rhs);
+}
+
+template <class T>
+  requires std::is_enum_v<T>
+constexpr T& operator&=(T& lhs, T rhs) {
+  return lhs = lhs & rhs;
 }
 
 template <class T>

@@ -26,6 +26,9 @@ IndentPPDirectives: BeforeHash
 PointerAlignment: Left
 AttributeMacros:
   - defer
+  - PRIVATE
+  - PUBLIC
+  - PRINTF_ATTRIBUTE
 AlignConsecutiveAssignments:
   Enabled: true
   AcrossEmptyLines: true

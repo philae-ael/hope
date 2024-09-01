@@ -3,6 +3,7 @@
 #ifndef INCLUDE_CORE_LOG_H_
 #define INCLUDE_CORE_LOG_H_
 
+#include "debug.h"
 #include "fwd.h"
 #include "memory.h"
 #include "string.h"
@@ -56,8 +57,7 @@ struct log_builder {
     return *this;
   }
 
-  PRINTF_ATTRIBUTE(2, 3)
-  log_builder& pushf(const char* fmt, ...);
+  PRINTF_ATTRIBUTE(2, 3) log_builder& pushf(const char* fmt, ...);
   log_builder& vpushf(const char* fmt, va_list ap);
   log_builder& push_str8(str8 msg);
 

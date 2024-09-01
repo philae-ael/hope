@@ -1,4 +1,5 @@
 #include "../time.h"
+#include "../../core/core.h"
 #include <ctime>
 #include <sys/time.h>
 
@@ -15,26 +16,26 @@ time from_timespec_raw(timespec tp) {
   };
 }
 
-time get_boottime() {
+EXPORT time get_boottime() {
   struct timespec tp {};
   ::clock_gettime(CLOCK_MONOTONIC, &tp);
   return from_timespec_raw(tp);
 }
 const time boottime = get_boottime();
 
-time time_monotonic_resolution() {
+EXPORT time time_monotonic_resolution() {
   struct timespec tp;
   ::clock_getres(CLOCK_MONOTONIC, &tp);
   return from_timespec_raw(tp);
 }
 
-time time_monotonic() {
+EXPORT time time_monotonic() {
   struct timespec tp;
   ::clock_gettime(CLOCK_MONOTONIC, &tp);
   return from_timespec_raw(tp).since(boottime);
 }
 
-duration_info time_realtime() {
+EXPORT duration_info time_realtime() {
   struct timeval tv;
   gettimeofday(&tv, NULL);
   struct tm tm;

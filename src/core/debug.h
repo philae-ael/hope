@@ -5,6 +5,10 @@
 
 #include "base.h"
 
+#if LINUX
+  #include <setjmp.h>
+#endif
+
 #if GCC || CLANG
   #define TRAP asm volatile("int $3")
 #else
@@ -56,6 +60,7 @@ struct source_location {
   str8 func;
   u32 line;
 };
+
 #define CURRENT_SOURCE_LOCATION                                          \
   ::core::source_location {                                              \
     ::core::str8::from(__FILE__), ::core::str8::from(__func__), __LINE__ \
@@ -64,6 +69,7 @@ struct source_location {
 [[noreturn]] void panic(const char* msg, ...) PRINTF_ATTRIBUTE(1, 2);
 
 void dump_backtrace(usize skip = 1);
+
 void setup_crash_handler();
 
 inline void blackbox(auto& x) {

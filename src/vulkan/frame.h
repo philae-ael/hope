@@ -17,15 +17,16 @@ FrameSynchro create_frame_synchro(core::Arena& ar, VkDevice device, u32 inflight
 
 void destroy_frame_synchro(VkDevice device, FrameSynchro& frame_synchro);
 
-Result<u32> begin_frame(VkDevice device, VkSwapchainKHR swapchain, FrameSynchro& sync);
+struct Frame {
+  u32 swapchain_image_index;
+  VkSemaphore acquire_semaphore;
+  VkSemaphore render_semaphore;
+  VkFence render_done_fence;
+};
 
-VkResult end_frame(
-    VkDevice device,
-    VkQueue present_queue,
-    FrameSynchro& sync,
-    VkSwapchainKHR swapchain,
-    u32 swapchain_image_index
-);
+Result<Frame> begin_frame(VkDevice device, VkSwapchainKHR swapchain, FrameSynchro& sync);
+
+VkResult end_frame(VkDevice device, VkQueue present_queue, VkSwapchainKHR swapchain, Frame frame);
 
 } // namespace vk
 #endif // INCLUDE_VULKAN_FRAME_H_

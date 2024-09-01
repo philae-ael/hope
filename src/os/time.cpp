@@ -2,7 +2,7 @@
 #include "../prelude.h"
 
 namespace os {
-duration_info duration_info::from_time(time t) {
+EXPORT duration_info duration_info::from_time(time t) {
   u64 const nanos   = t.ns;
   u64 const micros  = nanos / 1000;
   u64 const millis  = micros / 1000;
@@ -19,7 +19,7 @@ duration_info duration_info::from_time(time t) {
   };
 }
 
-str8 to_str8(Arena& arena, duration_info duration_info, TimeFormat format) {
+EXPORT str8 to_str8(Arena& arena, duration_info duration_info, TimeFormat format) {
   core::string_builder sb{};
   switch (format) {
   case TimeFormat::HH_MM_SS_MMM_UUU:
@@ -55,7 +55,7 @@ str8 to_str8(Arena& arena, duration_info duration_info, TimeFormat format) {
   return sb.commit(arena);
 }
 
-core::str8 to_str8(core::Arena& arena, time t, TimeFormat format) {
+EXPORT core::str8 to_str8(core::Arena& arena, time t, TimeFormat format) {
   return to_str8(arena, duration_info::from_time(t), format);
 }
 } // namespace os

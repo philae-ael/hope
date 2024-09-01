@@ -10,8 +10,12 @@
 
 #if GCC || CLANG
   #define PRINTF_ATTRIBUTE(a, b) __attribute__((format(printf, a, b)))
-#else
+  #define EXPORT __attribute__((visibility("default")))
+#elif MSVC
   #define PRINTF_ATTRIBUTE(a, b)
+  #define EXPORT __declspec(dllexport)
+#else
+  #error platform not supported
 #endif
 
 #define MAX(a, b) ((a) > (b)) ? (a) : (b)
@@ -31,6 +35,7 @@
 #define STRINGIFY(c) STRINGIFY_(c)
 #define CONCAT_(a, b) a##b
 #define CONCAT(a, b) CONCAT_(a, b)
+#define EVAL(a) a
 
 #define ALIGN_MASK_DOWN(x, mask) ((x) & ~(mask))
 #define ALIGN_DOWN(x, AMOUNT) ((decltype(x))ALIGN_MASK_DOWN((uptr)(x), AMOUNT - 1))

@@ -41,6 +41,7 @@ VkBool32 debug_utils_messenger_callback(
     level = core::LogLevel::Error;
     break;
   default:
+    break;
   }
 
   const char* message_type;
@@ -72,9 +73,9 @@ VkBool32 debug_utils_messenger_callback(
 } // namespace
 
 namespace vk {
-void init() {}
+EXPORT void init() {}
 
-void load_extensions(VkInstance instance) {
+EXPORT void load_extensions(VkInstance instance) {
 #define LOAD(name)                                                   \
   name##_ = (PFN_##name)[&] {                                        \
     auto res = vkGetInstanceProcAddr(instance, #name);               \
@@ -91,7 +92,7 @@ void load_extensions(VkInstance instance) {
 #undef LOAD
 }
 
-Result<VkDebugUtilsMessengerEXT> setup_debug_messenger(VkInstance instance) {
+EXPORT Result<VkDebugUtilsMessengerEXT> setup_debug_messenger(VkInstance instance) {
   VkDebugUtilsMessengerCreateInfoEXT debug_create_info{
       .sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
       .pNext           = nullptr,
@@ -163,7 +164,7 @@ Result<VkInstance> create_instance(
   return inst;
 }
 
-core::vec<VkLayerProperties> enumerate_instance_layer_properties(core::Arena& ar) {
+EXPORT core::vec<VkLayerProperties> enumerate_instance_layer_properties(core::Arena& ar) {
   u32 layer_count;
   vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
 
@@ -174,7 +175,7 @@ core::vec<VkLayerProperties> enumerate_instance_layer_properties(core::Arena& ar
 
   return v;
 }
-core::vec<VkExtensionProperties> enumerate_instance_extension_properties(core::Arena& ar) {
+EXPORT core::vec<VkExtensionProperties> enumerate_instance_extension_properties(core::Arena& ar) {
   u32 layer_count;
   vkEnumerateInstanceExtensionProperties(nullptr, &layer_count, nullptr);
 
@@ -186,7 +187,7 @@ core::vec<VkExtensionProperties> enumerate_instance_extension_properties(core::A
   return v;
 }
 
-Result<Instance> create_default_instance(
+EXPORT Result<Instance> create_default_instance(
     core::vec<const char*> layers,
     core::vec<const char*> extensions
 ) {
@@ -263,12 +264,15 @@ Result<Instance> create_default_instance(
   };
 }
 
-void destroy_instance(Instance& inst) {
+EXPORT void destroy_instance(Instance& inst) {
   vkDestroyDebugUtilsMessengerEXT(inst.instance, inst.debug_messenger, nullptr);
   vkDestroyInstance(inst.instance, nullptr);
 }
 
-core::vec<VkPhysicalDevice> enumerate_physical_devices(core::Arena& ar, VkInstance instance) {
+EXPORT core::vec<VkPhysicalDevice> enumerate_physical_devices(
+    core::Arena& ar,
+    VkInstance instance
+) {
   core::vec<VkPhysicalDevice> v;
   u32 physical_device_count;
 
@@ -280,7 +284,7 @@ core::vec<VkPhysicalDevice> enumerate_physical_devices(core::Arena& ar, VkInstan
   return v;
 }
 
-core::vec<VkQueueFamilyProperties> enumerate_physical_device_queue_family_properties(
+EXPORT core::vec<VkQueueFamilyProperties> enumerate_physical_device_queue_family_properties(
     core::Arena& ar,
     VkPhysicalDevice physical_device
 ) {
@@ -297,7 +301,7 @@ core::vec<VkQueueFamilyProperties> enumerate_physical_device_queue_family_proper
   return v;
 }
 
-core::Maybe<core::vec<queue_creation_info>> find_physical_device_queue_allocation(
+EXPORT core::Maybe<core::vec<queue_creation_info>> find_physical_device_queue_allocation(
     core::Arena& ar,
     VkPhysicalDevice physical_device,
     const physical_device_features& required_features
@@ -365,7 +369,7 @@ core::Maybe<core::vec<queue_creation_info>> find_physical_device_queue_allocatio
   return queues;
 }
 
-core::Maybe<physical_device> find_physical_device(
+EXPORT core::Maybe<physical_device> find_physical_device(
     core::Arena& ar,
     VkInstance instance,
     const physical_device_features& required_features
@@ -397,7 +401,7 @@ core::Maybe<physical_device> find_physical_device(
   return {};
 }
 
-core::vec<VkExtensionProperties> enumerate_device_extension_properties(
+EXPORT core::vec<VkExtensionProperties> enumerate_device_extension_properties(
     core::Arena& ar,
     VkPhysicalDevice device
 ) {
@@ -412,7 +416,7 @@ core::vec<VkExtensionProperties> enumerate_device_extension_properties(
   return v;
 }
 
-Result<VkDevice> create_device(
+EXPORT Result<VkDevice> create_device(
     core::Arena& ar_,
     VkPhysicalDevice physical_device,
     physical_device_features& features,
@@ -456,7 +460,7 @@ Result<VkDevice> create_device(
   return device;
 }
 
-Result<Device> create_default_device(
+EXPORT Result<Device> create_default_device(
     VkInstance instance,
     VkSurfaceKHR surface,
     core::vec<const char*> extensions
@@ -513,9 +517,8 @@ Result<Device> create_default_device(
   };
 }
 
-VkPhysicalDeviceFeatures2 physical_device_features::into_vk_physical_device_features2(
-    core::Arena& ar
-) const {
+EXPORT VkPhysicalDeviceFeatures2
+physical_device_features::into_vk_physical_device_features2(core::Arena& ar) const {
   auto physical_device_synchronization2_features =
       ar.allocate<VkPhysicalDeviceSynchronization2Features>();
   *physical_device_synchronization2_features = {
@@ -528,7 +531,7 @@ VkPhysicalDeviceFeatures2 physical_device_features::into_vk_physical_device_feat
   VK_PUSH_NEXT(&physical_device_features2, physical_device_synchronization2_features);
   return physical_device_features2;
 }
-bool physical_device_features::check_features(
+EXPORT bool physical_device_features::check_features(
     const VkPhysicalDeviceProperties2& physical_device_properties2
 ) const {
   auto s = (const VkBaseInStructure*)physical_device_properties2.pNext;
@@ -544,10 +547,10 @@ bool physical_device_features::check_features(
   return true;
 }
 
-void destroy_device(vk::Device device) {
+EXPORT void destroy_device(vk::Device device) {
   vkDestroyDevice(device, nullptr);
 }
-core::vec<VkPresentModeKHR> enumerate_physical_device_surface_present_modes(
+EXPORT core::vec<VkPresentModeKHR> enumerate_physical_device_surface_present_modes(
     core::Arena& ar,
     VkPhysicalDevice physical_device,
     VkSurfaceKHR surface
@@ -564,7 +567,7 @@ core::vec<VkPresentModeKHR> enumerate_physical_device_surface_present_modes(
   return v;
 }
 
-core::vec<VkSurfaceFormatKHR> enumerate_physical_device_surface_formats(
+EXPORT core::vec<VkSurfaceFormatKHR> enumerate_physical_device_surface_formats(
     core::Arena& ar,
     VkPhysicalDevice physical_device,
     VkSurfaceKHR surface
@@ -579,7 +582,7 @@ core::vec<VkSurfaceFormatKHR> enumerate_physical_device_surface_formats(
   return v;
 }
 
-core::vec<VkImage> get_swapchain_images(
+EXPORT core::vec<VkImage> get_swapchain_images(
     core::Arena& ar,
     VkDevice device,
     VkSwapchainKHR swapchain
@@ -594,7 +597,7 @@ core::vec<VkImage> get_swapchain_images(
   return v;
 }
 
-void destroy_swapchain(VkDevice device, Swapchain& swapchain) {
+EXPORT void destroy_swapchain(VkDevice device, Swapchain& swapchain) {
   vkDestroySwapchainKHR(device, swapchain, nullptr);
 }
 Result<VkSwapchainKHR> create_swapchain(
@@ -631,7 +634,7 @@ Result<VkSwapchainKHR> create_swapchain(
   return swapchain;
 }
 
-SwapchainConfig create_default_swapchain_config(const Device& device, VkSurfaceKHR surface) {
+EXPORT SwapchainConfig create_default_swapchain_config(const Device& device, VkSurfaceKHR surface) {
   auto ar = core::scratch_get();
   defer { ar.retire(); };
   VkSurfaceCapabilitiesKHR surface_capabilities;
@@ -646,7 +649,6 @@ SwapchainConfig create_default_swapchain_config(const Device& device, VkSurfaceK
   swapchain_config.min_image_count =
       MAX(surface_capabilities.minImageCount,
           surface_capabilities.maxImageCount == 0 ? 3 : MIN(3, surface_capabilities.maxImageCount));
-  swapchain_config.image_usage_flags = surface_capabilities.supportedUsageFlags;
 
   {
     auto present_modes =
@@ -671,6 +673,7 @@ SwapchainConfig create_default_swapchain_config(const Device& device, VkSurfaceK
         score = 4;
         break;
       default:
+        break;
       }
       if (score > best_score) {
         best_present_mode = present_mode;
@@ -696,14 +699,39 @@ SwapchainConfig create_default_swapchain_config(const Device& device, VkSurfaceK
           score = 1;
           break;
         default:
+          break;
         }
       }
       swapchain_config.surface_format = best_format;
     }
   }
+  VkFormatProperties surface_format_properties{};
+  vkGetPhysicalDeviceFormatProperties(
+      device.physical, swapchain_config.surface_format.format, &surface_format_properties
+  );
+
+  VkImageUsageFlags format_supported_usage_flags{};
+  if (surface_format_properties.optimalTilingFeatures & VK_FORMAT_FEATURE_TRANSFER_SRC_BIT) {
+    format_supported_usage_flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+  }
+  if (surface_format_properties.optimalTilingFeatures & VK_FORMAT_FEATURE_TRANSFER_DST_BIT) {
+    format_supported_usage_flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+  }
+  if (surface_format_properties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) {
+    format_supported_usage_flags |= VK_IMAGE_USAGE_SAMPLED_BIT;
+  }
+  if (surface_format_properties.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) {
+    format_supported_usage_flags |= VK_IMAGE_USAGE_STORAGE_BIT;
+  }
+  if (surface_format_properties.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT) {
+    format_supported_usage_flags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  }
+  swapchain_config.image_usage_flags =
+      surface_capabilities.supportedUsageFlags & format_supported_usage_flags;
+  ASSERT((swapchain_config.image_usage_flags & VK_IMAGE_USAGE_TRANSFER_DST_BIT) != 0);
   return swapchain_config;
 }
-Result<Swapchain> create_default_swapchain(
+EXPORT Result<Swapchain> create_default_swapchain(
     core::Arena& ar,
     const Device& device,
     VkSurfaceKHR surface
@@ -717,7 +745,7 @@ Result<Swapchain> create_default_swapchain(
       get_swapchain_images(ar, device, *swapchain),
   }};
 }
-Result<core::unit_t> rebuild_default_swapchain(
+EXPORT Result<core::unit_t> rebuild_default_swapchain(
     const Device& device,
     VkSurfaceKHR surface,
     Swapchain& swapchain

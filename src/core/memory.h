@@ -22,7 +22,7 @@
 // anything else will be used as page size
 // WARNING ! Should be a multiple of system value (often 4kb)
 #ifndef ARENA_PAGE_SIZE
-  #define ARENA_PAGE_SIZE MB(1)
+  #define ARENA_PAGE_SIZE 0
 #endif // !ARENA_PAGE_SIZE
 
 #if __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
@@ -88,8 +88,8 @@ private:
   void deallocate(usize size);
 };
 
-Arena* arena_alloc(usize capacity = DEFAULT_ARENA_CAPACITY);
-void arena_dealloc(Arena* arena);
+Arena& arena_alloc(usize capacity = DEFAULT_ARENA_CAPACITY);
+void arena_dealloc(Arena& arena);
 
 struct ArenaTemp {
   Arena* arena_;

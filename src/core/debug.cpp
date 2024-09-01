@@ -7,7 +7,15 @@
 
 #include "core.h"
 
-#ifdef __cpp_lib_stacktrace
+#if LINUX
+  #include <signal.h>
+#endif
+
+#ifndef USE_STACKTRACE
+  #define USE_STACKTRACE 1
+#endif
+
+#if defined(__cpp_lib_stacktrace) && USE_STACKTRACE
   #include <stacktrace>
 #else
   #if LINUX
@@ -20,7 +28,7 @@
 #endif
 
 namespace core {
-void panic(const char* msg, ...) {
+EXPORT void panic(const char* msg, ...) {
   va_list ap;
   va_start(ap, msg);
   fflush(stdout);
@@ -32,7 +40,7 @@ void panic(const char* msg, ...) {
   std::abort();
 }
 
-#ifndef __cpp_lib_stacktrace
+#if !defined(__cpp_lib_stacktrace) || !USE_STACKTRACE
 void dump_backtrace_fallback(usize skip) {
   #if LINUX
   // https://gist.github.com/fmela/591333/c64f4eb86037bb237862a8283df70cdfc25f01d3
@@ -40,7 +48,7 @@ void dump_backtrace_fallback(usize skip) {
   const int nMaxFrames = sizeof(callstack) / sizeof(callstack[0]);
   int nFrames          = backtrace(callstack, nMaxFrames);
   char** symbols       = backtrace_symbols(callstack, nFrames);
-  for (usize i = skip; i < nFrames; i++) {
+  for (usize i = skip; i < (usize)nFrames; i++) {
     Dl_info info;
     if (dladdr(callstack[i], &info)) {
       char* demangled = NULL;
@@ -62,8 +70,8 @@ void dump_backtrace_fallback(usize skip) {
 }
 #endif
 
-void dump_backtrace(usize skip) {
-#ifdef __cpp_lib_stacktrace
+EXPORT void dump_backtrace(usize skip) {
+#if defined(__cpp_lib_stacktrace) && USE_STACKTRACE
   std::stacktrace s = std::stacktrace::current();
   for (auto i = (std::stacktrace::size_type)skip; i < s.size(); i++) {
     auto& entry = s[i];
@@ -78,14 +86,14 @@ void dump_backtrace(usize skip) {
 }
 
 void crash_handler(int sig) {
-  ::signal(sig, SIG_DFL);
   dump_backtrace(2);
+
+  ::signal(sig, SIG_DFL);
   ::raise(sig);
 }
 
-void setup_crash_handler() {
+EXPORT void setup_crash_handler() {
   ::signal(SIGSEGV, crash_handler);
   ::signal(SIGABRT, crash_handler);
 }
-
 } // namespace core
