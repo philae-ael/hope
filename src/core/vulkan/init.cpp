@@ -1,8 +1,8 @@
 #include "init.h"
 #include "vulkan.h"
 
-#include "../containers/vec.h"
-#include "../core/core.h"
+#include <core/containers/vec.h>
+#include <core/core.h>
 #include <cstring>
 #include <vulkan/vulkan_core.h>
 

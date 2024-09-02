@@ -1,12 +1,12 @@
 #ifndef INCLUDE_VULKAN_FRAME_H_
 #define INCLUDE_VULKAN_FRAME_H_
 
-#include "../core/fwd.h"
 #include "vulkan.h"
+#include <core/core/fwd.h>
 
 namespace core {
 struct Arena;
-}  // namespace core
+} // namespace core
 
 namespace vk {
 struct FrameSynchro {

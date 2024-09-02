@@ -2,7 +2,7 @@
 #include <cstdlib>
 #include <version>
 
-#include "core.h"
+#include <core/core.h>
 
 #if LINUX
   #include <signal.h>

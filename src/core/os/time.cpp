@@ -1,5 +1,5 @@
 #include "time.h"
-#include "../prelude.h"
+#include <core/core.h>
 
 namespace os {
 EXPORT duration_info duration_info::from_time(time t) {
@@ -19,7 +19,7 @@ EXPORT duration_info duration_info::from_time(time t) {
   };
 }
 
-EXPORT str8 to_str8(Arena& arena, duration_info duration_info, TimeFormat format) {
+EXPORT core::str8 to_str8(core::Arena& arena, duration_info duration_info, TimeFormat format) {
   core::string_builder sb{};
   switch (format) {
   case TimeFormat::HH_MM_SS_MMM_UUU:

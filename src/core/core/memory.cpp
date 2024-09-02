@@ -1,6 +1,6 @@
 #include "../os/memory.h"
 
-#include "core.h"
+#include <core/core.h>
 
 using namespace core::enum_helpers;
 

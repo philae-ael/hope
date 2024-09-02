@@ -1,5 +1,5 @@
 #include "../time.h"
-#include "../../core/core.h"
+#include <core/core.h>
 #include <ctime>
 #include <sys/time.h>
 

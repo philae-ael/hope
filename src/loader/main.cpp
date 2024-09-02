@@ -2,13 +2,10 @@
 #include <SDL_events.h>
 
 #include "app_loader.h"
-#include "core/core.h"
-#include "os/os.h"
 #include "subsystems.h"
-#include "core/memory.h"
-#include "core/string.h"
-#include "core/types.h"
-#include "vulkan/vulkan.h"
+
+#include <core/core.h>
+#include <core/os.h>
 
 struct Renderer;
 
@@ -44,6 +41,9 @@ int main(int argc, char* argv[]) {
     while (SDL_PollEvent(&ev)) {
       if (ev.type == SDL_QUIT) {
         sev |= AppEvent::Exit;
+      }
+      if (ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_ESCAPE) {
+        sev |= AppEvent::ReloadApp;
       }
       sev |= app.handle_events(ev);
     }

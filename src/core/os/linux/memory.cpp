@@ -1,5 +1,5 @@
 #include "../memory.h"
-#include "../../core/core.h"
+#include <core/core.h>
 
 #include <cerrno>
 #include <string.h>

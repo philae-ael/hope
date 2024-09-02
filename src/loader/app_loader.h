@@ -1,8 +1,8 @@
 #ifndef INCLUDE_SRC_APP_LOADER_H_
 #define INCLUDE_SRC_APP_LOADER_H_
 
-#include "core/core.h"
 #include "subsystems.h"
+#include <core/core.h>
 
 enum class AppEvent : u8 {
   Exit             = 0x1,

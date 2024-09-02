@@ -2,7 +2,7 @@
 #ifndef INCLUDE_OS_MEMORY_H_
 #define INCLUDE_OS_MEMORY_H_
 
-#include "../core/fwd.h"
+#include <core/core/fwd.h>
 
 #ifdef MEM_DEBUG
   #define MEM_DEBUG_STMT(f) f

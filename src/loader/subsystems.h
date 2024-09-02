@@ -3,15 +3,15 @@
 
 #include <SDL2/SDL_video.h>
 
-#include "containers/vec.h"
-#include "core/fwd.h"
-#include "vulkan/frame.h"
-#include "vulkan/init.h"
-#include "vulkan/vulkan.h"
+#include <core/containers/vec.h>
+#include <core/core/fwd.h>
+#include <core/vulkan/frame.h>
+#include <core/vulkan/init.h>
+#include <core/vulkan/vulkan.h>
 
 namespace core {
 struct Arena;
-}  // namespace core
+} // namespace core
 
 core::vec<const char*> enumerate_SDL_vulkan_instance_extensions(
     core::Arena& ar,

@@ -3,9 +3,9 @@
 
 #include <vulkan/vulkan_core.h>
 
-#include "../containers/vec.h"
-#include "../core/core.h"
 #include "vulkan.h"
+#include <core/containers/vec.h>
+#include <core/core/fwd.h>
 
 namespace vk {
 // GENERAL

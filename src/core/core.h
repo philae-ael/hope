@@ -3,14 +3,14 @@
 
 // IWYU pragma: begin_exports
 
-#include "base.h"
-#include "debug.h"
-#include "log.h"
-#include "math.h"
-#include "memory.h"
-#include "platform.h"
-#include "string.h"
-#include "types.h"
+#include "core/base.h"
+#include "core/debug.h"
+#include "core/log.h"
+#include "core/math.h"
+#include "core/memory.h"
+#include "core/platform.h"
+#include "core/string.h"
+#include "core/types.h"
 
 // IWYU pragma: end_exports
 

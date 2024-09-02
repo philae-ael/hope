@@ -3,9 +3,7 @@
 #include <cstdarg>
 #include <cstdio>
 
-#include "core.h"
-#include "fwd.h"
-#include "memory.h"
+#include <core/core.h>
 
 using namespace core::literals;
 namespace core {

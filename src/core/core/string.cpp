@@ -4,7 +4,7 @@
 #include <cstdio>
 #include <cstring>
 
-#include "core.h"
+#include <core/core.h>
 
 namespace core {
 

@@ -1,19 +1,16 @@
 #ifndef INCLUDE_VULKAN_VULKAN_H_
 #define INCLUDE_VULKAN_VULKAN_H_
 
+#include <core/core/log.h>
+
+// IWYU pragma: begin_exports
 #include <vulkan/vk_platform.h>
 #include <vulkan/vulkan_core.h>
-
-#include "../core/core.h"
-// IWYU pragma: begin_exports
-#include "vulkan/vk_platform.h"
-#include "vulkan/vulkan_core.h"
-#include "/home/eli/projects/other/misc/corelib/src/core/log.h"
+// IWYU pragma: end_exports
 
 namespace core {
 struct Arena;
-}  // namespace core
-// IWYU pragma: end_exports
+} // namespace core
 
 #define EXTENSIONS                      \
   LOAD(vkSetDebugUtilsObjectNameEXT)    \

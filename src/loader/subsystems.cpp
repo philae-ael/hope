@@ -6,12 +6,11 @@
 #include <SDL2/SDL_video.h>
 #include <SDL2/SDL_vulkan.h>
 
-#include "containers/vec.h"
-#include "core/core.h"
-#include "vulkan/frame.h"
-#include "vulkan/init.h"
-#include "vulkan/vulkan.h"
-#include "core/fwd.h"
+#include <core/containers/vec.h>
+#include <core/core.h>
+#include <core/vulkan/frame.h>
+#include <core/vulkan/init.h>
+#include <core/vulkan/vulkan.h>
 
 core::vec<const char*> enumerate_SDL_vulkan_instance_extensions(
     core::Arena& ar,

@@ -8,6 +8,13 @@
 #include <system_error>
 #include <thread>
 
+App init_app_stub() {
+#define PFN(name, ret, ...) .name = [](__VA_ARGS__) -> ret { return (ret)(0); },
+  LOG_INFO("stub");
+  return App{.handle = nullptr, EVAL(APP_PFNS)};
+#undef PFN
+}
+
 #if LINUX
   #include <dlfcn.h>
   #define CHECK_DLERROR(msg, ...)                             \
@@ -15,7 +22,7 @@
       const char* err = dlerror();                            \
       if (err != nullptr) {                                   \
         LOG_ERROR(msg ": %s" __VA_OPT__(, __VA_ARGS__), err); \
-        exit(1);                                              \
+        goto failed;                                          \
       }                                                       \
     } while (0)
 
@@ -26,6 +33,9 @@ void uninit_app(App& app) {
     pfn_uninit_app();
 
     dlclose(app.handle);
+    return;
+  failed:
+    app = init_app_stub();
   }
 }
 
@@ -41,52 +51,39 @@ do_retry:
 
   dlerror();
   void* libapp_handle = dlopen(soname, RTLD_LOCAL | RTLD_NOW);
+  App app{libapp_handle};
   if (libapp_handle == nullptr) {
     if (retry < maxretry) {
       retry++;
       LOG_WARNING(
           "error while loading %s retrying... %d/%d: %s", default_soname, retry, maxretry, dlerror()
       );
-      std::this_thread::sleep_for(5ms);
+      std::this_thread::sleep_for(100ms);
       goto do_retry;
+    } else {
+      CHECK_DLERROR("Can't load so %s", soname);
     }
-
-    CHECK_DLERROR("Can't load so %s", soname);
   }
-
-  App app{libapp_handle};
 
   #define PFN(name, ret, ...)                                      \
     app.name = (ret(*)(__VA_ARGS__))(dlsym(libapp_handle, #name)); \
     CHECK_DLERROR("can't load symbol " #name);
   EVAL(APP_PFNS)
   #undef PFN
-
   return app;
+
+failed:
+  return init_app_stub();
 }
 #endif
 
 bool need_reload(App& app) {
   using namespace std::chrono_literals;
-  const u32 maxretry = 5;
-  u32 retry          = 0;
-
-do_retry:
-  ASSERT(retry < maxretry);
-  retry++;
-
-  std::error_code ec;
-  auto ftime = std::filesystem::last_write_time(default_soname, ec);
-  if (ec.value() == (int)std::errc::no_such_file_or_directory) {
-    LOG_WARNING(
-        "error while getting time for file %s retrying... %d/%d: no such file of directory",
-        default_soname, retry, maxretry
-    );
-    std::this_thread::sleep_for(5ms);
-    goto do_retry;
-  }
-
-  if (ftime > last_ftime) {
+  std::error_code ec1, ec2;
+  auto ftime = std::filesystem::last_write_time(default_soname, ec1);
+  auto size  = std::filesystem::file_size(default_soname, ec2);
+  if (!ec1 && !ec2 && ftime > last_ftime && size > 0 &&
+      std::chrono::file_clock::now() - ftime >= 100ms) {
     LOG_DEBUG("need reload!");
     return true;
   }
@@ -107,12 +104,6 @@ void reload_app(App& app) {
   sb.pushf(*ar, "./libapp-%zu.so", count++);
   const char* path = sb.commit(*ar).cstring(*ar);
 
-  // wait end of file write... maybe enough...maybe not
-  std::error_code ec;
-  usize retry{};
-  while ((fs::file_size(path, ec) == 0 || ec) && retry++ < 5) {
-    std::this_thread::sleep_for(100ms);
-  }
   fs::copy_file(default_soname, path);
   app = init_app(path);
   fs::remove(path);

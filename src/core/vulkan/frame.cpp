@@ -1,7 +1,7 @@
 #include "frame.h"
 #include "vulkan.h"
 
-#include "../core/core.h"
+#include <core/core.h>
 
 namespace vk {
 EXPORT void destroy_frame_synchro(VkDevice device, FrameSynchro& frame_synchro) {
