@@ -1,7 +1,7 @@
 #ifndef INCLUDE_SRC_SUBSYSTEMS_H_
 #define INCLUDE_SRC_SUBSYSTEMS_H_
 
-#include <SDL2/SDL_video.h>
+#include <SDL3/SDL_video.h>
 
 #include <core/containers/vec.h>
 #include <core/core/fwd.h>

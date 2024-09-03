@@ -1,7 +1,7 @@
 // USE IT AS A FALLBACK for detecting leaks using!
 #ifdef MEM_USE_MALLOC
   #include "memory.h"
-  #include "../core/core.h"
+  #include <core/core.h>
 
   #include <cstdio>
   #include <cstdlib>

@@ -7,6 +7,7 @@
 #include <limits.h>
 
 #define FWD(t) static_cast<decltype(t)&&>(t)
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
 #if GCC || CLANG
   #define PRINTF_ATTRIBUTE(a, b) __attribute__((format(printf, a, b)))

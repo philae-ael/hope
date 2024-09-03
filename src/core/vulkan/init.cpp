@@ -463,7 +463,7 @@ EXPORT Result<VkDevice> create_device(
 EXPORT Result<Device> create_default_device(
     VkInstance instance,
     VkSurfaceKHR surface,
-    core::vec<const char*> extensions
+    core::vec<const char*> device_extensions
 ) {
   auto ar = core::scratch_get();
   defer { ar.retire(); };
@@ -476,8 +476,9 @@ EXPORT Result<Device> create_default_device(
       },
   };
   physical_device_features requested_features{
-      .queues           = queues,
-      .synchronization2 = true,
+      .queues            = queues,
+      .synchronization2  = true,
+      .dynamic_rendering = true,
   };
   auto [physical_device, queues_creation_infos] = [&] {
     auto physical_device = find_physical_device(*ar, instance, requested_features);
@@ -487,9 +488,10 @@ EXPORT Result<Device> create_default_device(
 
   ASSERT(queues_creation_infos.size == 1);
 
-  extensions.push(*ar, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+  device_extensions.push(*ar, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+  device_extensions.push(*ar, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
   auto device_extension_properties = enumerate_device_extension_properties(*ar, physical_device);
-  for (auto& extension : extensions.iter()) {
+  for (auto& extension : device_extensions.iter()) {
     bool found = false;
     for (auto& device_extension_property : device_extension_properties.iter()) {
       if (strcmp(extension, device_extension_property.extensionName) == 0) {
@@ -499,8 +501,9 @@ EXPORT Result<Device> create_default_device(
     ASSERTM(found, "device extension required but not found: %s", extension);
     LOG_INFO("device extension found: %s", extension);
   }
-  auto device =
-      create_device(*ar, physical_device, requested_features, extensions, queues_creation_infos);
+  auto device = create_device(
+      *ar, physical_device, requested_features, device_extensions, queues_creation_infos
+  );
   if (device.is_err()) {
     return device.err();
   }
@@ -519,16 +522,27 @@ EXPORT Result<Device> create_default_device(
 
 EXPORT VkPhysicalDeviceFeatures2
 physical_device_features::into_vk_physical_device_features2(core::Arena& ar) const {
-  auto physical_device_synchronization2_features =
-      ar.allocate<VkPhysicalDeviceSynchronization2Features>();
-  *physical_device_synchronization2_features = {
-      .sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES,
-      .synchronization2 = VK_TRUE,
-  };
   VkPhysicalDeviceFeatures2 physical_device_features2{
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
   };
-  VK_PUSH_NEXT(&physical_device_features2, physical_device_synchronization2_features);
+  if (synchronization2) {
+    auto physical_device_synchronization2_features =
+        ar.allocate<VkPhysicalDeviceSynchronization2Features>();
+    *physical_device_synchronization2_features = {
+        .sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES,
+        .synchronization2 = VK_TRUE,
+    };
+    VK_PUSH_NEXT(&physical_device_features2, physical_device_synchronization2_features);
+  }
+  if (dynamic_rendering) {
+    auto physical_device_dynamic_rendering_features =
+        ar.allocate<VkPhysicalDeviceDynamicRenderingFeatures>();
+    *physical_device_dynamic_rendering_features = {
+        .sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES,
+        .dynamicRendering = true,
+    };
+    VK_PUSH_NEXT(&physical_device_features2, physical_device_dynamic_rendering_features);
+  }
   return physical_device_features2;
 }
 EXPORT bool physical_device_features::check_features(
@@ -691,19 +705,27 @@ EXPORT SwapchainConfig create_default_swapchain_config(const Device& device, VkS
     int best_score = -1;
 
     for (auto format : formats.iter()) {
+      LOG_BUILDER(core::LogLevel::Info, push("Surface accept format ").push(format.format));
       int score = 0;
+      switch (format.format) {
+      case VK_FORMAT_B8G8R8A8_SRGB:
+      case VK_FORMAT_R8G8B8A8_SRGB:
+        score = 1;
+        break;
+      default:
+        break;
+      }
+
       if (score > best_score) {
         best_format = format;
-        switch (format.format) {
-        case VK_FORMAT_R8G8B8A8_SRGB:
-          score = 1;
-          break;
-        default:
-          break;
-        }
+        best_score  = score;
       }
-      swapchain_config.surface_format = best_format;
     }
+    swapchain_config.surface_format = best_format;
+    LOG_BUILDER(
+        core::LogLevel::Info,
+        push("Format ").push(best_format.format).pushf(" has been chosen for surface")
+    );
   }
   VkFormatProperties surface_format_properties{};
   vkGetPhysicalDeviceFormatProperties(

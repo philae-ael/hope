@@ -16,6 +16,7 @@ App init_app() {
   App app{.handle = nullptr, EVAL(APP_PFNS)};
 #undef PFN
 
+  app.init();
   return app;
 }
 

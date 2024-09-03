@@ -6,15 +6,14 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#ifndef MEM_USE_MALLOC
-
 using namespace core::enum_helpers;
 
-  #ifdef MEM_DEBUG
-    #include <cstdio>
-  #endif
+#ifdef MEM_DEBUG
+  #include <cstdio>
+#endif
 
 namespace os {
+#ifndef MEM_USE_MALLOC
 
 void* mem_allocate(void* ptr, usize size, MemAllocationFlags flags) {
   if (any(flags & MemAllocationFlags::Reserve)) {
@@ -70,6 +69,7 @@ void mem_deallocate(void* ptr, usize size, MemDeallocationFlags flags) {
   }
   return;
 }
+#endif // MEM_USE_MALLOC
 
 const usize page_size_ = [] {
   return (usize)sysconf(_SC_PAGESIZE);
@@ -79,4 +79,3 @@ usize mem_page_size() {
 }
 
 } // namespace os
-#endif // MEM_USE_MALLOC

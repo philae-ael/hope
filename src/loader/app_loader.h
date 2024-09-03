@@ -16,10 +16,12 @@ struct Renderer;
 
 union SDL_Event;
 #define APP_PFNS                                                 \
+  PFN(init, void)                                                \
   PFN(uninit, void)                                              \
   PFN(handle_events, AppEvent, SDL_Event&)                       \
   PFN(init_renderer, Renderer*, core::Arena&, subsystem::video&) \
   PFN(render, AppEvent, subsystem::video&, Renderer*)            \
+  PFN(swapchain_rebuilt, void, subsystem::video&, Renderer*)     \
   PFN(uninit_renderer, void, subsystem::video&, Renderer*)
 
 #define PFN(name, ret, ...) using CONCAT(PFN_, name) = ret (*)(__VA_ARGS__);

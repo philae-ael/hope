@@ -67,6 +67,7 @@ struct queue_creation_info {
 struct physical_device_features {
   core::storage<queue_request> queues;
   bool synchronization2;
+  bool dynamic_rendering;
 
   bool check_features(const VkPhysicalDeviceProperties2& physical_device_properties2) const;
   VkPhysicalDeviceFeatures2 into_vk_physical_device_features2(core::Arena& ar) const;

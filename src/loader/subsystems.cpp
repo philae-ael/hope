@@ -1,10 +1,10 @@
 #include "subsystems.h"
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_error.h>
-#include <SDL2/SDL_stdinc.h>
-#include <SDL2/SDL_video.h>
-#include <SDL2/SDL_vulkan.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_error.h>
+#include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_video.h>
+#include <SDL3/SDL_vulkan.h>
 
 #include <core/containers/vec.h>
 #include <core/core.h>
@@ -12,17 +12,10 @@
 #include <core/vulkan/init.h>
 #include <core/vulkan/vulkan.h>
 
-core::vec<const char*> enumerate_SDL_vulkan_instance_extensions(
-    core::Arena& ar,
-    SDL_Window* window
-) {
-  core::vec<const char*> v;
+core::storage<const char*> enumerate_SDL_vulkan_instance_extensions() {
   u32 instance_extension_count;
-  SDL_Vulkan_GetInstanceExtensions(window, &instance_extension_count, nullptr);
-  v.set_capacity(ar, instance_extension_count);
-  SDL_Vulkan_GetInstanceExtensions(window, &instance_extension_count, v.data());
-  v.set_size(instance_extension_count);
-  return v;
+  const char** d = (const char**)SDL_Vulkan_GetInstanceExtensions(&instance_extension_count);
+  return {instance_extension_count, d};
 }
 
 EXPORT subsystem::video subsystem::init_video() {
@@ -32,20 +25,18 @@ EXPORT subsystem::video subsystem::init_video() {
   LOG_INFO("initializing video subsystem");
 
   vk::init();
-  SDL_Window* window = SDL_CreateWindow(
-      "title", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 800, 600,
-      SDL_WINDOW_VULKAN | SDL_WINDOW_BORDERLESS
-  );
+  SDL_Window* window =
+      SDL_CreateWindow("title", 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_BORDERLESS);
   ASSERTM(window != nullptr, "can't create SDL window: %s", SDL_GetError());
-  auto instance_extensions = enumerate_SDL_vulkan_instance_extensions(*ar, window);
+  auto instance_extensions = enumerate_SDL_vulkan_instance_extensions();
   const char* layers[]     = {
       "VK_LAYER_KHRONOS_validation",
   };
-  vk::Instance instance = vk::create_default_instance(core::vec{layers}, instance_extensions)
-                              .expect("can't create instance");
+  vk::Instance instance =
+      vk::create_default_instance(layers, instance_extensions).expect("can't create instance");
   VkSurfaceKHR surface;
   {
-    SDL_bool surface_created = SDL_Vulkan_CreateSurface(window, instance, &surface);
+    SDL_bool surface_created = SDL_Vulkan_CreateSurface(window, instance, nullptr, &surface);
     ASSERTM(surface_created == SDL_TRUE, "can't create surface: %s", SDL_GetError());
   }
 

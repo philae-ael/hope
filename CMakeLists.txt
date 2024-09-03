@@ -16,9 +16,8 @@ function(target_compile_link_options target)
   target_link_options(${target} ${ARGN})
 endfunction()
 
-find_package(SDL2 REQUIRED CONFIG)
 find_package(Vulkan REQUIRED)
-add_subdirectory(vendor/VulkanMemoryAllocator)
+add_subdirectory(vendor)
 
 add_library(core
   src/core/core/debug.cpp
@@ -34,7 +33,7 @@ add_library(core
   src/core/vulkan/vulkan.cpp
   src/core/vulkan/frame.cpp
 )
-target_include_directories(core PUBLIC src/)
+target_include_directories(core PUBLIC src)
 
 if (UNIX)
   target_sources(core PRIVATE
@@ -52,12 +51,13 @@ target_compile_link_options(core PUBLIC -flto)
 target_compile_link_options(core PUBLIC -fvisibility=hidden)
 
 target_compile_definitions(core PUBLIC -DDEBUG)
+target_compile_definitions(core PUBLIC -DVMA_DEBUG)
 # target_compile_definitions(core PRIVATE -DARENA_DEBUG )
 # target_compile_definitions(core PRIVATE -DMEM_DEBUG )
-# target_compile_definitions(core PRIVATE -DMEM_USE_MALLOC)
+target_compile_definitions(core PRIVATE -DMEM_USE_MALLOC)
 # target_compile_definitions(core PRIVATE -DSCRATCH_DEBUG )
 
-target_link_libraries(core PUBLIC SDL2::SDL2 Vulkan::Vulkan stdc++exp)
+target_link_libraries(core PUBLIC SDL3::SDL3 Vulkan::Vulkan stdc++exp imgui)
 
 
 add_executable(loader
@@ -80,6 +80,7 @@ target_link_libraries(app PUBLIC core GPUOpen::VulkanMemoryAllocator)
 target_sources(app PRIVATE
   src/app/app.cpp
   src/app/renderer.cpp
+  src/app/vma.cpp
 )
 
 target_link_libraries(loader PRIVATE core)

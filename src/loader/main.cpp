@@ -1,5 +1,5 @@
-#include <SDL2/SDL.h>
-#include <SDL_events.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_events.h>
 
 #include "app_loader.h"
 #include "subsystems.h"
@@ -16,7 +16,7 @@ using namespace core::enum_helpers;
 log_entry timed_formatter(void* u, Arena& arena, core::log_entry entry) {
   entry         = log_fancy_formatter(nullptr, arena, entry);
   entry.builder = string_builder{}
-                      .push(arena, os::time_monotonic(), os::TimeFormat::MM_SS_MMM_UUU_NNN)
+                      .push(arena, os::time_monotonic(), os::TimeFormat::MM_SS_MMM)
                       .push(arena, " ")
                       .append(entry.builder);
   return entry;
@@ -39,10 +39,10 @@ int main(int argc, char* argv[]) {
     AppEvent sev{};
     SDL_Event ev{};
     while (SDL_PollEvent(&ev)) {
-      if (ev.type == SDL_QUIT) {
+      if (ev.type == SDL_EVENT_QUIT) {
         sev |= AppEvent::Exit;
       }
-      if (ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_ESCAPE) {
+      if (ev.type == SDL_EVENT_KEY_DOWN && ev.key.key == SDLK_ESCAPE) {
         sev |= AppEvent::ReloadApp;
       }
       sev |= app.handle_events(ev);
@@ -59,6 +59,7 @@ int main(int argc, char* argv[]) {
     }
     if (any(sev & AppEvent::RebuildSwapchain)) {
       subsystem::video_rebuild_swapchain(video);
+      app.swapchain_rebuilt(video, renderer);
     }
 
     if (any(sev & AppEvent::ReloadApp) || need_reload(app)) {

@@ -21,30 +21,29 @@ log_entry default_log_formatter(void*, Arena& arena, log_entry entry) {
 
 #define ESCAPE "\x1B"
 static core::str8 LEVEL_COLOR[]{
-    ""_s,            // Trace,
-    ""_s,            // Debug,
-    ESCAPE "[34m"_s, // Info, blue
-    ESCAPE "[33m"_s, // Warning, yellow
-    ESCAPE "[31m"_s, // Error, red
+    ESCAPE "[38;5;250m"_s, // Trace,
+    ""_s,                  // Debug,
+    ESCAPE "[34m"_s,       // Info, blue
+    ESCAPE "[33m"_s,       // Warning, yellow
+    ESCAPE "[31m"_s,       // Error, red
 };
 
 static core::str8 COLOR_RESET = ESCAPE "[0m"_s;
 
 EXPORT log_entry log_fancy_formatter(void*, core::Arena& arena, core::log_entry entry) {
   auto old_builder = entry.builder;
-  entry.builder    = core::string_builder{}.push(arena, entry.loc.func);
-  if (entry.loc.line != u32(-1)) {
-    entry.builder.pushf(arena, ":%u ", entry.loc.line);
-  } else {
-    entry.builder.pushf(arena, " ");
-  }
+  entry.builder    = core::string_builder{};
 
   entry.builder.push(arena, LEVEL_COLOR[(usize)entry.level])
       .push(arena, entry.level)
       .push(arena, COLOR_RESET)
-      .push(arena, ": ")
-      .append(old_builder)
-      .push(arena, "\n");
+      .push(arena, " ");
+
+  entry.builder.push(arena, entry.loc.func);
+  if (entry.loc.line != u32(-1)) {
+    entry.builder.pushf(arena, ":%u", entry.loc.line);
+  }
+  entry.builder.push(arena, ": ").append(old_builder).push(arena, "\n");
   return entry;
 }
 

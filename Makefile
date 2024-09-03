@@ -1,8 +1,8 @@
 BUILD_TYPE?=Debug
 BUILD_SHARED_LIBS?=ON
 OUTPUT_DIR?=build
-CC:=clang
-CXX:=clang++
+CC:=gcc
+CXX:=g++
 
 .PHONY: all run clean format iwyu build-all
 

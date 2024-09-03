@@ -107,19 +107,20 @@ core::str8 to_str8(core::Arena& ar, queue_flags_t, VkQueueFlags struct_type);
     (parent)->pNext = (child);                \
   } while (0)
 
-#define VK_ASSERT(x)                                                              \
-  do {                                                                            \
-    VkResult res_assert_ = (x);                                                   \
-    if (res_assert_ != VK_SUCCESS) {                                              \
-      LOG_BUILDER(                                                                \
-          ::core::LogLevel::Error,                                                \
-          push("expected VK_SUCCESS, " STRINGIFY(x) "returned").push(res_assert_) \
-      );                                                                          \
-      ::core::panic("VK_ASSERT failed");                                          \
-    }                                                                             \
+#define VK_ASSERT(x)                                                                \
+  do {                                                                              \
+    VkResult res_assert_ = (x);                                                     \
+    if (res_assert_ != VK_SUCCESS) {                                                \
+      LOG_BUILDER(                                                                  \
+          ::core::LogLevel::Error,                                                  \
+          push("expected VK_SUCCESS, " STRINGIFY(x) " returned ").push(res_assert_) \
+      );                                                                            \
+      ::core::panic("VK_ASSERT failed");                                            \
+    }                                                                               \
   } while (0)
 
 core::str8 to_str8(VkResult res);
 core::str8 to_str8(VkStructureType struct_type);
+core::str8 to_str8(VkFormat format);
 
 #endif // INCLUDE_VULKAN_VULKAN_H_

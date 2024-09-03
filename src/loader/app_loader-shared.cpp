@@ -26,16 +26,18 @@ App init_app_stub() {
       }                                                       \
     } while (0)
 
-void uninit_app(App& app) {
-  if (app.handle != nullptr) {
-    auto pfn_uninit_app = (App(*)())(dlsym(app.handle, "uninit"));
+void* libapp_handle = nullptr;
+void uninit_app() {
+  if (libapp_handle != nullptr) {
+    auto pfn_uninit_app = (App(*)())(dlsym(libapp_handle, "uninit"));
     CHECK_DLERROR("can't load symbol uninit");
     pfn_uninit_app();
 
-    dlclose(app.handle);
+    dlclose(libapp_handle);
+    libapp_handle = nullptr;
     return;
   failed:
-    app = init_app_stub();
+    return;
   }
 }
 
@@ -50,7 +52,7 @@ do_retry:
   LOG_DEBUG("loading app at location %s", soname);
 
   dlerror();
-  void* libapp_handle = dlopen(soname, RTLD_LOCAL | RTLD_NOW);
+  libapp_handle = dlopen(soname, RTLD_LOCAL | RTLD_NOW);
   App app{libapp_handle};
   if (libapp_handle == nullptr) {
     if (retry < maxretry) {
@@ -70,6 +72,8 @@ do_retry:
     CHECK_DLERROR("can't load symbol " #name);
   EVAL(APP_PFNS)
   #undef PFN
+  app.init();
+  app.uninit = uninit_app;
   return app;
 
 failed:
@@ -98,7 +102,7 @@ void reload_app(App& app) {
   auto ar            = core::scratch_get();
   defer { ar.retire(); };
 
-  uninit_app(app);
+  app.uninit();
 
   core::string_builder sb{};
   sb.pushf(*ar, "./libapp-%zu.so", count++);
