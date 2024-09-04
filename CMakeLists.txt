@@ -17,7 +17,7 @@ function(target_compile_link_options target)
 endfunction()
 
 find_package(Vulkan REQUIRED)
-add_subdirectory(vendor)
+add_subdirectory(vendor SYSTEM)
 
 add_library(core
   src/core/core/debug.cpp
@@ -81,6 +81,8 @@ target_sources(app PRIVATE
   src/app/app.cpp
   src/app/renderer.cpp
   src/app/vma.cpp
+  src/app/testfree.cpp
+  src/app/vulkan_helper.cpp
 )
 
 target_link_libraries(loader PRIVATE core)

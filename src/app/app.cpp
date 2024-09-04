@@ -25,6 +25,7 @@ EXPORT AppEvent handle_events(SDL_Event& ev) {
   }
   case SDL_EVENT_WINDOW_CLOSE_REQUESTED: {
     system_event |= AppEvent::Exit;
+    break;
   }
   case SDL_EVENT_KEY_DOWN: {
     if (ImGui::GetIO().WantCaptureKeyboard) {

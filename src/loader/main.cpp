@@ -27,6 +27,8 @@ int main(int argc, char* argv[]) {
   log_register_global_formatter(timed_formatter, nullptr);
   log_set_global_level(core::LogLevel::Trace);
 
+  SDL_Init(SDL_INIT_GAMEPAD);
+
   auto video = subsystem::init_video();
   App app    = init_app();
   Renderer* renderer;

@@ -63,18 +63,17 @@ struct string_builder {
     return push_str8(arena, to_str8(arena, FWD(t), FWD(args)...));
   }
 
-  PRINTF_ATTRIBUTE(3, 4)
-  string_builder& pushf(Arena& arena, const char* fmt, ...);
+  PRINTF_ATTRIBUTE(3, 4) string_builder& pushf(Arena& arena, const char* fmt, ...);
   string_builder& vpushf(Arena& arena, const char* fmt, va_list ap);
   str8 commit(Arena& arena, str8 join = {}) const;
 };
 
 namespace literals {
-inline str8 operator""_s(const char* s, std::size_t len) {
+constexpr inline str8 operator""_s(const char* s, std::size_t len) {
   return str8::from(s, len);
 }
 
-inline hstr8 operator""_hs(const char* s, std::size_t len) {
+constexpr inline hstr8 operator""_hs(const char* s, std::size_t len) {
   return str8::from(s, len).hash();
 }
 constexpr inline u64 operator""_h(const char* s, std::size_t len) {
