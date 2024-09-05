@@ -91,7 +91,10 @@ Result<Device> create_default_device(
 
 struct SwapchainConfig {
   u32 min_image_count;
-  VkExtent2D extent;
+  union {
+    VkExtent2D extent2;
+    VkExtent3D extent3;
+  };
   VkSurfaceFormatKHR surface_format;
   VkPresentModeKHR present_mode;
   VkImageUsageFlags image_usage_flags;

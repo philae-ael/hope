@@ -1,12 +1,16 @@
 #ifndef INCLUDE_APP_VULKAN_HELPER_H_
 #define INCLUDE_APP_VULKAN_HELPER_H_
 
-#include <core/core.h>
-#include <core/vulkan.h>
-#include <loader/subsystems.h>
-#include <vk_mem_alloc.h>
-#include <vulkan/vulkan_core.h>
+#include "vulkan.h"
 
+#include <core/core.h>
+#include <vk_mem_alloc.h>
+
+namespace subsystem {
+struct video;
+}
+
+namespace vk {
 struct image2D {
   enum class Source { Swapchain, Created } source;
   VkImage image;
@@ -45,15 +49,11 @@ struct image2D {
     VkImageUsageFlags usage;
   };
 
-  static image2D create(
-      subsystem::video& v,
-      VmaAllocator allocator,
-      const image2D::Config& config,
-      Sync sync
-  );
+  static image2D create(subsystem::video& v, const image2D::Config& config, Sync sync);
   VkImageMemoryBarrier2 sync_to(image2D::Sync new_sync);
-  void destroy(subsystem::video& v, VmaAllocator allocator);
+  void destroy(subsystem::video& v);
 };
 
 void full_barrier(VkCommandBuffer cmd);
+} // namespace vk
 #endif // INCLUDE_APP_VULKAN_HELPER_H_

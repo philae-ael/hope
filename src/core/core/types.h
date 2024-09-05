@@ -322,6 +322,13 @@ struct storage {
       : size(len)
       , data(a) {}
 
+  // HUM... not sure i should allow that without copying... if it bites me i should only blame
+  // myself i guess
+  template <usize len>
+  storage(S (&&a)[len])
+      : size(len)
+      , data(a) {}
+
   storage(usize size, S* data)
       : size(size)
       , data(data) {}
@@ -368,6 +375,43 @@ struct storage {
     return {data, range{0zu, size}.iter()};
   }
 };
+
+namespace detail_ {
+template <class S, usize N>
+struct array_storage {
+  using type = S[N];
+};
+template <class S>
+struct array_storage<S, 0> {
+  using type = S*;
+};
+} // namespace detail_
+template <class S, usize N>
+struct array {
+  detail_::array_storage<S, N>::type data;
+  operator storage<S>() {
+    return {N, data};
+  }
+  operator storage<const S>() const {
+    return {N, data};
+  }
+  inline S& operator[](auto idx) {
+    return data[idx];
+  }
+
+  inline const S& operator[](auto idx) const {
+    return data[idx];
+  }
+  auto iter() {
+    return storage{*this}.iter();
+  }
+  auto iter() const {
+    return storage{*this}.iter();
+  }
+};
+
+template <class... Args>
+array(Args&&... args) -> array<std::common_type_t<Args...>, sizeof...(Args)>;
 
 template <class Idx, iterable It>
 struct EnumerateItem {

@@ -85,8 +85,7 @@ EXPORT void dump_backtrace(usize skip) {
 void crash_handler(int sig) {
   dump_backtrace(2);
 
-  ::signal(sig, SIG_DFL);
-  ::raise(sig);
+  exit(1);
 }
 
 EXPORT void setup_crash_handler() {

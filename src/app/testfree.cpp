@@ -1,9 +1,8 @@
 #include <core/containers/vec.h>
 #include <core/core.h>
 #include <core/vulkan.h>
-#include <loader/subsystems.h>
-
-#include "vulkan_helper.h"
+#include <core/vulkan/image.h>
+#include <core/vulkan/subsystem.h>
 
 using namespace core::literals;
 
@@ -122,11 +121,11 @@ struct Ctx {
   }
 };
 
-using resimage = core::handle_t<image2D>;
+using resimage = core::handle_t<vk::image2D>;
 template <>
 struct ressource_traits<resimage> {
-  using config = image2D::Config;
-  using sync   = image2D::Sync;
+  using config = vk::image2D::Config;
+  using sync   = vk::image2D::Sync;
 };
 
 void render_imgui(Ctx& ctx) {

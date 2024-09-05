@@ -29,6 +29,7 @@ AttributeMacros:
   - PRIVATE
   - PUBLIC
   - PRINTF_ATTRIBUTE
+  - EXPORT
 AlignConsecutiveAssignments:
   Enabled: true
   AcrossEmptyLines: true

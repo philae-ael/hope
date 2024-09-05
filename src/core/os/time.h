@@ -7,7 +7,7 @@
 
 namespace core {
 struct Arena;
-}  // namespace core
+} // namespace core
 
 namespace os {
 struct time {

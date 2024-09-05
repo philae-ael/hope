@@ -6,8 +6,10 @@
 #include <core/containers/vec.h>
 #include <core/core/fwd.h>
 #include <core/vulkan/frame.h>
+#include <core/vulkan/image.h>
 #include <core/vulkan/init.h>
 #include <core/vulkan/vulkan.h>
+#include <vk_mem_alloc.h>
 
 namespace core {
 struct Arena;
@@ -20,6 +22,11 @@ core::vec<const char*> enumerate_SDL_vulkan_instance_extensions(
 
 namespace subsystem {
 
+struct VideoFrame {
+  vk::image2D swapchain_image;
+  vk::Frame frame;
+};
+
 struct video {
   SDL_Window* window;
   vk::Instance instance;
@@ -27,8 +34,14 @@ struct video {
   VkSurfaceKHR surface;
   vk::Swapchain swapchain;
   vk::FrameSynchro sync;
+  VmaAllocator allocator;
+
+  core::vec<vk::image2D> swapchain_images;
+
+  vk::Result<VideoFrame> begin_frame();
+  VkResult end_frame(VideoFrame, VkCommandBuffer);
 };
-video init_video();
+video init_video(core::Arena& ar);
 void uninit_video(video& v);
 void video_rebuild_swapchain(video& v);
 

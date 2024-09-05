@@ -627,7 +627,7 @@ Result<VkSwapchainKHR> create_swapchain(
       .minImageCount         = swapchain_config.min_image_count,
       .imageFormat           = swapchain_config.surface_format.format,
       .imageColorSpace       = swapchain_config.surface_format.colorSpace,
-      .imageExtent           = swapchain_config.extent,
+      .imageExtent           = swapchain_config.extent2,
       .imageArrayLayers      = 1,
       .imageUsage            = swapchain_config.image_usage_flags,
       .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
@@ -657,9 +657,10 @@ EXPORT SwapchainConfig create_default_swapchain_config(const Device& device, VkS
   );
 
   SwapchainConfig swapchain_config{};
-  swapchain_config.extent = surface_capabilities.currentExtent.width == 0xFFFFFFFF
-                                ? surface_capabilities.maxImageExtent
-                                : surface_capabilities.currentExtent;
+  swapchain_config.extent2       = surface_capabilities.currentExtent.width == 0xFFFFFFFF
+                                       ? surface_capabilities.maxImageExtent
+                                       : surface_capabilities.currentExtent;
+  swapchain_config.extent3.depth = 1;
   swapchain_config.min_image_count =
       MAX(surface_capabilities.minImageCount,
           surface_capabilities.maxImageCount == 0 ? 3 : MIN(3, surface_capabilities.maxImageCount));
@@ -772,7 +773,6 @@ EXPORT Result<core::unit_t> rebuild_default_swapchain(
     VkSurfaceKHR surface,
     Swapchain& swapchain
 ) {
-
   auto new_swapchain_config = create_default_swapchain_config(device, surface);
   ASSERTM(
       new_swapchain_config.min_image_count == swapchain.config.min_image_count,

@@ -2,7 +2,7 @@
 #include <SDL3/SDL_events.h>
 
 #include "app_loader.h"
-#include "subsystems.h"
+#include <core/vulkan/subsystem.h>
 
 #include <core/core.h>
 #include <core/os.h>
@@ -29,10 +29,10 @@ int main(int argc, char* argv[]) {
 
   SDL_Init(SDL_INIT_GAMEPAD);
 
-  auto video = subsystem::init_video();
+  auto& ar   = arena_alloc();
+  auto video = subsystem::init_video(ar);
   App app    = init_app();
   Renderer* renderer;
-  auto& ar = arena_alloc();
 
   renderer = app.init_renderer(ar, video);
   LOG_INFO("App fully initialized");

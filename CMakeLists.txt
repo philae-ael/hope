@@ -32,6 +32,9 @@ add_library(core
   src/core/vulkan/init.cpp
   src/core/vulkan/vulkan.cpp
   src/core/vulkan/frame.cpp
+  src/core/vulkan/vma.cpp
+  src/core/vulkan/subsystem.cpp
+  src/core/vulkan/image.cpp
 )
 target_include_directories(core PUBLIC src)
 
@@ -57,12 +60,11 @@ target_compile_definitions(core PUBLIC -DVMA_DEBUG)
 target_compile_definitions(core PRIVATE -DMEM_USE_MALLOC)
 # target_compile_definitions(core PRIVATE -DSCRATCH_DEBUG )
 
-target_link_libraries(core PUBLIC SDL3::SDL3 Vulkan::Vulkan stdc++exp imgui)
+target_link_libraries(core PUBLIC SDL3::SDL3 Vulkan::Vulkan stdc++exp imgui GPUOpen::VulkanMemoryAllocator)
 
 
 add_executable(loader
   src/loader/main.cpp
-  src/loader/subsystems.cpp
 )
 
 if (BUILD_SHARED_LIBS)
@@ -75,14 +77,13 @@ else()
   target_sources(loader PRIVATE src/loader/app_loader-static.cpp)
   target_link_libraries(loader PRIVATE app)
 endif()
-target_link_libraries(app PUBLIC core GPUOpen::VulkanMemoryAllocator)
+target_link_libraries(app PUBLIC core)
 
 target_sources(app PRIVATE
   src/app/app.cpp
   src/app/renderer.cpp
-  src/app/vma.cpp
   src/app/testfree.cpp
-  src/app/vulkan_helper.cpp
+  src/app/imgui_renderer.cpp
 )
 
 target_link_libraries(loader PRIVATE core)

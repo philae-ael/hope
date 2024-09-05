@@ -4,4 +4,5 @@
 #endif
 
 #define VMA_IMPLEMENTATION
+#define VMA_CALL_PRE EXPORT
 #include <vk_mem_alloc.h>

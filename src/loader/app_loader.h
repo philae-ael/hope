@@ -1,8 +1,8 @@
 #ifndef INCLUDE_SRC_APP_LOADER_H_
 #define INCLUDE_SRC_APP_LOADER_H_
 
-#include "subsystems.h"
 #include <core/core.h>
+#include <core/vulkan/subsystem.h>
 
 enum class AppEvent : u8 {
   Exit             = 0x1,
