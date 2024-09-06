@@ -100,4 +100,16 @@ EXPORT void full_barrier(VkCommandBuffer cmd) {
   };
   vkCmdPipelineBarrier2(cmd, &dep_info);
 }
+
+EXPORT VkRenderingAttachmentInfo
+image2D::as_attachment(AttachmentLoadOp loadop, AttachmentStoreOp storeop) {
+  return VkRenderingAttachmentInfo{
+      .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+      .imageView   = image_view,
+      .imageLayout = sync.layout,
+      .loadOp      = loadop.load_op,
+      .storeOp     = storeop.store_op,
+      .clearValue  = loadop.clear_value,
+  };
+}
 } // namespace vk

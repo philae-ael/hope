@@ -84,6 +84,7 @@ target_sources(app PRIVATE
   src/app/renderer.cpp
   src/app/testfree.cpp
   src/app/imgui_renderer.cpp
+  src/app/triangle_renderer.cpp
 )
 
 target_link_libraries(loader PRIVATE core)

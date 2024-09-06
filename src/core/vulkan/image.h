@@ -5,6 +5,7 @@
 
 #include <core/core.h>
 #include <vk_mem_alloc.h>
+#include <vulkan/vulkan_core.h>
 
 namespace subsystem {
 struct video;
@@ -51,6 +52,36 @@ struct image2D {
 
   static image2D create(subsystem::video& v, const image2D::Config& config, Sync sync);
   VkImageMemoryBarrier2 sync_to(image2D::Sync new_sync);
+
+  struct AttachmentLoadOp {
+    VkAttachmentLoadOp load_op;
+    VkClearValue clear_value{};
+    static TAG(Load);
+    static TAG(DontCare);
+    struct Clear {
+      VkClearValue clear_value;
+    };
+
+    AttachmentLoadOp(Load_t)
+        : load_op(VK_ATTACHMENT_LOAD_OP_LOAD) {}
+    AttachmentLoadOp(DontCare_t)
+        : load_op(VK_ATTACHMENT_LOAD_OP_DONT_CARE) {}
+    AttachmentLoadOp(Clear c)
+        : load_op(VK_ATTACHMENT_LOAD_OP_CLEAR)
+        , clear_value(c.clear_value) {}
+  };
+  struct AttachmentStoreOp {
+    VkAttachmentStoreOp store_op;
+    static TAG(Store);
+    static TAG(DontCare);
+
+    AttachmentStoreOp(Store_t)
+        : store_op(VK_ATTACHMENT_STORE_OP_STORE) {}
+    AttachmentStoreOp(DontCare_t)
+        : store_op(VK_ATTACHMENT_STORE_OP_STORE) {}
+  };
+
+  VkRenderingAttachmentInfo as_attachment(AttachmentLoadOp loadop, AttachmentStoreOp storeop);
   void destroy(subsystem::video& v);
 };
 

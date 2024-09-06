@@ -1,5 +1,6 @@
 
 #include "imgui_renderer.h"
+#include "triangle_renderer.h"
 #include <core/vulkan/sync.h>
 
 #include <core/core.h>
@@ -13,14 +14,6 @@
 #include <loader/app_loader.h>
 
 using namespace core::enum_helpers;
-struct TriangleRenderer {
-  VkDescriptorPool descriptor_pool;
-  vk::image2D image;
-
-  static TriangleRenderer init(subsystem::video& v);
-  void render(VkCommandBuffer cmd);
-  void uninit(subsystem::video& v);
-};
 
 struct MainRenderer {
   ImGuiRenderer imgui_renderer;
@@ -40,30 +33,15 @@ struct Renderer {
 
 MainRenderer MainRenderer::init(subsystem::video& v) {
   MainRenderer self;
-  self.imgui_renderer = ImGuiRenderer::init(v);
+  self.triangle_renderer = TriangleRenderer::init(v, v.swapchain.config.surface_format.format);
+  self.imgui_renderer    = ImGuiRenderer::init(v);
   return self;
 }
 
 void MainRenderer::render(VkCommandBuffer cmd, vk::image2D& swapchain_image) {
-  imgui_renderer.render(cmd);
-  vk::pipeline_barrier(
-      cmd,
-      vk::Barriers{
-          swapchain_image.sync_to({VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL}),
-          imgui_renderer.image.sync_to({VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL})
-      }
-  );
-  {
-    VkImageCopy region{
-        .srcSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .layerCount = 1},
-        .dstSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .layerCount = 1},
-        .extent         = imgui_renderer.image.extent3,
-    };
-    vkCmdCopyImage(
-        cmd, imgui_renderer.image, imgui_renderer.image.sync.layout, swapchain_image,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region
-    );
-  }
+  vk::pipeline_barrier(cmd, swapchain_image.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}));
+  triangle_renderer.render(cmd, swapchain_image);
+  imgui_renderer.render(cmd, swapchain_image);
   vk::pipeline_barrier(
       cmd, swapchain_image.sync_to({
                VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
@@ -74,6 +52,7 @@ void MainRenderer::render(VkCommandBuffer cmd, vk::image2D& swapchain_image) {
 }
 
 void MainRenderer::uninit(subsystem::video& v) {
+  triangle_renderer.uninit(v);
   imgui_renderer.uninit(v);
 }
 

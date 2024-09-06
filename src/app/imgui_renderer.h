@@ -10,10 +10,9 @@
 
 struct ImGuiRenderer {
   VkDescriptorPool descriptor_pool;
-  vk::image2D image;
 
   static ImGuiRenderer init(subsystem::video& v);
-  void render(VkCommandBuffer);
+  void render(VkCommandBuffer, vk::image2D& image);
   void uninit(subsystem::video& v);
 };
 

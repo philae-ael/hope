@@ -9,22 +9,17 @@
 
 #include "base.h"
 #include "debug.h"
+#define TAG(name)                     \
+  constexpr struct CONCAT(name, _t) { \
+  } name {                            \
+  }
+
 namespace core {
-
-struct unit_t {};
-constexpr unit_t unit{};
-
-struct inplace_t {};
-constexpr inplace_t inplace{};
-
-struct unsafe_t {};
-constexpr unsafe_t unsafe{};
-
-struct clear_t {};
-constexpr clear_t clear{};
-
-struct noalloc_t {};
-constexpr noalloc_t noalloc{};
+TAG(unit);
+TAG(inplace);
+TAG(unsafe);
+TAG(clear);
+TAG(noalloc);
 
 template <class T>
 struct identity {
@@ -408,8 +403,10 @@ struct array {
   auto iter() const {
     return storage{*this}.iter();
   }
+  usize size() const {
+    return N;
+  }
 };
-
 template <class... Args>
 array(Args&&... args) -> array<std::common_type_t<Args...>, sizeof...(Args)>;
 
