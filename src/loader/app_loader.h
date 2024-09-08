@@ -36,8 +36,8 @@ struct App {
 };
 
 #if SHARED
-inline const char* default_soname = "./libapp.so";
-App init_app(const char* soname = default_soname);
+inline core::str8 default_soname = core::str8::from("lib/libapp.so");
+App init_app(core::str8 soname = default_soname);
 #else
 App init_app();
 #endif

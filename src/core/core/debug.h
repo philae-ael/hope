@@ -14,7 +14,7 @@
 #define ASSERT(cond)                                           \
   do {                                                         \
     if (!(cond)) [[unlikely]] {                                \
-      ::core::panic("assertion `" STRINGIFY(cond) "` failed"); \
+      ::core::panic("assertion `%s` failed", STRINGIFY(cond)); \
     }                                                          \
   } while (0)
 
@@ -24,7 +24,7 @@
     decltype(__a) __b = (b);                                                               \
     if (!(__a == __b)) [[unlikely]] {                                                      \
       ::core::panic(                                                                       \
-          "assertion `" STRINGIFY(a) " == " STRINGIFY(b) "` failed: `%g != %g`", (f32)__a, \
+          "assertion `%s == %s` failed: `%g != %g`", STRINGIFY(a), STRINGIFY(b), (f32)__a, \
           (f32)__b                                                                         \
       );                                                                                   \
     }                                                                                      \
@@ -33,7 +33,7 @@
 #define ASSERTM(cond, fmt, ...)                                                                 \
   do {                                                                                          \
     if (!(cond)) [[unlikely]] {                                                                 \
-      ::core::panic("assertion `" STRINGIFY(cond) "` failed:\n" fmt __VA_OPT__(, __VA_ARGS__)); \
+      ::core::panic("assertion `%s` failed:\n" fmt, STRINGIFY(cond) __VA_OPT__(, __VA_ARGS__)); \
     }                                                                                           \
   } while (0)
 

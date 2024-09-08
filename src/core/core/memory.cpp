@@ -1,6 +1,7 @@
 #include "../os/memory.h"
 
 #include <core/core.h>
+#include <cstring>
 
 using namespace core::enum_helpers;
 
@@ -9,6 +10,10 @@ using namespace core::enum_helpers;
 #endif
 
 #ifdef SCRATCH_DEBUG
+  #include <stdio.h>
+namespace core::sync {
+usize thread_id();
+}
   #define SCRATCH_DEBUG_STMT(f) f
 #else
   #define SCRATCH_DEBUG_STMT(f)
@@ -93,6 +98,7 @@ EXPORT void* Arena::allocate(usize size, usize alignement, const char* src) {
   }
 
   ASAN_UNPOISON_MEMORY_REGION(aligned, size);
+  memset(aligned, 0, size);
   return aligned;
 }
 
@@ -174,6 +180,7 @@ EXPORT ArenaTemp Arena::make_temp() {
 //
 // I decided to remove all atomic access, it's easier and it wont be an issue
 
+thread_local bool scratch_init = false;
 thread_local Arena* scratch_storage[SCRATCH_ARENA_AMOUNT]{};
 // This is not called, sometimes... it doesn't matter that much but it's annoying
 thread_local auto clear_arena_ = defer_builder + [] {
@@ -189,7 +196,8 @@ thread_local auto clear_arena_ = defer_builder + [] {
 };
 
 EXPORT scratch scratch_get() {
-  if (scratch_storage[0] == nullptr) {
+  if (!scratch_init) {
+    scratch_init = true;
     SCRATCH_DEBUG_STMT(printf("Scratch: initialize storage for thread %zu\n", sync::thread_id()));
     for (usize i = 0; i < SCRATCH_ARENA_AMOUNT; i++) {
       Arena* arena       = &arena_alloc();
@@ -226,8 +234,7 @@ EXPORT void scratch_retire(scratch& scr) {
     SCRATCH_DEBUG_STMT(printf(
         "Scratch: thread %zu, retire scratch %zu at %p\n", sync::thread_id(), i, arena_->base
     ));
-    Arena* out = nullptr;
-    SWAP(out, arena_);
+    SWAP(scratch_storage[i], arena_);
 
     return;
   }

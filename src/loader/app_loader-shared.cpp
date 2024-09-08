@@ -1,6 +1,7 @@
 #include "app_loader.h"
 
 #include "core/core.h"
+#include "core/fs/fs.h"
 #include <chrono>
 #include <cstdlib>
 #include <ctime>
@@ -42,23 +43,34 @@ void uninit_app() {
 }
 
 std::chrono::time_point<std::chrono::file_clock> last_ftime;
-App init_app(const char* soname) {
+App init_app(core::str8 soname_) {
+  auto scratch = core::scratch_get();
+  defer { scratch.retire(); };
+
+  const char* soname = fs::resolve_path(*scratch, soname_).cstring(*scratch);
+
   using namespace std::chrono_literals;
   const u32 maxretry = 5;
   u32 retry          = 0;
 
-  last_ftime         = std::filesystem::last_write_time(soname);
+  std::error_code ec;
+  App app;
+  last_ftime = std::filesystem::last_write_time(soname, ec);
+  if (ec) {
+    LOG_WARNING("can't check write time of file %s", soname);
+    goto failed;
+  }
 do_retry:
   LOG_DEBUG("loading app at location %s", soname);
 
   dlerror();
   libapp_handle = dlopen(soname, RTLD_LOCAL | RTLD_NOW);
-  App app{libapp_handle};
+  app.handle    = libapp_handle;
   if (libapp_handle == nullptr) {
     if (retry < maxretry) {
       retry++;
       LOG_WARNING(
-          "error while loading %s retrying... %d/%d: %s", default_soname, retry, maxretry, dlerror()
+          "error while loading %s retrying... %d/%d: %s", soname, retry, maxretry, dlerror()
       );
       std::this_thread::sleep_for(100ms);
       goto do_retry;
@@ -82,10 +94,16 @@ failed:
 #endif
 
 bool need_reload(App& app) {
+  auto scratch = core::scratch_get();
+  defer { scratch.retire(); };
+
+  const char* soname = ::fs::resolve_path(*scratch, default_soname).cstring(*scratch);
+
   using namespace std::chrono_literals;
   std::error_code ec1, ec2;
-  auto ftime = std::filesystem::last_write_time(default_soname, ec1);
-  auto size  = std::filesystem::file_size(default_soname, ec2);
+
+  auto ftime = std::filesystem::last_write_time(soname, ec1);
+  auto size  = std::filesystem::file_size(soname, ec2);
   if (!ec1 && !ec2 && ftime > last_ftime && size > 0 &&
       std::chrono::file_clock::now() - ftime >= 100ms) {
     LOG_DEBUG("need reload!");
@@ -95,20 +113,6 @@ bool need_reload(App& app) {
 }
 
 void reload_app(App& app) {
-  using namespace std::chrono_literals;
-  namespace fs       = std::filesystem;
-
-  static usize count = 0;
-  auto ar            = core::scratch_get();
-  defer { ar.retire(); };
-
   app.uninit();
-
-  core::string_builder sb{};
-  sb.pushf(*ar, "./libapp-%zu.so", count++);
-  const char* path = sb.commit(*ar).cstring(*ar);
-
-  fs::copy_file(default_soname, path);
-  app = init_app(path);
-  fs::remove(path);
+  app = init_app(default_soname);
 }

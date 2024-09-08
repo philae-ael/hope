@@ -16,6 +16,7 @@ AlignAfterOpenBracket: BlockIndent
 AlignEscapedNewlines: Left
 AllowAllArgumentsOnNextLine: true
 AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortBlocksOnASingleLine: Always
 AllowShortFunctionsOnASingleLine: Empty
 AllowShortLambdasOnASingleLine: Inline
 AlwaysBreakTemplateDeclarations: true

@@ -6,7 +6,6 @@
 #include <cstdarg>
 
 #include "debug.h"
-#include "fwd.h"
 #include "memory.h"
 #include "string.h"
 
@@ -20,9 +19,6 @@ enum class LogLevel {
   Warning,
   Error,
 };
-
-template <>
-Maybe<LogLevel> from_hstr8(hstr8 s);
 
 str8 to_str8(LogLevel level);
 

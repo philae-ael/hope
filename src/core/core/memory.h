@@ -5,9 +5,10 @@
 #include "debug.h"
 #include "fwd.h"
 #include "type_info.h"
+#include "types.h"
 
 #ifndef SCRATCH_ARENA_AMOUNT
-  #define SCRATCH_ARENA_AMOUNT 3
+  #define SCRATCH_ARENA_AMOUNT 6
 #endif
 
 #ifndef DEFAULT_ARENA_CAPACITY
@@ -138,43 +139,5 @@ struct scratch {
     ASSERTM(arena_ != nullptr, "scratch has already been already retired");
   }
 };
-
-template <class T, usize size_ = sizeof(T), usize alignement_ = alignof(T)>
-struct pool {
-  static constexpr usize size       = size_;
-  static constexpr usize alignement = alignement_;
-
-  Arena* arena_;
-
-  struct node {
-    node* next;
-  };
-  static_assert(sizeof(T) >= sizeof(node));
-  static_assert(alignof(T) >= alignof(node));
-
-  // free list implemented as a queue
-  node tail{};
-  node* head = &tail;
-
-  T* allocate() {
-    if (tail.next != nullptr) {
-      node* n   = tail.next;
-      tail.next = n->next;
-      return (T*)n;
-    }
-    return arena_->allocate<T>();
-  }
-  void deallocate(T* t) {
-    if (arena_->try_resize(t, size, 0, "pool")) {
-      return;
-    }
-
-    node* n    = (node*)t;
-    n->next    = nullptr;
-    head->next = n;
-    head       = n;
-  }
-};
-
 } // namespace core
 #endif // INCLUDE_CORE_MEMORY_H_

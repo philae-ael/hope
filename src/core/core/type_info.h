@@ -3,7 +3,7 @@
 
 #include <typeinfo>
 
-#include "fwd.h"
+#include "base.h"
 
 #if LINUX
   #include <cxxabi.h>

@@ -12,7 +12,7 @@ build-all: $(OUTPUT_DIR)/build.ninja
 	ninja -C$(OUTPUT_DIR) 
 
 run:  build-all
-	cd $(OUTPUT_DIR); ./loader
+	$(OUTPUT_DIR)/loader
 
 clean:
 	rm -rf ./$(OUTPUT_DIR)

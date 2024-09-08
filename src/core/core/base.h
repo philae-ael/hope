@@ -4,6 +4,7 @@
 
 #include "platform.h" // IWYU pragma: export
 #include <cstddef>
+#include <cstring>
 #include <limits.h>
 
 #define FWD(t) static_cast<decltype(t)&&>(t)
@@ -47,6 +48,10 @@ char (&_ArraySizeHelper(T (&arr)[N]))[N];
 #define ALIGN_MASK_UP(x, mask) (((x) + (mask)) & (~(mask)))
 #define ALIGN_UP(x, AMOUNT) ((decltype(x))ALIGN_MASK_UP((uptr)(x), AMOUNT - 1))
 
+#define TAG(name)                     \
+  constexpr struct CONCAT(name, _t) { \
+  } name {}
+
 using u8 = unsigned char;
 static_assert(CHAR_BIT == 8);
 using u16 = unsigned short;
@@ -78,10 +83,18 @@ constexpr usize max_align_v = alignof(std::max_align_t);
 
 namespace core {
 
+struct Arena;
 struct hstr8 {
   u64 hash;
   usize len;
   const u8* data;
+
+  // This is not a real == operator bc collisions but well, it will be a fun bug to find if a
+  // collision occur
+  bool operator==(const hstr8& other) const {
+    return other.hash == hash;
+  }
+  hstr8 clone(Arena& arena);
 };
 
 constexpr u64 hash(const u8* data, size_t len) {
@@ -103,7 +116,8 @@ constexpr u64 hash(const char* data, size_t len) {
   return h;
 }
 
-struct Arena;
+TAG(cstr);
+
 struct str8 {
   usize len;
   const u8* data;
@@ -115,6 +129,9 @@ struct str8 {
   static str8 from(const char* d, size_t len) {
     return str8{len, reinterpret_cast<const u8*>(d)};
   }
+  static str8 from(cstr_t, const char* d) {
+    return str8{strlen(d), reinterpret_cast<const u8*>(d)};
+  }
   hstr8 hash() const {
     return {
         ::core::hash(data, len),
@@ -123,6 +140,18 @@ struct str8 {
     };
   }
 
+  inline str8 subslice(usize offset) const {
+    return {len - offset, data + offset};
+  }
+  inline str8 subslice(usize offset, const usize len) const {
+    return {len, data + offset};
+  }
+
+  inline u8 operator[](usize idx) const {
+    return data[idx];
+  }
+
+  str8 clone(Arena& arena);
   const char* cstring(Arena& arena);
 };
 

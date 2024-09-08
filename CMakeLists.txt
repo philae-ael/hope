@@ -27,6 +27,7 @@ add_library(core
   src/core/core/platform.cpp
   src/core/core/string.cpp
   src/core/core/type_info.cpp
+  src/core/containers/sync.cpp
   src/core/os/time.cpp
   src/core/os/memory.cpp
   src/core/vulkan/init.cpp
@@ -35,6 +36,7 @@ add_library(core
   src/core/vulkan/vma.cpp
   src/core/vulkan/subsystem.cpp
   src/core/vulkan/image.cpp
+  src/core/fs/fs.cpp
 )
 target_include_directories(core PUBLIC src)
 
@@ -57,7 +59,7 @@ target_compile_definitions(core PUBLIC -DDEBUG)
 target_compile_definitions(core PUBLIC -DVMA_DEBUG)
 # target_compile_definitions(core PRIVATE -DARENA_DEBUG )
 # target_compile_definitions(core PRIVATE -DMEM_DEBUG )
-target_compile_definitions(core PRIVATE -DMEM_USE_MALLOC)
+# target_compile_definitions(core PRIVATE -DMEM_USE_MALLOC)
 # target_compile_definitions(core PRIVATE -DSCRATCH_DEBUG )
 
 target_link_libraries(core PUBLIC SDL3::SDL3 Vulkan::Vulkan stdc++exp imgui GPUOpen::VulkanMemoryAllocator)

@@ -2,10 +2,12 @@
 #include <SDL3/SDL_events.h>
 
 #include "app_loader.h"
+#include "core/fs/fs.h"
 #include <core/vulkan/subsystem.h>
 
 #include <core/core.h>
 #include <core/os.h>
+#include <cstdlib>
 
 struct Renderer;
 
@@ -23,13 +25,21 @@ log_entry timed_formatter(void* u, Arena& arena, core::log_entry entry) {
 }
 
 int main(int argc, char* argv[]) {
+  auto& ar = arena_alloc();
   setup_crash_handler();
   log_register_global_formatter(timed_formatter, nullptr);
   log_set_global_level(core::LogLevel::Trace);
+  {
+    const char* cwd = realpath(".", nullptr);
+    fs::init(core::str8::from(cstr, cwd));
+    free((void*)cwd);
+  }
+#ifdef SHARED
+  fs::register_path("lib"_s, fs::resolve_path(ar, "build"_s));
+#endif
 
   SDL_Init(SDL_INIT_GAMEPAD);
 
-  auto& ar   = arena_alloc();
   auto video = subsystem::init_video(ar);
   App app    = init_app();
   Renderer* renderer;

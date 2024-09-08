@@ -109,6 +109,17 @@ EXPORT string_builder& string_builder::append(string_builder& sb) {
   return *this;
 }
 
+EXPORT str8 str8::clone(Arena& arena) {
+  auto storage = arena.allocate_array<u8>(len);
+  memcpy(storage.data, data, len);
+  return {len, storage.data};
+}
+
+EXPORT hstr8 hstr8::clone(Arena& arena) {
+  auto s = to_str8(*this);
+  return {hash, s.len, s.data};
+}
+
 EXPORT const char* str8::cstring(Arena& arena) {
   u8* cstr = (u8*)data;
   if (!arena.try_resize((void*)data, len, len + 1)) {

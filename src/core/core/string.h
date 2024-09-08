@@ -16,6 +16,9 @@ struct Arena;
 inline str8 to_str8(str8 s) {
   return s;
 }
+inline str8 to_str8(hstr8 h) {
+  return {h.len, h.data};
+}
 
 template <size_t len>
 str8 to_str8(const char (&a)[len]) {
@@ -99,6 +102,29 @@ str8 to_str8(Arena& arena, Maybe<T> m)
 
 enum class Os { Windows, Linux };
 str8 to_str8(Os os);
+
+struct split : cpp_iter<str8, split> {
+  str8 rest;
+  const char c;
+  split(str8 s, char sep)
+      : rest(s)
+      , c(sep) {}
+
+  Maybe<str8> next() {
+    if (rest.len == 0) {
+      return {};
+    }
+    usize i = 0;
+    while (i < rest.len && rest[i] != c)
+      i++;
+
+    auto ret = rest.subslice(0, i);
+    rest     = rest.subslice(i);
+    if (rest.len > 0)
+      rest = rest.subslice(1);
+    return ret;
+  };
+};
 
 } // namespace core
 #endif // INCLUDE_CORE

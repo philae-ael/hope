@@ -9,10 +9,6 @@
 
 #include "base.h"
 #include "debug.h"
-#define TAG(name)                     \
-  constexpr struct CONCAT(name, _t) { \
-  } name {                            \
-  }
 
 namespace core {
 TAG(unit);
@@ -100,7 +96,8 @@ struct Maybe {
       : d(Discriminant::None) {}
   template <class C>
   Maybe(Maybe<C>& c)
-      : Maybe(T(c)) {}
+      : d(c.d)
+      , t(c.t) {}
   Maybe(const Maybe&)            = default;
   Maybe(Maybe&&)                 = default;
   Maybe& operator=(const Maybe&) = default;
@@ -120,6 +117,13 @@ struct Maybe {
   }
   inline pointer operator->() {
     return &t;
+  }
+
+  T expect(const char* msg) {
+    if (is_none()) {
+      panic("Maybe is unexpectidly empty: %s", msg);
+    }
+    return t;
   }
 };
 
