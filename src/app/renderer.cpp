@@ -1,15 +1,16 @@
 
+#include "core/core/memory.h"
 #include "imgui_renderer.h"
 #include "triangle_renderer.h"
-#include <core/vulkan/sync.h>
 
 #include <core/core.h>
+#include <core/fs/fs.h>
 #include <core/vulkan.h>
 #include <core/vulkan/frame.h>
 #include <core/vulkan/image.h>
 #include <core/vulkan/init.h>
-
 #include <core/vulkan/subsystem.h>
+#include <core/vulkan/sync.h>
 #include <imgui.h>
 #include <loader/app_loader.h>
 
@@ -22,11 +23,17 @@ struct MainRenderer {
   static MainRenderer init(subsystem::video& v);
   void render(VkCommandBuffer cmd, vk::image2D& swapchain_image);
   void uninit(subsystem::video& v);
+
+  core::vec<core::str8> file_deps(core::Arena& arena);
 };
 
 struct Renderer {
+  core::Arena* arena;
   VkCommandPool command_pool;
   VkCommandBuffer cmd;
+
+  core::vec<fs::on_file_modified_handle> on_file_modified_handles;
+  bool need_rebuild = false;
 
   MainRenderer main_renderer;
 };
@@ -56,10 +63,25 @@ void MainRenderer::uninit(subsystem::video& v) {
   imgui_renderer.uninit(v);
 }
 
+core::vec<core::str8> MainRenderer::file_deps(core::Arena& arena) {
+  return core::vec{triangle_renderer.file_deps()}.clone(arena);
+}
+
+void on_dep_file_modified(void* userdata) {
+  LOG_INFO("renderer's file_dep detected, rebuilding renderer is needed");
+  auto& renderer        = *static_cast<Renderer*>(userdata);
+  renderer.need_rebuild = true;
+}
+
 extern "C" {
 
 EXPORT Renderer* init_renderer(core::Arena& ar, subsystem::video& v) {
-  Renderer* rdata = ar.allocate<Renderer>();
+  Renderer* rdata     = ar.allocate<Renderer>();
+  rdata               = new (rdata) Renderer{};
+  rdata->need_rebuild = false;
+
+  rdata->arena        = &core::arena_alloc();
+
   VkCommandPoolCreateInfo command_pool_create_info{
       .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
       .flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
@@ -76,11 +98,26 @@ EXPORT Renderer* init_renderer(core::Arena& ar, subsystem::video& v) {
   VK_ASSERT(vkAllocateCommandBuffers(v.device, &command_pool_allocate_info, &rdata->cmd));
   rdata->main_renderer = MainRenderer::init(v);
 
+  {
+    auto scratch = core::scratch_get();
+
+    auto deps    = rdata->main_renderer.file_deps(*scratch);
+    for (auto f : deps.iter()) {
+      auto handle = fs::register_modified_file_callback(f, on_dep_file_modified, rdata);
+      rdata->on_file_modified_handles.push(*rdata->arena, handle);
+    }
+
+    scratch.retire();
+  }
+
   return rdata;
 }
 
 EXPORT AppEvent render(subsystem::video& v, Renderer* renderer) {
   AppEvent sev{};
+  if (renderer->need_rebuild) {
+    sev |= AppEvent::RebuildRenderer;
+  }
 
   auto frame = v.begin_frame();
   if (frame.is_err()) {
@@ -134,6 +171,7 @@ EXPORT void swapchain_rebuilt(subsystem::video& v, Renderer* renderer) {
   vkDeviceWaitIdle(v.device);
   renderer->main_renderer.uninit(v);
   renderer->main_renderer = MainRenderer::init(v);
+  core::arena_dealloc(*renderer->arena);
 }
 
 EXPORT void uninit_renderer(subsystem::video& v, Renderer* renderer) {
@@ -142,5 +180,9 @@ EXPORT void uninit_renderer(subsystem::video& v, Renderer* renderer) {
 
   vkFreeCommandBuffers(v.device, renderer->command_pool, 1, &renderer->cmd);
   vkDestroyCommandPool(v.device, renderer->command_pool, nullptr);
+
+  for (auto h : renderer->on_file_modified_handles.iter()) {
+    fs::unregister_modified_file_callback(h);
+  }
 }
 }

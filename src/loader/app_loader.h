@@ -33,15 +33,16 @@ struct App {
 #define PFN(name, ret, ...) CONCAT(PFN_, name) name;
   EVAL(APP_PFNS)
 #undef PFN
+#if SHARED
+  bool need_reload;
+#endif
 };
 
 #if SHARED
 inline core::str8 default_soname = core::str8::from("lib/libapp.so");
-App init_app(core::str8 soname = default_soname);
-#else
-App init_app();
 #endif
 
+void init_app(App& app);
 bool need_reload(App& app);
 void reload_app(App& app);
 

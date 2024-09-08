@@ -41,13 +41,16 @@ int main(int argc, char* argv[]) {
   SDL_Init(SDL_INIT_GAMEPAD);
 
   auto video = subsystem::init_video(ar);
-  App app    = init_app();
+  App app;
+  init_app(app);
   Renderer* renderer;
 
   renderer = app.init_renderer(ar, video);
   LOG_INFO("App fully initialized");
 
   while (true) {
+    fs::process_modified_file_callbacks();
+
     AppEvent sev{};
     SDL_Event ev{};
     while (SDL_PollEvent(&ev)) {
@@ -78,7 +81,6 @@ int main(int argc, char* argv[]) {
       LOG_INFO("reloading app");
 
       app.uninit_renderer(video, renderer);
-      app.uninit();
       reload_app(app);
       subsystem::video_rebuild_swapchain(video);
       renderer = app.init_renderer(ar, video);

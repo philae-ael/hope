@@ -1,9 +1,15 @@
 #include "fs.h"
 #include "core/containers/vec.h"
+#include "core/core/fwd.h"
 #include <cerrno>
 #include <core/containers/pool.h>
 #include <core/core.h>
 #include <cstdio>
+#include <filesystem>
+
+namespace std {
+namespace fs = std::filesystem;
+}
 
 namespace {
 struct fstree {
@@ -29,13 +35,19 @@ struct fstree {
 
 namespace fs {
 
-struct path_correspondance {
-  core::str8 path, target;
+struct watch {
+  usize id;
+  const char* path;
+  std::fs::file_time_type last_modified_time;
+  void* userdata;
+  on_file_modified_t callback;
 };
 
 struct {
   core::Arena* arena;
   fstree root;
+  core::vec<watch> watchs;
+  usize watch_id;
 } fs;
 
 using namespace core::literals;
@@ -130,6 +142,75 @@ EXPORT core::storage<u8> read_all(core::Arena& arena, core::str8 path) {
 
   fclose(f);
   return storage;
+}
+
+EXPORT on_file_modified_handle
+register_modified_file_callback(const char* path, on_file_modified_t callback, void* userdata) {
+  const char* cpath = core::str8::from(core::cstr, path).cstring(*fs.arena);
+
+  LOG_TRACE("registering path %s to be watched", cpath);
+
+  std::error_code ec;
+  auto ftime = std::filesystem::last_write_time(cpath, ec);
+  if (ec) {
+    ftime = std::fs::file_time_type::min();
+  }
+
+  fs.watchs.push(
+      *fs.arena,
+      watch{
+          fs.watch_id++,
+          cpath,
+          ftime,
+          userdata,
+          callback,
+      }
+  );
+
+  return on_file_modified_handle{fs.watchs[fs.watchs.size() - 1].id};
+}
+
+EXPORT on_file_modified_handle
+register_modified_file_callback(virtualpath vpath, on_file_modified_t callback, void* userdata) {
+  auto scratch = core::scratch_get();
+  defer { scratch.retire(); };
+  auto real_path = resolve_path(*scratch, vpath).cstring(*scratch);
+
+  return register_modified_file_callback(real_path, callback, userdata);
+}
+
+EXPORT void process_modified_file_callbacks() {
+  for (auto& w : fs.watchs.iter()) {
+    bool dirty = false;
+    std::error_code ec;
+    auto ftime = std::fs::last_write_time(w.path, ec);
+    if (ec) {
+      LOG_WARNING("error on file %s ", w.path);
+      ftime = std::fs::file_time_type::min();
+    } else if (w.last_modified_time < ftime) {
+      dirty = true;
+    }
+
+    w.last_modified_time = ftime;
+
+    if (dirty) {
+      LOG_TRACE("path %s changed!", w.path);
+      w.callback(w.userdata);
+    }
+  }
+}
+
+// A lot of memory can be leaked un register/unregister are called too often...
+EXPORT void unregister_modified_file_callback(on_file_modified_handle h) {
+  for (auto& w : fs.watchs.iter()) {
+    if (w.id == (usize)h) {
+      LOG_TRACE("unregistering path %s to be watched", w.path);
+      SWAP(w, fs.watchs[fs.watchs.size() - 1]);
+      fs.watchs.pop(core::noalloc);
+      return;
+    }
+  }
+  LOG_WARNING("on file modified handle not found!");
 }
 
 } // namespace fs

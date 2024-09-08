@@ -10,14 +10,12 @@ EVAL(APP_PFNS)
 }
 #undef PFN
 
-App init_app() {
+void init_app(App& app) {
 #define PFN(name, ret, ...) .name = name,
-
-  App app{.handle = nullptr, EVAL(APP_PFNS)};
+  app                             = App{.handle = nullptr, EVAL(APP_PFNS)};
 #undef PFN
 
   app.init();
-  return app;
 }
 
 bool need_reload(App& app) {
@@ -26,5 +24,5 @@ bool need_reload(App& app) {
 
 void reload_app(App& app) {
   app.uninit();
-  app = init_app();
+  init_app(app);
 }

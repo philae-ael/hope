@@ -15,6 +15,8 @@ struct TriangleRenderer {
 
   static TriangleRenderer init(subsystem::video& v, VkFormat format);
 
+  static core::storage<core::str8> file_deps();
+
   void render(VkCommandBuffer cmd, vk::image2D target) {
     core::array color_attachments{target.as_attachment(
         vk::image2D::AttachmentLoadOp::Clear{{.color = {.float32 = {0.0, 0.0, 0.0, 0.0}}}},

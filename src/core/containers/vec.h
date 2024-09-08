@@ -91,7 +91,7 @@ struct vec {
 
   constexpr T pop(noalloc_t) {
     T t;
-    inner.pop(storage<u8>::from(unsafe, t));
+    inner.pop(noalloc, storage<u8>::from(unsafe, t));
     return t;
   }
 

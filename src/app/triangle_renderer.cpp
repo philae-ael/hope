@@ -15,6 +15,9 @@ core::array vertices{
     core::Vec4{1, -1, 0},
     core::Vec4{0, 1, 0},
 };
+core::array deps{
+    "assets/shaders/tri.spv"_s,
+};
 
 TriangleRenderer TriangleRenderer::init(subsystem::video& v, VkFormat format) {
   auto scratch = core::scratch_get();
@@ -58,7 +61,7 @@ TriangleRenderer TriangleRenderer::init(subsystem::video& v, VkFormat format) {
   VkPipelineLayout pipeline_layout;
   vkCreatePipelineLayout(v.device, &pipeline_layout_create_info, nullptr, &pipeline_layout);
 
-  auto code = fs::read_all(*scratch, "assets/shaders/tri.spv"_s);
+  auto code = fs::read_all(*scratch, deps[0]);
   ASSERT(code.size % sizeof(u32) == 0);
 
   // # Pipeline
@@ -114,9 +117,14 @@ TriangleRenderer TriangleRenderer::init(subsystem::video& v, VkFormat format) {
   vkDestroyShaderModule(v.device, module, nullptr);
   return {descriptor_pool, pipeline, pipeline_layout, buffer, buf_alloc};
 }
+
 void TriangleRenderer::uninit(subsystem::video& v) {
   vkDestroyPipeline(v.device, pipeline, nullptr);
   vkDestroyPipelineLayout(v.device, pipeline_layout, nullptr);
   vmaDestroyBuffer(v.allocator, buffer, buf_allocation);
   vkDestroyDescriptorPool(v.device, descriptor_pool, nullptr);
+}
+
+core::storage<core::str8> TriangleRenderer::file_deps() {
+  return deps;
 }

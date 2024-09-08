@@ -4,10 +4,31 @@
 #include <core/core.h>
 
 namespace fs {
-void init(core::str8 path);
-void register_path(core::str8 path, core::str8 target);
-core::str8 resolve_path(core::Arena& ar, core::str8 path);
-core::storage<u8> read_all(core::Arena& ar, core::str8 path);
+
+using virtualpath = core::str8;
+using realpath    = core::str8;
+
+void init(realpath);
+void register_path(virtualpath path, realpath target);
+realpath resolve_path(core::Arena& ar, virtualpath);
+core::storage<u8> read_all(core::Arena& ar, virtualpath);
+
+using on_file_modified_t      = void (*)(void*);
+using on_file_modified_handle = core::handle_t<on_file_modified_t>;
+on_file_modified_handle register_modified_file_callback(
+    const char* realpath,
+    on_file_modified_t callback,
+    void* userdata
+);
+on_file_modified_handle register_modified_file_callback(
+    virtualpath vpath,
+    on_file_modified_t callback,
+    void* userdata
+);
+void unregister_modified_file_callback(on_file_modified_handle h);
+
+void process_modified_file_callbacks();
+
 } // namespace fs
 
 #endif // INCLUDE_FS_FS_H_
