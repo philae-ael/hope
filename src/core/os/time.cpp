@@ -50,6 +50,11 @@ EXPORT core::str8 to_str8(core::Arena& arena, duration_info duration_info, TimeF
   case TimeFormat::MM_SS_MMM:
     sb.pushf(arena, "%02d:%02d:%03d", duration_info.min, duration_info.sec, duration_info.msec);
     break;
+  case TimeFormat::MMM_UUU_NNN:
+    sb.pushf(
+        arena, "%03dms %03dus %03dns", duration_info.msec, duration_info.usec, duration_info.nsec
+    );
+    break;
   }
 
   return sb.commit(arena);

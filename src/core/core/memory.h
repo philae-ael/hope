@@ -87,6 +87,10 @@ struct Arena {
 
   ArenaTemp make_temp();
 
+  void reset() {
+    deallocate(usize(mem - base));
+  }
+
 private:
   void deallocate(usize size);
 };

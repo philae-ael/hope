@@ -2,7 +2,9 @@
 #include <SDL3/SDL_events.h>
 
 #include "app_loader.h"
+#include "core/debug/time.h"
 #include "core/fs/fs.h"
+#include "core/os/time.h"
 #include <core/vulkan/subsystem.h>
 
 #include <core/core.h>
@@ -38,6 +40,8 @@ int main(int argc, char* argv[]) {
   fs::register_path("lib"_s, fs::resolve_path(ar, "build"_s));
 #endif
 
+  debug::init();
+
   SDL_Init(SDL_INIT_GAMEPAD);
 
   auto video = subsystem::init_video(ar);
@@ -49,10 +53,16 @@ int main(int argc, char* argv[]) {
   LOG_INFO("App fully initialized");
 
   while (true) {
+    debug::frame_start();
+    debug::add_timestamp("frame start"_hs);
+
+    debug::add_timestamp("fs process start"_hs);
     fs::process_modified_file_callbacks();
+    debug::add_timestamp("fs process end"_hs);
 
     AppEvent sev{};
     SDL_Event ev{};
+    debug::add_timestamp("poll event start"_hs);
     while (SDL_PollEvent(&ev)) {
       if (ev.type == SDL_EVENT_QUIT) {
         sev |= AppEvent::Exit;
@@ -62,7 +72,11 @@ int main(int argc, char* argv[]) {
       }
       sev |= app.handle_events(ev);
     }
+    debug::add_timestamp("poll event end"_hs);
+
+    debug::add_timestamp("render start"_hs);
     sev |= app.render(video, renderer);
+    debug::add_timestamp("render end"_hs);
 
     if (any(sev & AppEvent::Exit)) {
       break;
@@ -85,6 +99,21 @@ int main(int argc, char* argv[]) {
       subsystem::video_rebuild_swapchain(video);
       renderer = app.init_renderer(ar, video);
     }
+
+    debug::add_timestamp("frame report start"_hs);
+    auto& timings = debug::get_last_frame_timing_infos();
+    for (auto [name, t] : timings.timings.iter()) {
+      LOG_BUILDER(
+          core::LogLevel::Trace, push(name).push(" at ").push(t, os::TimeFormat::MMM_UUU_NNN)
+      );
+    }
+    debug::add_timestamp("frame report end"_hs);
+    debug::add_timestamp("frame end"_hs);
+    debug::frame_end();
+    // LOG_BUILDER(
+    //     core::LogLevel::Info,
+    //     push("end frame").push(" at ").push(os::time_monotonic(), os::TimeFormat::MMM_UUU_NNN)
+    // );
   }
 
   LOG_INFO("Exiting...");

@@ -9,6 +9,7 @@ enum class AppEvent : u8 {
   RebuildRenderer  = 0x2,
   RebuildSwapchain = 0x4,
   ReloadApp        = 0x8,
+  SkipRender       = 0x10,
 };
 
 struct App;

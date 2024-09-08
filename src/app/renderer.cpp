@@ -123,6 +123,7 @@ EXPORT AppEvent render(subsystem::video& v, Renderer* renderer) {
   if (frame.is_err()) {
     switch (frame.err()) {
     case VK_TIMEOUT:
+      sev |= AppEvent::SkipRender;
       return sev;
     case VK_ERROR_OUT_OF_DATE_KHR:
       sev |= AppEvent::RebuildSwapchain;
@@ -171,7 +172,6 @@ EXPORT void swapchain_rebuilt(subsystem::video& v, Renderer* renderer) {
   vkDeviceWaitIdle(v.device);
   renderer->main_renderer.uninit(v);
   renderer->main_renderer = MainRenderer::init(v);
-  core::arena_dealloc(*renderer->arena);
 }
 
 EXPORT void uninit_renderer(subsystem::video& v, Renderer* renderer) {
@@ -184,5 +184,6 @@ EXPORT void uninit_renderer(subsystem::video& v, Renderer* renderer) {
   for (auto h : renderer->on_file_modified_handles.iter()) {
     fs::unregister_modified_file_callback(h);
   }
+  core::arena_dealloc(*renderer->arena);
 }
 }

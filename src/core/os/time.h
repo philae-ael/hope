@@ -42,6 +42,7 @@ enum class TimeFormat {
   MM_SS_MMM_UUU_NNN,
   MM_SS_MMM_UUU,
   MM_SS_MMM,
+  MMM_UUU_NNN,
 };
 
 core::str8 to_str8(

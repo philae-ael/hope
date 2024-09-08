@@ -37,6 +37,7 @@ add_library(core
   src/core/vulkan/subsystem.cpp
   src/core/vulkan/image.cpp
   src/core/fs/fs.cpp
+  src/core/debug/time.cpp
 )
 target_include_directories(core PUBLIC src)
 

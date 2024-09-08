@@ -1,7 +1,10 @@
 #include "frame.h"
+#include "core/debug/time.h"
 #include "vulkan.h"
 
 #include <core/core.h>
+
+using namespace core::literals;
 
 namespace vk {
 EXPORT void destroy_frame_synchro(VkDevice device, FrameSynchro& frame_synchro) {
@@ -16,7 +19,12 @@ EXPORT Result<Frame> begin_frame(VkDevice device, VkSwapchainKHR swapchain, Fram
   auto frame_id = (sync.frame_id + 1) % sync.inflight;
 
   u32 swapchain_image_index;
-  VkResult res = vkWaitForFences(device, 1, &sync.render_done_fences[frame_id], VK_TRUE, 0);
+
+  debug::add_timestamp("render wait render done fence start"_hs);
+  VkResult res =
+      vkWaitForFences(device, 1, &sync.render_done_fences[frame_id], VK_TRUE, 10'000'000); // 10ms
+  debug::add_timestamp("render wait render done fence end"_hs);
+
   if (res != VK_SUCCESS) {
     return res;
   }
