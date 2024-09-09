@@ -39,6 +39,7 @@ void uninit_app() {
 App load_app(core::str8 soname_) {
   auto scratch = core::scratch_get();
   defer { scratch.retire(); };
+
   const char* soname = fs::resolve_path(*scratch, soname_).cstring(*scratch);
 
   App app;

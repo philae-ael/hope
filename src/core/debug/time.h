@@ -11,12 +11,22 @@ struct timing_info {
   core::hstr8 name;
   os::time time;
 };
+
+struct timing_infos {
+  core::vec<timing_info> timings;
+  struct {
+    os::time mean_frame_time;
+    os::time sigma_frame_time;
+  } stats;
+};
+
 struct scope {
   core::hstr8 name;
   os::time t;
 };
 
 void init();
+void reset();
 
 void frame_start();
 void frame_end();
@@ -33,7 +43,7 @@ void frame_end();
 scope scope_start(core::hstr8 name);
 void scope_end(scope);
 
-core::vec<timing_info> get_last_frame_timing_infos(core::Arena& ar);
+timing_infos get_last_frame_timing_infos(core::Arena& ar);
 } // namespace debug
 
 #endif // INCLUDE_DEBUG_TIME_H_

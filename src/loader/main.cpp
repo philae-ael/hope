@@ -58,8 +58,6 @@ int main(int argc, char* argv[]) {
     defer { frame_ar.retire(); };
 
     debug::frame_start();
-    auto frame_scope = debug::scope_start("frame"_hs);
-    defer { debug::scope_end(frame_scope); };
 
     auto fs_process_scope = debug::scope_start("fs process"_hs);
     fs::process_modified_file_callbacks();
@@ -83,17 +81,13 @@ int main(int argc, char* argv[]) {
     }
   }
     {
-      auto render_scope      = debug::scope_start("render"_hs);
-      auto render_wait_scope = debug::scope_start("render wait"_hs);
 
-      AppEvent renderev      = app.render(video, renderer);
+      AppEvent renderev = app.render(video, renderer);
       if (any(renderev & AppEvent::SkipRender)) {
-        debug::scope_end(render_wait_scope);
         goto handle_events;
       }
 
       sev |= renderev;
-      debug::scope_end(render_scope);
     }
 
     if (any(sev & AppEvent::Exit)) {
@@ -116,14 +110,15 @@ int main(int argc, char* argv[]) {
       reload_app(app);
       subsystem::video_rebuild_swapchain(video);
       renderer = app.init_renderer(ar, video);
+      debug::reset();
     }
 
-    {
+    if (false) {
       auto frame_report_scope = debug::scope_start("frame report"_hs);
       defer { debug::scope_end(frame_report_scope); };
 
-      auto timings = debug::get_last_frame_timing_infos(*frame_ar);
-      for (auto [name, t] : timings.iter()) {
+      auto timing_infos = debug::get_last_frame_timing_infos(*frame_ar);
+      for (auto [name, t] : timing_infos.timings.iter()) {
         LOG_BUILDER(
             core::LogLevel::Trace, push(name).push(" at ").push(t, os::TimeFormat::MMM_UUU_NNN)
         );

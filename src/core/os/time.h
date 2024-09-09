@@ -27,6 +27,10 @@ struct time {
     ns += other.ns;
     return *this;
   }
+
+  f32 hz() const {
+    return 1e+9f / (f32)ns;
+  }
 };
 
 struct duration_info {

@@ -53,7 +53,8 @@ struct {
 using namespace core::literals;
 
 EXPORT void init(core::str8 path) {
-  fs.arena = &core::arena_alloc(KB(1));
+  /// TODO: DO STRING INTERNING AND USE ONLY STATIC MEMORY
+  fs.arena = &core::arena_alloc();
 
   register_path("/"_s, path);
 }

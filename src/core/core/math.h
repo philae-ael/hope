@@ -22,19 +22,19 @@ using f32x8 = __m128;
 
 struct Vec2 {
   f32 x, y;
-  Vec2 operator+(Vec2 other) {
+  Vec2 operator+(Vec2 other) const {
     return {
         x + other.x,
         y + other.y,
     };
   }
-  Vec2 operator*(Vec2 other) {
+  Vec2 operator*(Vec2 other) const {
     return {
         x * other.x,
         y * other.y,
     };
   }
-  Vec2 operator-(Vec2 other) {
+  Vec2 operator-(Vec2 other) const {
     return {
         x - other.x,
         y - other.y,
@@ -47,10 +47,37 @@ struct Vec2 {
     };
   }
 };
+struct uVec2 {
+  u32 x, y;
+  uVec2 operator+(uVec2 other) const {
+    return {
+        x + other.x,
+        y + other.y,
+    };
+  }
+  uVec2 operator*(uVec2 other) const {
+    return {
+        x * other.x,
+        y * other.y,
+    };
+  }
+  uVec2 operator-(uVec2 other) const {
+    return {
+        x - other.x,
+        y - other.y,
+    };
+  }
+  friend uVec2 operator*(u32 lambda, uVec2 self) {
+    return {
+        lambda * self.x,
+        lambda * self.y,
+    };
+  }
+};
 
 struct Vec4 {
   f32 x, y, z, w;
-  Vec4 operator+(Vec4 other) {
+  Vec4 operator+(Vec4 other) const {
     return {
         x + other.x,
         y + other.y,
@@ -58,7 +85,7 @@ struct Vec4 {
         w + other.w,
     };
   }
-  Vec4 operator*(Vec4 other) {
+  Vec4 operator*(Vec4 other) const {
     return {
         x * other.x,
         y * other.y,
@@ -66,7 +93,7 @@ struct Vec4 {
         w * other.w,
     };
   }
-  Vec4 operator-(Vec4 other) {
+  Vec4 operator-(Vec4 other) const {
     return {
         x - other.x,
         y - other.y,
@@ -194,6 +221,9 @@ struct windowed_series {
   constexpr f32 variance() const {
     f32 c = f32(count);
     return (sum2 - sum * sum / c) / c;
+  }
+  constexpr f32 sigma() const {
+    return sqrtf(variance());
   }
 };
 

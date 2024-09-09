@@ -1,9 +1,10 @@
 
-#include "core/core/memory.h"
 #include "imgui_renderer.h"
+#include "profiler.h"
 #include "triangle_renderer.h"
 
 #include <core/core.h>
+#include <core/debug/time.h>
 #include <core/fs/fs.h>
 #include <core/vulkan.h>
 #include <core/vulkan/frame.h>
@@ -140,9 +141,11 @@ EXPORT AppEvent render(subsystem::video& v, Renderer* renderer) {
   ImGui_ImplSDL3_NewFrame();
   ImGui::NewFrame();
   defer { ImGui::EndFrame(); };
+  profiling_window();
 
-  static bool show_window = true;
-  ImGui::ShowDemoWindow(&show_window);
+  using namespace core::literals;
+  auto render_scope = debug::scope_start("render"_hs);
+  defer { debug::scope_end(render_scope); };
 
   {
     VkCommandBufferBeginInfo command_buffer_begin_info{
