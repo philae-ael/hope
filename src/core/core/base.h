@@ -132,7 +132,7 @@ struct str8 {
   static str8 from(cstr_t, const char* d) {
     return str8{strlen(d), reinterpret_cast<const u8*>(d)};
   }
-  hstr8 hash() const {
+  constexpr hstr8 hash() const {
     return {
         ::core::hash(data, len),
         len,

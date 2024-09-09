@@ -47,7 +47,7 @@ if (UNIX)
     src/core/os/linux/memory.cpp
   )
 endif()
-target_compile_options(core PUBLIC -O0 -g -fPIC)
+target_compile_options(core PUBLIC -O3 -g -fPIC)
 target_compile_options(core PUBLIC -Wall -Wextra -Wconversion)
 target_compile_options(core PUBLIC -Wno-unused-parameter -Wno-missing-field-initializers)
 target_link_options(core PUBLIC -rdynamic)

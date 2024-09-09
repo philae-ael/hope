@@ -1,5 +1,4 @@
 #include "frame.h"
-#include "core/debug/time.h"
 #include "vulkan.h"
 
 #include <core/core.h>
@@ -20,10 +19,7 @@ EXPORT Result<Frame> begin_frame(VkDevice device, VkSwapchainKHR swapchain, Fram
 
   u32 swapchain_image_index;
 
-  debug::add_timestamp("render wait render done fence start"_hs);
-  VkResult res =
-      vkWaitForFences(device, 1, &sync.render_done_fences[frame_id], VK_TRUE, 10'000'000); // 10ms
-  debug::add_timestamp("render wait render done fence end"_hs);
+  VkResult res = vkWaitForFences(device, 1, &sync.render_done_fences[frame_id], VK_TRUE, 0);
 
   if (res != VK_SUCCESS) {
     return res;

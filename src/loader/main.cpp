@@ -27,7 +27,8 @@ log_entry timed_formatter(void* u, Arena& arena, core::log_entry entry) {
 }
 
 int main(int argc, char* argv[]) {
-  auto& ar = arena_alloc();
+  auto& ar          = arena_alloc();
+  auto& frame_arena = arena_alloc();
   setup_crash_handler();
   log_register_global_formatter(timed_formatter, nullptr);
   log_set_global_level(core::LogLevel::Trace);
@@ -53,16 +54,24 @@ int main(int argc, char* argv[]) {
   LOG_INFO("App fully initialized");
 
   while (true) {
-    debug::frame_start();
-    debug::add_timestamp("frame start"_hs);
+    auto frame_ar = frame_arena.make_temp();
+    defer { frame_ar.retire(); };
 
-    debug::add_timestamp("fs process start"_hs);
+    debug::frame_start();
+    auto frame_scope = debug::scope_start("frame"_hs);
+    defer { debug::scope_end(frame_scope); };
+
+    auto fs_process_scope = debug::scope_start("fs process"_hs);
     fs::process_modified_file_callbacks();
-    debug::add_timestamp("fs process end"_hs);
+    debug::scope_end(fs_process_scope);
 
     AppEvent sev{};
     SDL_Event ev{};
-    debug::add_timestamp("poll event start"_hs);
+
+  handle_events: {
+    auto poll_event_scope = debug::scope_start("poll event start"_hs);
+    defer { debug::scope_end(poll_event_scope); };
+
     while (SDL_PollEvent(&ev)) {
       if (ev.type == SDL_EVENT_QUIT) {
         sev |= AppEvent::Exit;
@@ -72,11 +81,20 @@ int main(int argc, char* argv[]) {
       }
       sev |= app.handle_events(ev);
     }
-    debug::add_timestamp("poll event end"_hs);
+  }
+    {
+      auto render_scope      = debug::scope_start("render"_hs);
+      auto render_wait_scope = debug::scope_start("render wait"_hs);
 
-    debug::add_timestamp("render start"_hs);
-    sev |= app.render(video, renderer);
-    debug::add_timestamp("render end"_hs);
+      AppEvent renderev      = app.render(video, renderer);
+      if (any(renderev & AppEvent::SkipRender)) {
+        debug::scope_end(render_wait_scope);
+        goto handle_events;
+      }
+
+      sev |= renderev;
+      debug::scope_end(render_scope);
+    }
 
     if (any(sev & AppEvent::Exit)) {
       break;
@@ -100,20 +118,18 @@ int main(int argc, char* argv[]) {
       renderer = app.init_renderer(ar, video);
     }
 
-    debug::add_timestamp("frame report start"_hs);
-    auto& timings = debug::get_last_frame_timing_infos();
-    for (auto [name, t] : timings.timings.iter()) {
-      LOG_BUILDER(
-          core::LogLevel::Trace, push(name).push(" at ").push(t, os::TimeFormat::MMM_UUU_NNN)
-      );
+    {
+      auto frame_report_scope = debug::scope_start("frame report"_hs);
+      defer { debug::scope_end(frame_report_scope); };
+
+      auto timings = debug::get_last_frame_timing_infos(*frame_ar);
+      for (auto [name, t] : timings.iter()) {
+        LOG_BUILDER(
+            core::LogLevel::Trace, push(name).push(" at ").push(t, os::TimeFormat::MMM_UUU_NNN)
+        );
+      }
     }
-    debug::add_timestamp("frame report end"_hs);
-    debug::add_timestamp("frame end"_hs);
     debug::frame_end();
-    // LOG_BUILDER(
-    //     core::LogLevel::Info,
-    //     push("end frame").push(" at ").push(os::time_monotonic(), os::TimeFormat::MMM_UUU_NNN)
-    // );
   }
 
   LOG_INFO("Exiting...");

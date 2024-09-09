@@ -19,6 +19,14 @@ struct time {
   f64 timestampf64() const {
     return static_cast<f64>(ns) / 1e9F;
   }
+  time operator+(time other) const {
+    return {ns + other.ns};
+  }
+
+  time& operator+=(time other) {
+    ns += other.ns;
+    return *this;
+  }
 };
 
 struct duration_info {

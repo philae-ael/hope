@@ -76,8 +76,8 @@ constexpr inline str8 operator""_s(const char* s, std::size_t len) {
   return str8::from(s, len);
 }
 
-constexpr inline hstr8 operator""_hs(const char* s, std::size_t len) {
-  return str8::from(s, len).hash();
+inline hstr8 operator""_hs(const char* s, std::size_t len) {
+  return {core::hash(s, len), len, reinterpret_cast<const u8*>(s)};
 }
 constexpr inline u64 operator""_h(const char* s, std::size_t len) {
   return hash(s, len);
