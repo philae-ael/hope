@@ -126,5 +126,8 @@ struct split : cpp_iter<str8, split> {
   };
 };
 
+hstr8 intern(hstr8);
+hstr8 unintern(u64 hash);
+
 } // namespace core
 #endif // INCLUDE_CORE

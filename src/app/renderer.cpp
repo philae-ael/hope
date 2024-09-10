@@ -48,8 +48,10 @@ MainRenderer MainRenderer::init(subsystem::video& v) {
 
 void MainRenderer::render(VkCommandBuffer cmd, vk::image2D& swapchain_image) {
   vk::pipeline_barrier(cmd, swapchain_image.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}));
+
   triangle_renderer.render(cmd, swapchain_image);
   imgui_renderer.render(cmd, swapchain_image);
+
   vk::pipeline_barrier(
       cmd, swapchain_image.sync_to({
                VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
@@ -143,10 +145,6 @@ EXPORT AppEvent render(subsystem::video& v, Renderer* renderer) {
   defer { ImGui::EndFrame(); };
   profiling_window();
 
-  using namespace core::literals;
-  auto render_scope = debug::scope_start("render"_hs);
-  defer { debug::scope_end(render_scope); };
-
   {
     VkCommandBufferBeginInfo command_buffer_begin_info{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -156,15 +154,21 @@ EXPORT AppEvent render(subsystem::video& v, Renderer* renderer) {
   }
   renderer->main_renderer.render(renderer->cmd, frame->swapchain_image);
 
-  vkEndCommandBuffer(renderer->cmd);
+  {
+    using namespace core::literals;
+    auto render_scope = debug::scope_start("end render"_hs);
+    defer { debug::scope_end(render_scope); };
 
-  switch (VkResult res = v.end_frame(*frame, renderer->cmd); res) {
-  case VK_ERROR_OUT_OF_DATE_KHR:
-  case VK_SUBOPTIMAL_KHR:
-    sev |= AppEvent::RebuildSwapchain;
-    return sev;
-  default:
-    VK_ASSERT(res);
+    vkEndCommandBuffer(renderer->cmd);
+
+    switch (VkResult res = v.end_frame(*frame, renderer->cmd); res) {
+    case VK_ERROR_OUT_OF_DATE_KHR:
+    case VK_SUBOPTIMAL_KHR:
+      sev |= AppEvent::RebuildSwapchain;
+      return sev;
+    default:
+      VK_ASSERT(res);
+    }
   }
 
   return sev;

@@ -1,6 +1,7 @@
 #ifndef INCLUDE_APP_TRIANGLE_RENDERER_CPP_
 #define INCLUDE_APP_TRIANGLE_RENDERER_CPP_
 
+#include "core/debug/time.h"
 #include "core/vulkan/image.h"
 #include <core/vulkan.h>
 #include <core/vulkan/subsystem.h>
@@ -18,6 +19,9 @@ struct TriangleRenderer {
   static core::storage<core::str8> file_deps();
 
   void render(VkCommandBuffer cmd, vk::image2D target) {
+    using namespace core::literals;
+    auto triangle_scope = debug::scope_start("triangle"_hs);
+    defer { debug::scope_end(triangle_scope); };
     core::array color_attachments{target.as_attachment(
         vk::image2D::AttachmentLoadOp::Clear{{.color = {.float32 = {0.0, 0.0, 0.0, 0.0}}}},
         vk::image2D::AttachmentStoreOp::Store

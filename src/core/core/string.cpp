@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include <core/core.h>
+#include <unordered_map>
 
 namespace core {
 
@@ -116,7 +117,7 @@ EXPORT str8 str8::clone(Arena& arena) {
 }
 
 EXPORT hstr8 hstr8::clone(Arena& arena) {
-  auto s = to_str8(*this);
+  auto s = to_str8(*this).clone(arena);
   return {hash, s.len, s.data};
 }
 
@@ -129,6 +130,37 @@ EXPORT const char* str8::cstring(Arena& arena) {
 
   cstr[len] = 0;
   return (const char*)cstr;
+}
+
+struct {
+  std::unordered_map<u64, hstr8> m;
+  Arena* arena = nullptr;
+} interned;
+
+EXPORT hstr8 intern(hstr8 s) {
+  if (interned.arena == nullptr) {
+    interned.arena = &arena_alloc();
+  }
+
+  auto it = interned.m.find(s.hash);
+  if (it == interned.m.end()) {
+    auto h = s.clone(*interned.arena);
+    interned.m.insert({h.hash, h});
+    return h;
+  }
+  return it->second;
+}
+
+EXPORT hstr8 unintern(u64 hash) {
+  auto it = interned.m.find(hash);
+  if (it == interned.m.end()) {
+    LOG_WARNING("trying to unintern an unknown string");
+    TRAP;
+    using namespace core::literals;
+    return "<unknown>"_hs;
+  }
+
+  return it->second;
 }
 
 } // namespace core

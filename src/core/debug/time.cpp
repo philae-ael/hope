@@ -48,11 +48,11 @@ struct {
 
 namespace debug {
 
-EXPORT void init() {}
-EXPORT void reset() {
-  frame_start();
-  frame_start();
+EXPORT void init() {
+  s.last.reset();
+  s.cur.reset();
 }
+EXPORT void reset() {}
 
 EXPORT void frame_end() {
   s.frame_time_series.add_sample((f32)os::time_monotonic().since(s.frame_start).ns);
@@ -66,17 +66,17 @@ EXPORT void frame_start() {
 
 // TODO: move name into a string_registry
 EXPORT scope scope_start(core::hstr8 name) {
-  return {name, os::time_monotonic()};
+  return {core::intern(name), os::time_monotonic()};
 }
 
 EXPORT void scope_end(scope sco) {
-  s.cur[sco.name] += os::time_monotonic().since(sco.t);
+  s.cur[core::intern(sco.name)] += os::time_monotonic().since(sco.t);
 }
 
 EXPORT timing_infos get_last_frame_timing_infos(core::Arena& ar) {
   core::vec<timing_info> v;
   for (auto& scope : s.last.iter()) {
-    v.push(ar, {scope.key, scope.value});
+    v.push(ar, {core::unintern(scope.key.hash), scope.value});
   }
   return {
       v,

@@ -53,9 +53,7 @@ struct {
 using namespace core::literals;
 
 EXPORT void init(core::str8 path) {
-  /// TODO: DO STRING INTERNING AND USE ONLY STATIC MEMORY
-  fs.arena = &core::arena_alloc();
-
+  fs.arena = &core::arena_alloc(KB(4));
   register_path("/"_s, path);
 }
 
@@ -74,12 +72,12 @@ EXPORT void register_path(core::str8 path, core::str8 target) {
 
     auto pth   = t->find_child(hpart);
     if (pth.is_none()) {
-      t = &t->insert_child(*fs.arena, hpart.clone(*fs.arena));
+      t = &t->insert_child(*fs.arena, intern(part.hash()));
     } else {
       t = &pth.value();
     }
   }
-  t->target = target.clone(*fs.arena).hash();
+  t->target = core::intern(target.hash());
 }
 
 EXPORT core::str8 resolve_path(core::Arena& arena, core::str8 path) {

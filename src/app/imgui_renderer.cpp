@@ -1,4 +1,5 @@
 #include "imgui_renderer.h"
+#include "core/debug/time.h"
 
 #include <core/vulkan/subsystem.h>
 #include <core/vulkan/sync.h>
@@ -52,6 +53,10 @@ void ImGuiRenderer::uninit(subsystem::video& v) {
 }
 
 void ImGuiRenderer::render(VkCommandBuffer cmd, vk::image2D& image) {
+  using namespace core::literals;
+  auto imgui_scope = debug::scope_start("imgui"_hs);
+  defer { debug::scope_end(imgui_scope); };
+
   vk::pipeline_barrier(cmd, image.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}));
   {
     core::array color_attachments{
