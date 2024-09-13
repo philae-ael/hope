@@ -47,6 +47,8 @@ EXPORT Result<Frame> begin_frame(VkDevice device, VkSwapchainKHR swapchain, Fram
 
 EXPORT VkResult
 end_frame(VkDevice device, VkQueue present_queue, VkSwapchainKHR swapchain, Frame frame) {
+  auto present = debug::scope_start("present"_hs);
+  defer { debug::scope_end(present); };
   VkPresentInfoKHR present_infos{
       .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
       .waitSemaphoreCount = 1,

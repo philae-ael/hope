@@ -20,6 +20,8 @@ struct timing_infos {
   } stats;
 };
 
+enum class scope_category { CPU, GPU };
+
 struct scope {
   core::hstr8 name;
   os::time t;
@@ -28,7 +30,7 @@ struct scope {
 void init();
 void reset();
 
-void frame_start();
+void frame_start(scope_category cat = scope_category::CPU);
 void frame_end();
 
 // Note: This is not recursion compatible:
@@ -42,8 +44,9 @@ void frame_end();
 // Time registered will be t1 + 2*t2 and not t1 + t2
 scope scope_start(core::hstr8 name);
 void scope_end(scope);
+void scope_import(scope_category cat, core::hstr8 name, os::time t);
 
-timing_infos get_last_frame_timing_infos(core::Arena& ar);
+timing_infos get_last_frame_timing_infos(core::Arena& ar, scope_category cat = scope_category::CPU);
 } // namespace debug
 
 #endif // INCLUDE_DEBUG_TIME_H_

@@ -1,3 +1,5 @@
+#include "core/debug/time.h"
+#include "core/vulkan/timings.h"
 #include <core/vulkan/subsystem.h>
 
 #include <SDL3/SDL.h>
@@ -96,6 +98,8 @@ EXPORT subsystem::video subsystem::init_video(core::Arena& ar) {
     swapchain_images.push(ar, swapchain_image_to_image2D(device, swapchain, swapchain_image));
   }
 
+  vk::timestamp_init(device, device.properties.limits.timestampPeriod);
+
   return {
       window, instance, device, surface, swapchain, frame_sync, allocator, swapchain_images,
   };
@@ -109,6 +113,7 @@ EXPORT void subsystem::uninit_video(video& v) {
   vk::destroy_frame_synchro(v.device, v.sync);
   vk::destroy_swapchain(v.device, v.swapchain);
   vkDestroySurfaceKHR(v.instance, v.surface, nullptr);
+  vk::timestamp_uninit(v.device);
   vk::destroy_device(v.device);
   vk::destroy_instance(v.instance);
   SDL_DestroyWindow(v.window);
@@ -130,13 +135,17 @@ EXPORT vk::Result<VideoFrame> video::begin_frame() {
     return frame.err();
   }
 
+  vk::timestamp_frame_start(device);
+
   return {{
       .swapchain_image = swapchain_images[frame->swapchain_image_index],
       .frame           = *frame,
   }};
 }
 
+using namespace core::literals;
 EXPORT VkResult video::end_frame(VideoFrame vframe, VkCommandBuffer cmd) {
+  auto submit = debug::scope_start("submit"_hs);
   VkSemaphoreSubmitInfo wait_semaphore_submit_info{
       .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
       .semaphore = vframe.frame.acquire_semaphore,
@@ -161,6 +170,7 @@ EXPORT VkResult video::end_frame(VideoFrame vframe, VkCommandBuffer cmd) {
       .pSignalSemaphoreInfos    = &signal_semaphore_submit_info
   };
   vkQueueSubmit2(device.omni_queue, 1, &submit_info, vframe.frame.render_done_fence);
+  debug::scope_end(submit);
 
   swapchain_images[vframe.frame.swapchain_image_index] = vframe.swapchain_image;
   return vk::end_frame(device, device.omni_queue, swapchain, vframe.frame);

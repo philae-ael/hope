@@ -1,4 +1,5 @@
 
+#include "core/vulkan/timings.h"
 #include "imgui_renderer.h"
 #include "profiler.h"
 #include "triangle_renderer.h"
@@ -14,8 +15,10 @@
 #include <core/vulkan/sync.h>
 #include <imgui.h>
 #include <loader/app_loader.h>
+#include <vulkan/vulkan_core.h>
 
 using namespace core::enum_helpers;
+using namespace core::literals;
 
 struct MainRenderer {
   ImGuiRenderer imgui_renderer;
@@ -49,8 +52,15 @@ MainRenderer MainRenderer::init(subsystem::video& v) {
 void MainRenderer::render(VkCommandBuffer cmd, vk::image2D& swapchain_image) {
   vk::pipeline_barrier(cmd, swapchain_image.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}));
 
+  auto triangle_scope =
+      vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "triangle"_hs);
   triangle_renderer.render(cmd, swapchain_image);
+  vk::timestamp_scope_end(cmd, VK_PIPELINE_STAGE_2_NONE, triangle_scope);
+
+  auto imgui_scope =
+      vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "imgui"_hs);
   imgui_renderer.render(cmd, swapchain_image);
+  vk::timestamp_scope_end(cmd, VK_PIPELINE_STAGE_2_NONE, imgui_scope);
 
   vk::pipeline_barrier(
       cmd, swapchain_image.sync_to({
@@ -145,30 +155,25 @@ EXPORT AppEvent render(subsystem::video& v, Renderer* renderer) {
   defer { ImGui::EndFrame(); };
   profiling_window();
 
-  {
-    VkCommandBufferBeginInfo command_buffer_begin_info{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-    };
-    vkBeginCommandBuffer(renderer->cmd, &command_buffer_begin_info);
-  }
+  VkCommandBufferBeginInfo command_buffer_begin_info{
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+      .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+  };
+  vkBeginCommandBuffer(renderer->cmd, &command_buffer_begin_info);
   renderer->main_renderer.render(renderer->cmd, frame->swapchain_image);
 
-  {
-    using namespace core::literals;
-    auto render_scope = debug::scope_start("end render"_hs);
-    defer { debug::scope_end(render_scope); };
+  using namespace core::literals;
+  auto render_scope = debug::scope_start("end cmd buffer"_hs);
+  vkEndCommandBuffer(renderer->cmd);
+  debug::scope_end(render_scope);
 
-    vkEndCommandBuffer(renderer->cmd);
-
-    switch (VkResult res = v.end_frame(*frame, renderer->cmd); res) {
-    case VK_ERROR_OUT_OF_DATE_KHR:
-    case VK_SUBOPTIMAL_KHR:
-      sev |= AppEvent::RebuildSwapchain;
-      return sev;
-    default:
-      VK_ASSERT(res);
-    }
+  switch (VkResult res = v.end_frame(*frame, renderer->cmd); res) {
+  case VK_ERROR_OUT_OF_DATE_KHR:
+  case VK_SUBOPTIMAL_KHR:
+    sev |= AppEvent::RebuildSwapchain;
+    return sev;
+  default:
+    VK_ASSERT(res);
   }
 
   return sev;

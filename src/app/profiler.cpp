@@ -1,6 +1,7 @@
 
 #include "core/core.h"
 #include "core/debug/time.h"
+#include "core/os/time.h"
 #include <imgui.h>
 using namespace core::literals;
 
@@ -18,8 +19,6 @@ struct frame_datum {
   os::time sum;
 };
 
-void render_profiling_graph(core::storage<frame_datum> frame_data, usize offset);
-
 frame_datum::a cpu_frame_data_a[150][150];
 frame_datum cpu_frame_data[150];
 
@@ -33,73 +32,14 @@ core::array color_map{
     Color{0xff, 0x96, 0x71}, Color{0xff, 0xc7, 0x5f},
 };
 
-void profiling_window() {
-  auto frame_report_scope = debug::scope_start("frame report"_hs);
-  defer { debug::scope_end(frame_report_scope); };
-
-  auto scratch = core::scratch_get();
-  defer { scratch.retire(); };
-  auto frame_timing_infos = debug::get_last_frame_timing_infos(*scratch);
-
-  if (!freeze) {
-    offset = (offset + 1) % 150;
-    {
-      os::time sum{};
-      for (auto [idx, timing_info] : core::enumerate{frame_timing_infos.timings.iter()}) {
-        cpu_frame_data_a[offset][idx] = {
-            .name  = timing_info->name,
-            .t     = timing_info->time,
-            .color = color_map[idx % color_map.size()]
-        };
-        sum = sum + timing_info->time;
-      }
-      cpu_frame_data[offset] = {
-          .as  = {frame_timing_infos.timings.size(), cpu_frame_data_a[offset]},
-          .sum = sum,
-      };
-    }
-
-    {
-      os::time sum{};
-      for (auto [idx, timing_info] : core::enumerate{frame_timing_infos.timings.iter()}) {
-        gpu_frame_data_a[offset][idx] = {
-            .name  = timing_info->name,
-            .t     = timing_info->time,
-            .color = color_map[idx % color_map.size()]
-        };
-        sum = sum + timing_info->time;
-      }
-      gpu_frame_data[offset] = {
-          .as  = {frame_timing_infos.timings.size(), gpu_frame_data_a[offset]},
-          .sum = sum,
-      };
-    }
-  }
-
-  if (ImGui::Begin("profiling")) {
-    auto duration = os::duration_info::from_time(frame_timing_infos.stats.mean_frame_time);
-    ImGui::Text(
-        "CPU: %3d ms %03d us %03d ns |  %.0f FPS", duration.msec, duration.usec, duration.nsec,
-        frame_timing_infos.stats.mean_frame_time.hz()
-    );
-    static int frame_offset = 0;
-    render_profiling_graph(
-        cpu_frame_data, (usize(int(ARRAY_SIZE(cpu_frame_data)) - frame_offset) + offset) %
-                            ARRAY_SIZE(cpu_frame_data)
-    );
-    ImGui::Text("GPU: ");
-    render_profiling_graph(
-        gpu_frame_data, (usize(int(ARRAY_SIZE(gpu_frame_data)) - frame_offset) + offset) %
-                            ARRAY_SIZE(gpu_frame_data)
-    );
-    ImGui::Checkbox("Freeze", &freeze);
-    ImGui::SameLine();
-    ImGui::DragInt("Offset", &frame_offset);
-  }
-  ImGui::End();
-}
-
-void render_profiling_graph(core::storage<frame_datum> frame_data, usize offset) {
+void render_profiling_graph(
+    core::Arena& arena_,
+    core::storage<frame_datum> frame_data,
+    usize offset,
+    f32* max
+) {
+  auto ar = arena_.make_temp();
+  defer { ar.retire(); };
   struct {
     u32 graph_width = 200, legend_width = 100, height = 200;
     u32 frame_width              = 4;
@@ -118,7 +58,6 @@ void render_profiling_graph(core::storage<frame_datum> frame_data, usize offset)
       ImVec2(graph_pos.x, graph_pos.y),
       ImVec2(graph_pos.x + (f32)config.graph_width, graph_pos.y + (f32)config.height), 0xFFFFFFFF
   );
-  static f32 max = 0;
   f32 max_ns;
   for (auto& frame_datum : frame_data.iter()) {
     max_ns =
@@ -127,14 +66,14 @@ void render_profiling_graph(core::storage<frame_datum> frame_data, usize offset)
                 f32(config.height - (frame_datum.as.size - 1) * config.frame_padding_vertical -
                     2 * config.frame_margin_vertical));
   }
-  if (max == 0) {
-    max = max_ns;
+  if (*max == 0) {
+    *max = max_ns;
   }
-  max = max +
-        (1.0f -
-         expf(-(f32)frame_data[(frame_data.size + offset) % frame_data.size].sum.ns * 1e-9f / 2.0f)
-        ) * (max_ns - max);
-  max_ns = max   = MAX(max, max_ns);
+  *max = *max +
+         (1.0f -
+          expf(-(f32)frame_data[(frame_data.size + offset) % frame_data.size].sum.ns * 1e-9f / 2.0f)
+         ) * (max_ns - *max);
+  max_ns = *max  = MAX(*max, max_ns);
   max_ns        *= 1.01f;
 
   f32 textSizeY  = ImGui::CalcTextSize("Text").y;
@@ -183,8 +122,13 @@ void render_profiling_graph(core::storage<frame_datum> frame_data, usize offset)
               ImVec2(textPos.x - 2, textPos.y + (1.0f - 0.2f) * textSizeY),
           };
           drawList->AddConvexPolyFilled(points.data, (int)points.size(), color);
+          core::string_builder sb{};
+          sb.push(*ar, t.name);
+          auto duration = os::duration_info::from_time(t.t);
+          sb.pushf(*ar, "%3d ms %03d us %03d ns", duration.msec, duration.usec, duration.nsec);
+          auto txt = sb.commit(*ar);
           drawList->AddText(
-              textPos, color, (const char*)t.name.data, (const char*)(t.name.data + t.name.len)
+              textPos, color, (const char*)txt.data, (const char*)(txt.data + txt.len)
           );
           textPos.y -= textHeight;
         }
@@ -194,4 +138,78 @@ void render_profiling_graph(core::storage<frame_datum> frame_data, usize offset)
   };
 
   ImGui::Dummy(ImVec2(f32(config.graph_width + config.legend_width), f32(config.height)));
+}
+void profiling_window() {
+  auto frame_report_scope = debug::scope_start("frame report"_hs);
+  defer { debug::scope_end(frame_report_scope); };
+
+  auto scratch = core::scratch_get();
+  defer { scratch.retire(); };
+  auto frame_timing_infos =
+      debug::get_last_frame_timing_infos(*scratch, debug::scope_category::CPU);
+
+  if (!freeze) {
+    offset = (offset + 1) % 150;
+    {
+      os::time sum{};
+      for (auto [idx, timing_info] : core::enumerate{frame_timing_infos.timings.iter()}) {
+        cpu_frame_data_a[offset][idx] = {
+            .name  = timing_info->name,
+            .t     = timing_info->time,
+            .color = color_map[idx % color_map.size()]
+        };
+        sum = sum + timing_info->time;
+      }
+      cpu_frame_data[offset] = {
+          .as  = {frame_timing_infos.timings.size(), cpu_frame_data_a[offset]},
+          .sum = sum,
+      };
+    }
+
+    {
+      auto frame_timing_infos =
+          debug::get_last_frame_timing_infos(*scratch, debug::scope_category::GPU);
+      os::time sum{};
+      for (auto [idx, timing_info] : core::enumerate{frame_timing_infos.timings.iter()}) {
+        gpu_frame_data_a[offset][idx] = {
+            .name  = timing_info->name,
+            .t     = timing_info->time,
+            .color = color_map[idx % color_map.size()]
+        };
+        sum = sum + timing_info->time;
+      }
+      gpu_frame_data[offset] = {
+          .as  = {frame_timing_infos.timings.size(), gpu_frame_data_a[offset]},
+          .sum = sum,
+      };
+    }
+  }
+
+  if (ImGui::Begin("profiling")) {
+    auto duration = os::duration_info::from_time(frame_timing_infos.stats.mean_frame_time);
+    ImGui::Text(
+        "CPU: %3d ms %03d us %03d ns |  %.0f FPS", duration.msec, duration.usec, duration.nsec,
+        frame_timing_infos.stats.mean_frame_time.hz()
+    );
+    static int frame_offset = 0;
+    static f32 cpu_max      = 0;
+    render_profiling_graph(
+        *scratch, cpu_frame_data,
+        (usize(int(ARRAY_SIZE(cpu_frame_data)) - frame_offset) + offset) %
+            ARRAY_SIZE(cpu_frame_data),
+        &cpu_max
+    );
+    ImGui::Text("GPU: ");
+    static f32 gpu_max = 0;
+    render_profiling_graph(
+        *scratch, gpu_frame_data,
+        (usize(int(ARRAY_SIZE(gpu_frame_data)) - frame_offset) + offset) %
+            ARRAY_SIZE(gpu_frame_data),
+        &gpu_max
+    );
+    ImGui::Checkbox("Freeze", &freeze);
+    ImGui::SameLine();
+    ImGui::DragInt("Offset", &frame_offset);
+  }
+  ImGui::End();
 }

@@ -36,6 +36,7 @@ add_library(core
   src/core/vulkan/vma.cpp
   src/core/vulkan/subsystem.cpp
   src/core/vulkan/image.cpp
+  src/core/vulkan/timings.cpp
   src/core/fs/fs.cpp
   src/core/debug/time.cpp
 )

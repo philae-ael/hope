@@ -479,6 +479,7 @@ EXPORT Result<Device> create_default_device(
       .queues            = queues,
       .synchronization2  = true,
       .dynamic_rendering = true,
+      .timestamps        = true,
   };
   auto [physical_device, queues_creation_infos] = [&] {
     auto physical_device = find_physical_device(*ar, instance, requested_features);
@@ -508,14 +509,14 @@ EXPORT Result<Device> create_default_device(
     return device.err();
   }
 
+  VkPhysicalDeviceProperties properties{};
+  vkGetPhysicalDeviceProperties(physical_device, &properties);
+
   VkQueue omniQueue;
   u32 omniQueueFamilyIndex = queues_creation_infos[0].family_index;
   vkGetDeviceQueue(*device, omniQueueFamilyIndex, 0, &omniQueue);
   return Device{
-      physical_device,
-      device.value(),
-      omniQueueFamilyIndex,
-      omniQueue,
+      physical_device, device.value(), properties, omniQueueFamilyIndex, omniQueue,
 
   };
 }
@@ -542,6 +543,16 @@ physical_device_features::into_vk_physical_device_features2(core::Arena& ar) con
         .dynamicRendering = true,
     };
     VK_PUSH_NEXT(&physical_device_features2, physical_device_dynamic_rendering_features);
+  }
+
+  if (timestamps) {
+    auto physical_device_host_query_reset_features =
+        ar.allocate<VkPhysicalDeviceHostQueryResetFeaturesEXT>();
+    *physical_device_host_query_reset_features = {
+        .sType          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT,
+        .hostQueryReset = VK_TRUE,
+    };
+    VK_PUSH_NEXT(&physical_device_features2, physical_device_host_query_reset_features);
   }
   return physical_device_features2;
 }

@@ -41,6 +41,8 @@ struct Device {
   VkPhysicalDevice physical;
   VkDevice logical;
 
+  VkPhysicalDeviceProperties properties;
+
   u32 omni_queue_family_index;
   VkQueue omni_queue;
 
@@ -68,6 +70,7 @@ struct physical_device_features {
   core::storage<queue_request> queues;
   bool synchronization2;
   bool dynamic_rendering;
+  bool timestamps;
 
   bool check_features(const VkPhysicalDeviceProperties2& physical_device_properties2) const;
   VkPhysicalDeviceFeatures2 into_vk_physical_device_features2(core::Arena& ar) const;

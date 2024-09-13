@@ -36,8 +36,11 @@ struct string_map {
 
 namespace {
 struct {
-  string_map::Data storagea[DEBUG_MAX_SCOPES], storageb[DEBUG_MAX_SCOPES];
-  string_map last{storagea}, cur{storageb};
+  string_map::Data cpustoragea[DEBUG_MAX_SCOPES], cpustorageb[DEBUG_MAX_SCOPES];
+  string_map cpulast{cpustoragea}, cpucur{cpustorageb};
+
+  string_map::Data gpustoragea[DEBUG_MAX_SCOPES], gpustorageb[DEBUG_MAX_SCOPES];
+  string_map gpulast{gpustoragea}, gpucur{gpustorageb};
 
   f32 frame_time_storage[FRAME_COUNT];
   core::windowed_series frame_time_series{frame_time_storage};
@@ -49,8 +52,10 @@ struct {
 namespace debug {
 
 EXPORT void init() {
-  s.last.reset();
-  s.cur.reset();
+  s.cpulast.reset();
+  s.cpucur.reset();
+  s.gpulast.reset();
+  s.gpucur.reset();
 }
 EXPORT void reset() {}
 
@@ -58,10 +63,16 @@ EXPORT void frame_end() {
   s.frame_time_series.add_sample((f32)os::time_monotonic().since(s.frame_start).ns);
 }
 
-EXPORT void frame_start() {
-  SWAP(s.last, s.cur);
-  s.cur.reset();
-  s.frame_start = os::time_monotonic();
+EXPORT void frame_start(scope_category cat) {
+  auto& cur  = cat == scope_category::CPU ? s.cpucur : s.gpucur;
+  auto& last = cat == scope_category::CPU ? s.cpulast : s.gpulast;
+
+  SWAP(last, cur);
+  cur.reset();
+
+  if (cat == scope_category::CPU) {
+    s.frame_start = os::time_monotonic();
+  }
 }
 
 // TODO: move name into a string_registry
@@ -70,13 +81,20 @@ EXPORT scope scope_start(core::hstr8 name) {
 }
 
 EXPORT void scope_end(scope sco) {
-  s.cur[core::intern(sco.name)] += os::time_monotonic().since(sco.t);
+  s.cpucur[core::intern(sco.name)] += os::time_monotonic().since(sco.t);
 }
 
-EXPORT timing_infos get_last_frame_timing_infos(core::Arena& ar) {
+EXPORT void scope_import(scope_category cat, core::hstr8 name, os::time t) {
+  auto& cur                = cat == scope_category::CPU ? s.cpucur : s.gpucur;
+  cur[core::intern(name)] += t;
+}
+
+EXPORT timing_infos get_last_frame_timing_infos(core::Arena& ar, scope_category cat) {
   core::vec<timing_info> v;
-  for (auto& scope : s.last.iter()) {
-    v.push(ar, {core::unintern(scope.key.hash), scope.value});
+  auto& last = cat == scope_category::CPU ? s.cpulast : s.gpulast;
+
+  for (auto& scope : last.iter()) {
+    v.push(ar, {scope.key, scope.value});
   }
   return {
       v,

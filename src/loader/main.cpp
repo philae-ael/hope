@@ -27,8 +27,7 @@ log_entry timed_formatter(void* u, Arena& arena, core::log_entry entry) {
 }
 
 int main(int argc, char* argv[]) {
-  auto& ar          = arena_alloc();
-  auto& frame_arena = arena_alloc();
+  auto& ar = arena_alloc();
   setup_crash_handler();
   log_register_global_formatter(timed_formatter, nullptr);
   log_set_global_level(core::LogLevel::Trace);
@@ -53,11 +52,13 @@ int main(int argc, char* argv[]) {
   renderer = app.init_renderer(ar, video);
   LOG_INFO("App fully initialized");
 
-  while (true) {
+  auto& frame_arena = arena_alloc();
+  while (!false) {
     auto frame_ar = frame_arena.make_temp();
     defer { frame_ar.retire(); };
 
     debug::frame_start();
+    defer { debug::frame_end(); };
 
     auto fs_process_scope = debug::scope_start("fs process"_hs);
     fs::process_modified_file_callbacks();
@@ -80,15 +81,14 @@ int main(int argc, char* argv[]) {
       sev |= app.handle_events(ev);
     }
   }
-    {
 
-      AppEvent renderev = app.render(video, renderer);
-      if (any(renderev & AppEvent::SkipRender)) {
-        goto handle_events;
-      }
-
-      sev |= renderev;
+    AppEvent renderev = app.render(video, renderer);
+    if (any(renderev & AppEvent::SkipRender)) {
+      LOG_TRACE("skip");
+      goto handle_events;
     }
+
+    sev |= renderev;
 
     if (any(sev & AppEvent::Exit)) {
       break;
@@ -124,7 +124,6 @@ int main(int argc, char* argv[]) {
         );
       }
     }
-    debug::frame_end();
   }
 
   LOG_INFO("Exiting...");
