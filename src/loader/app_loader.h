@@ -13,27 +13,24 @@ enum class AppEvent : u8 {
 };
 
 struct App;
+struct AppPFNs;
+struct AppState;
+struct AppInfo;
 struct Renderer;
 
 union SDL_Event;
-#define APP_PFNS                                                 \
-  PFN(init, void)                                                \
-  PFN(uninit, void)                                              \
-  PFN(handle_events, AppEvent, SDL_Event&)                       \
-  PFN(init_renderer, Renderer*, core::Arena&, subsystem::video&) \
-  PFN(render, AppEvent, subsystem::video&, Renderer*)            \
-  PFN(swapchain_rebuilt, void, subsystem::video&, Renderer*)     \
-  PFN(uninit_renderer, void, subsystem::video&, Renderer*)
 
-#define PFN(name, ret, ...) using CONCAT(PFN_, name) = ret (*)(__VA_ARGS__);
-EVAL(APP_PFNS)
-#undef PFN
+using PFN_init   = App* (*)(core ::Arena&, App*, AppState*, subsystem ::video*);
+using PFN_uninit = AppState* (*)(App&);
+using PFN_frame  = AppEvent (*)(core ::Arena&, App&);
 
-struct App {
+struct AppPFNs {
   void* handle;
-#define PFN(name, ret, ...) CONCAT(PFN_, name) name;
-  EVAL(APP_PFNS)
-#undef PFN
+
+  PFN_init init;
+  PFN_uninit uninit;
+  PFN_frame frame;
+
 #if SHARED
   bool need_reload;
 #endif
@@ -43,8 +40,8 @@ struct App {
 inline core::str8 default_soname = core::str8::from("lib/libapp.so");
 #endif
 
-void init_app(App& app);
-bool need_reload(App& app);
-void reload_app(App& app);
+void load_app(AppPFNs& app);
+bool need_reload(AppPFNs& app);
+void reload_app(AppPFNs& app);
 
 #endif // INCLUDE_SRC_APP_LOADER_H_

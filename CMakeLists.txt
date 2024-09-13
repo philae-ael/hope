@@ -86,7 +86,6 @@ target_link_libraries(app PUBLIC core)
 target_sources(app PRIVATE
   src/app/app.cpp
   src/app/renderer.cpp
-  src/app/testfree.cpp
   src/app/imgui_renderer.cpp
   src/app/triangle_renderer.cpp
   src/app/profiler.cpp

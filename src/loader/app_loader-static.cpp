@@ -4,25 +4,25 @@
 struct Renderer;
 union SDL_Event;
 
-#define PFN(name, ret, ...) ret name(__VA_ARGS__);
 extern "C" {
-EVAL(APP_PFNS)
-}
-#undef PFN
-
-void init_app(App& app) {
-#define PFN(name, ret, ...) .name = name,
-  app                             = App{.handle = nullptr, EVAL(APP_PFNS)};
-#undef PFN
-
-  app.init();
+App* init(core ::Arena&, App*, AppState*, subsystem ::video*);
+AppState* uninit(App&);
+AppEvent frame(core ::Arena&, App&);
 }
 
-bool need_reload(App& app) {
+void load_app(AppPFNs& app) {
+  app = AppPFNs{
+      .handle = nullptr,
+      .init   = init,
+      .uninit = uninit,
+      .frame  = frame,
+  };
+}
+
+bool need_reload(AppPFNs& app) {
   return false;
 }
 
-void reload_app(App& app) {
-  app.uninit();
-  init_app(app);
+void reload_app(AppPFNs& app) {
+  LOG_DEBUG("reloading does nothing in static build");
 }

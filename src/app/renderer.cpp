@@ -1,4 +1,5 @@
 
+#include "app/renderer.h"
 #include "core/vulkan/timings.h"
 #include "imgui_renderer.h"
 #include "profiler.h"
@@ -19,28 +20,6 @@
 
 using namespace core::enum_helpers;
 using namespace core::literals;
-
-struct MainRenderer {
-  ImGuiRenderer imgui_renderer;
-  TriangleRenderer triangle_renderer;
-
-  static MainRenderer init(subsystem::video& v);
-  void render(VkCommandBuffer cmd, vk::image2D& swapchain_image);
-  void uninit(subsystem::video& v);
-
-  core::vec<core::str8> file_deps(core::Arena& arena);
-};
-
-struct Renderer {
-  core::Arena* arena;
-  VkCommandPool command_pool;
-  VkCommandBuffer cmd;
-
-  core::vec<fs::on_file_modified_handle> on_file_modified_handles;
-  bool need_rebuild = false;
-
-  MainRenderer main_renderer;
-};
 
 MainRenderer MainRenderer::init(subsystem::video& v) {
   MainRenderer self;
@@ -86,49 +65,41 @@ void on_dep_file_modified(void* userdata) {
   renderer.need_rebuild = true;
 }
 
-extern "C" {
-
-EXPORT Renderer* init_renderer(core::Arena& ar, subsystem::video& v) {
-  Renderer* rdata     = ar.allocate<Renderer>();
-  rdata               = new (rdata) Renderer{};
-  rdata->need_rebuild = false;
-
-  rdata->arena        = &core::arena_alloc();
+Renderer init_renderer(core::Arena& arena, subsystem::video& v) {
+  Renderer rdata{};
+  rdata.need_rebuild = false;
 
   VkCommandPoolCreateInfo command_pool_create_info{
       .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
       .flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
       .queueFamilyIndex = v.device.omni_queue_family_index,
   };
-  VK_ASSERT(vkCreateCommandPool(v.device, &command_pool_create_info, nullptr, &rdata->command_pool)
-  );
+  VK_ASSERT(vkCreateCommandPool(v.device, &command_pool_create_info, nullptr, &rdata.command_pool));
   VkCommandBufferAllocateInfo command_pool_allocate_info{
       .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-      .commandPool        = rdata->command_pool,
+      .commandPool        = rdata.command_pool,
       .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
       .commandBufferCount = 1,
   };
-  VK_ASSERT(vkAllocateCommandBuffers(v.device, &command_pool_allocate_info, &rdata->cmd));
-  rdata->main_renderer = MainRenderer::init(v);
+  VK_ASSERT(vkAllocateCommandBuffers(v.device, &command_pool_allocate_info, &rdata.cmd));
+  rdata.main_renderer = MainRenderer::init(v);
 
   {
     auto scratch = core::scratch_get();
-
-    auto deps    = rdata->main_renderer.file_deps(*scratch);
+    auto deps    = rdata.main_renderer.file_deps(*scratch);
     for (auto f : deps.iter()) {
-      auto handle = fs::register_modified_file_callback(f, on_dep_file_modified, rdata);
-      rdata->on_file_modified_handles.push(*rdata->arena, handle);
+      auto handle = fs::register_modified_file_callback(f, on_dep_file_modified, &rdata);
+      rdata.on_file_modified_handles.push(arena, handle);
     }
-
     scratch.retire();
   }
 
   return rdata;
 }
 
-EXPORT AppEvent render(subsystem::video& v, Renderer* renderer) {
+AppEvent render(subsystem::video& v, Renderer& renderer) {
   AppEvent sev{};
-  if (renderer->need_rebuild) {
+  if (renderer.need_rebuild) {
     sev |= AppEvent::RebuildRenderer;
   }
 
@@ -159,15 +130,15 @@ EXPORT AppEvent render(subsystem::video& v, Renderer* renderer) {
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
       .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
   };
-  vkBeginCommandBuffer(renderer->cmd, &command_buffer_begin_info);
-  renderer->main_renderer.render(renderer->cmd, frame->swapchain_image);
+  vkBeginCommandBuffer(renderer.cmd, &command_buffer_begin_info);
+  renderer.main_renderer.render(renderer.cmd, frame->swapchain_image);
 
   using namespace core::literals;
   auto render_scope = debug::scope_start("end cmd buffer"_hs);
-  vkEndCommandBuffer(renderer->cmd);
+  vkEndCommandBuffer(renderer.cmd);
   debug::scope_end(render_scope);
 
-  switch (VkResult res = v.end_frame(*frame, renderer->cmd); res) {
+  switch (VkResult res = v.end_frame(*frame, renderer.cmd); res) {
   case VK_ERROR_OUT_OF_DATE_KHR:
   case VK_SUBOPTIMAL_KHR:
     sev |= AppEvent::RebuildSwapchain;
@@ -179,23 +150,21 @@ EXPORT AppEvent render(subsystem::video& v, Renderer* renderer) {
   return sev;
 }
 
-EXPORT void swapchain_rebuilt(subsystem::video& v, Renderer* renderer) {
+void swapchain_rebuilt(subsystem::video& v, Renderer& renderer) {
   LOG_TRACE("swapchain rebuilt");
   vkDeviceWaitIdle(v.device);
-  renderer->main_renderer.uninit(v);
-  renderer->main_renderer = MainRenderer::init(v);
+  renderer.main_renderer.uninit(v);
+  renderer.main_renderer = MainRenderer::init(v);
 }
 
-EXPORT void uninit_renderer(subsystem::video& v, Renderer* renderer) {
+void uninit_renderer(subsystem::video& v, Renderer& renderer) {
   vkDeviceWaitIdle(v.device);
-  renderer->main_renderer.uninit(v);
+  renderer.main_renderer.uninit(v);
 
-  vkFreeCommandBuffers(v.device, renderer->command_pool, 1, &renderer->cmd);
-  vkDestroyCommandPool(v.device, renderer->command_pool, nullptr);
+  vkFreeCommandBuffers(v.device, renderer.command_pool, 1, &renderer.cmd);
+  vkDestroyCommandPool(v.device, renderer.command_pool, nullptr);
 
-  for (auto h : renderer->on_file_modified_handles.iter()) {
+  for (auto h : renderer.on_file_modified_handles.iter()) {
     fs::unregister_modified_file_callback(h);
   }
-  core::arena_dealloc(*renderer->arena);
-}
 }

@@ -45,11 +45,9 @@ int main(int argc, char* argv[]) {
   SDL_Init(SDL_INIT_GAMEPAD);
 
   auto video = subsystem::init_video(ar);
-  App app;
-  init_app(app);
-  Renderer* renderer;
-
-  renderer = app.init_renderer(ar, video);
+  AppPFNs app_pfns;
+  load_app(app_pfns);
+  App* app = app_pfns.init(ar, nullptr, nullptr, &video);
   LOG_INFO("App fully initialized");
 
   auto& frame_arena = arena_alloc();
@@ -64,71 +62,23 @@ int main(int argc, char* argv[]) {
     fs::process_modified_file_callbacks();
     debug::scope_end(fs_process_scope);
 
-    AppEvent sev{};
-    SDL_Event ev{};
-
-  handle_events: {
-    auto poll_event_scope = debug::scope_start("poll event start"_hs);
-    defer { debug::scope_end(poll_event_scope); };
-
-    while (SDL_PollEvent(&ev)) {
-      if (ev.type == SDL_EVENT_QUIT) {
-        sev |= AppEvent::Exit;
-      }
-      if (ev.type == SDL_EVENT_KEY_DOWN && ev.key.key == SDLK_ESCAPE) {
-        sev |= AppEvent::ReloadApp;
-      }
-      sev |= app.handle_events(ev);
-    }
-  }
-
-    AppEvent renderev = app.render(video, renderer);
-    if (any(renderev & AppEvent::SkipRender)) {
-      LOG_TRACE("skip");
-      goto handle_events;
-    }
-
-    sev |= renderev;
-
+    auto sev = app_pfns.frame(*frame_ar, *app);
     if (any(sev & AppEvent::Exit)) {
       break;
     }
-    if (any(sev & AppEvent::RebuildRenderer)) {
-      LOG_INFO("rebuilding renderer");
-      app.uninit_renderer(video, renderer);
-      renderer = app.init_renderer(ar, video);
-    }
-    if (any(sev & AppEvent::RebuildSwapchain)) {
-      subsystem::video_rebuild_swapchain(video);
-      app.swapchain_rebuilt(video, renderer);
-    }
 
-    if (any(sev & AppEvent::ReloadApp) || need_reload(app)) {
+    if (any(sev & AppEvent::ReloadApp) || need_reload(app_pfns)) {
       LOG_INFO("reloading app");
 
-      app.uninit_renderer(video, renderer);
-      reload_app(app);
-      subsystem::video_rebuild_swapchain(video);
-      renderer = app.init_renderer(ar, video);
+      auto app_state = app_pfns.uninit(*app);
+      reload_app(app_pfns);
+      app = app_pfns.init(ar, app, app_state, &video);
       debug::reset();
-    }
-
-    if (false) {
-      auto frame_report_scope = debug::scope_start("frame report"_hs);
-      defer { debug::scope_end(frame_report_scope); };
-
-      auto timing_infos = debug::get_last_frame_timing_infos(*frame_ar);
-      for (auto [name, t] : timing_infos.timings.iter()) {
-        LOG_BUILDER(
-            core::LogLevel::Trace, push(name).push(" at ").push(t, os::TimeFormat::MMM_UUU_NNN)
-        );
-      }
     }
   }
 
   LOG_INFO("Exiting...");
-  app.uninit_renderer(video, renderer);
-  app.uninit();
+  app_pfns.uninit(*app);
 
   subsystem::uninit_video(video);
   SDL_Quit();

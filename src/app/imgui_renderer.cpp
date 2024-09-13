@@ -21,7 +21,6 @@ ImGuiRenderer ImGuiRenderer::init(subsystem::video& v) {
       v.device, &imgui_descriptor_pool_create_info, nullptr, &imgui_renderer.descriptor_pool
   ));
 
-  ImGui_ImplSDL3_InitForVulkan(v.window);
   ImGui_ImplVulkan_InitInfo imgui_implvulkan_info{
       .Instance            = v.instance,
       .PhysicalDevice      = v.device.physical,
@@ -46,7 +45,6 @@ ImGuiRenderer ImGuiRenderer::init(subsystem::video& v) {
 }
 void ImGuiRenderer::uninit(subsystem::video& v) {
   ImGui_ImplVulkan_Shutdown();
-  ImGui_ImplSDL3_Shutdown();
 
   vkDestroyDescriptorPool(v.device, descriptor_pool, nullptr);
   descriptor_pool = VK_NULL_HANDLE;
