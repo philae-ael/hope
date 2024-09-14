@@ -63,4 +63,5 @@ EXPORT core::str8 to_str8(core::Arena& arena, duration_info duration_info, TimeF
 EXPORT core::str8 to_str8(core::Arena& arena, time t, TimeFormat format) {
   return to_str8(arena, duration_info::from_time(t), format);
 }
+
 } // namespace os

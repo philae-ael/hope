@@ -53,7 +53,7 @@ struct {
 using namespace core::literals;
 
 EXPORT void init(core::str8 path) {
-  fs.arena = &core::arena_alloc(KB(4));
+  fs.arena = &core::arena_alloc();
   register_path("/"_s, path);
 }
 

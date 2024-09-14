@@ -51,4 +51,10 @@ EXPORT duration_info time_realtime() {
   };
 }
 
+EXPORT void sleep(u64 ns) {
+  const struct timespec ts {
+    0, (s64)ns
+  };
+  nanosleep(&ts, NULL);
+}
 } // namespace os

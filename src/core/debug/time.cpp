@@ -34,44 +34,46 @@ struct string_map {
 #define DEBUG_MAX_SCOPES 150
 #define FRAME_COUNT 100
 
-namespace {
-struct {
-  string_map::Data cpustoragea[DEBUG_MAX_SCOPES], cpustorageb[DEBUG_MAX_SCOPES];
-  string_map cpulast{cpustoragea}, cpucur{cpustorageb};
+static string_map::Data storagea[2][DEBUG_MAX_SCOPES], storageb[2][DEBUG_MAX_SCOPES];
 
-  string_map::Data gpustoragea[DEBUG_MAX_SCOPES], gpustorageb[DEBUG_MAX_SCOPES];
-  string_map gpulast{gpustoragea}, gpucur{gpustorageb};
+static core::array lasts{
+    string_map{storagea[0]},
+    string_map{storagea[1]},
+};
 
-  f32 frame_time_storage[FRAME_COUNT];
-  core::windowed_series frame_time_series{frame_time_storage};
+static core::array curs{
+    string_map{storageb[0]},
+    string_map{storageb[1]},
+};
 
-  os::time frame_start;
-} s;
-} // namespace
+static f32 frame_time_storage[FRAME_COUNT];
+static core::windowed_series frame_time_series{frame_time_storage};
+
+static os::time frame_start_t;
 
 namespace debug {
 
 EXPORT void init() {
-  s.cpulast.reset();
-  s.cpucur.reset();
-  s.gpulast.reset();
-  s.gpucur.reset();
+  lasts[0].reset();
+  curs[0].reset();
+  lasts[1].reset();
+  curs[1].reset();
 }
 EXPORT void reset() {}
 
 EXPORT void frame_end() {
-  s.frame_time_series.add_sample((f32)os::time_monotonic().since(s.frame_start).ns);
+  frame_time_series.add_sample((f32)os::time_monotonic().since(frame_start_t).ns);
 }
 
 EXPORT void frame_start(scope_category cat) {
-  auto& cur  = cat == scope_category::CPU ? s.cpucur : s.gpucur;
-  auto& last = cat == scope_category::CPU ? s.cpulast : s.gpulast;
+  auto& cur  = curs[(usize)cat];
+  auto& last = lasts[(usize)cat];
 
   SWAP(last, cur);
   cur.reset();
 
   if (cat == scope_category::CPU) {
-    s.frame_start = os::time_monotonic();
+    frame_start_t = os::time_monotonic();
   }
 }
 
@@ -81,17 +83,17 @@ EXPORT scope scope_start(core::hstr8 name) {
 }
 
 EXPORT void scope_end(scope sco) {
-  s.cpucur[core::intern(sco.name)] += os::time_monotonic().since(sco.t);
+  scope_import(scope_category::CPU, sco.name, os::time_monotonic().since(sco.t));
 }
 
 EXPORT void scope_import(scope_category cat, core::hstr8 name, os::time t) {
-  auto& cur                = cat == scope_category::CPU ? s.cpucur : s.gpucur;
+  auto& cur                = curs[(usize)cat];
   cur[core::intern(name)] += t;
 }
 
 EXPORT timing_infos get_last_frame_timing_infos(core::Arena& ar, scope_category cat) {
+  auto& last = lasts[(usize)cat];
   core::vec<timing_info> v;
-  auto& last = cat == scope_category::CPU ? s.cpulast : s.gpulast;
 
   for (auto& scope : last.iter()) {
     v.push(ar, {scope.key, scope.value});
@@ -99,8 +101,8 @@ EXPORT timing_infos get_last_frame_timing_infos(core::Arena& ar, scope_category 
   return {
       v,
       {
-          {(u64)s.frame_time_series.mean()},
-          {(u64)s.frame_time_series.sigma()},
+          {(u64)frame_time_series.mean()},
+          {(u64)frame_time_series.sigma()},
       }
   };
 }

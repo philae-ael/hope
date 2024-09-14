@@ -23,8 +23,8 @@ char (&_ArraySizeHelper(T (&arr)[N]))[N];
   #error platform not supported
 #endif
 
-#define MAX(a, b) ((a) > (b)) ? (a) : (b)
-#define MIN(a, b) ((a) < (b)) ? (a) : (b)
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define SWAP(a, b)  \
   do {              \
     auto tmp = b;   \

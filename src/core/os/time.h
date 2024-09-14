@@ -3,11 +3,12 @@
 #ifndef INCLUDE_OS_TIME_H_
 #define INCLUDE_OS_TIME_H_
 
-#include "../core/fwd.h"
+#include "core/core/fwd.h"
 
-namespace core {
-struct Arena;
-} // namespace core
+#define NSEC(x) (x)
+#define USEC(x) NSEC(x) * 1000
+#define MSEC(x) USEC(x) * 1000
+#define SEC(x) SEC(x) * 1000
 
 namespace os {
 struct time {
@@ -63,5 +64,7 @@ core::str8 to_str8(
     TimeFormat format = TimeFormat::HH_MM_SS_MMM
 );
 core::str8 to_str8(core::Arena& arena, time t, TimeFormat format = TimeFormat::MM_SS_MMM_UUU);
+
+void sleep(u64 ns);
 } // namespace os
 #endif // INCLUDE_OS_TIME_H_

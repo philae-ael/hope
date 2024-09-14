@@ -3,6 +3,7 @@
 #include <SDL3/SDL_events.h>
 #include <core/core.h>
 #include <core/fs/fs.h>
+#include <core/os/time.h>
 
 AppPFNs init_app_stub() {
   LOG_INFO("stub");
@@ -82,9 +83,20 @@ AppPFNs load_app(core::str8 soname_) {
   LOG_DEBUG("loading app at location %s", soname);
 
   dlerror();
-  libapp_handle = dlopen(soname, RTLD_LOCAL | RTLD_NOW);
-  app.handle    = libapp_handle;
-  CHECK_DLERROR("can't open %s", soname);
+  const usize max_retry = 5;
+  for (usize retry = 0; retry < max_retry; retry++) {
+    libapp_handle   = dlopen(soname, RTLD_LOCAL | RTLD_NOW);
+    app.handle      = libapp_handle;
+    const char* err = dlerror();
+    if (err == nullptr) {
+      break;
+    }
+    LOG_ERROR("can't load so %s: %s (%zu/%zu)", soname, err, retry, max_retry);
+    os::sleep(MSEC(5));
+  }
+  if (libapp_handle == nullptr) {
+    goto failed;
+  }
 
   app.init = (PFN_init)dlsym(libapp_handle, "init");
   CHECK_DLERROR("can't load init");
