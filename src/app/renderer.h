@@ -28,7 +28,7 @@ struct Renderer {
   MainRenderer main_renderer;
 };
 
-Renderer init_renderer(core::Arena& ar, subsystem::video& v);
+Renderer* init_renderer(core::Arena& ar, subsystem::video& v);
 void uninit_renderer(subsystem::video& v, Renderer& renderer);
 
 AppEvent render(subsystem::video& v, Renderer& renderer);

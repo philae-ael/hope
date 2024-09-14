@@ -10,6 +10,15 @@ add_library(imgui STATIC
   imgui/backends/imgui_impl_sdl3.cpp
   imgui/backends/imgui_impl_vulkan.cpp
 )
+
+
 target_compile_options(imgui PRIVATE  -fPIC)
 target_include_directories(imgui PUBLIC imgui)
 target_link_libraries(imgui PRIVATE SDL3::SDL3)
+
+add_library(misc STATIC
+  misc/cgltf.c
+  misc/stb_image.c
+)
+target_compile_options(misc PRIVATE -fPIC)
+target_include_directories(misc PUBLIC misc)

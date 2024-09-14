@@ -8,7 +8,7 @@
 struct App {
   core::Arena* arena;
   subsystem::video* video;
-  Renderer renderer;
+  Renderer* renderer;
 
   AppState* state;
 };

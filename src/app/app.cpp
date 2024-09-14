@@ -88,7 +88,7 @@ EXPORT App* init(core::Arena& arena, App* app, AppState* app_state, subsystem::v
 EXPORT AppState* uninit(App& app) {
   LOG_DEBUG("Uninit app");
 
-  uninit_renderer(*app.video, app.renderer);
+  uninit_renderer(*app.video, *app.renderer);
   ImGui_ImplSDL3_Shutdown();
   ImGui::DestroyContext();
 
@@ -110,7 +110,7 @@ handle_events: {
   }
 }
 
-  AppEvent renderev = render(*app.video, app.renderer);
+  AppEvent renderev = render(*app.video, *app.renderer);
   if (any(renderev & AppEvent::SkipRender)) {
     LOG_TRACE("skip");
     goto handle_events;
@@ -120,12 +120,12 @@ handle_events: {
 
   if (any(sev & AppEvent::RebuildRenderer)) {
     LOG_INFO("rebuilding renderer");
-    uninit_renderer(*app.video, app.renderer);
+    uninit_renderer(*app.video, *app.renderer);
     app.renderer = init_renderer(*app.arena, *app.video);
   }
   if (any(sev & AppEvent::RebuildSwapchain)) {
     subsystem::video_rebuild_swapchain(*app.video);
-    swapchain_rebuilt(*app.video, app.renderer);
+    swapchain_rebuilt(*app.video, *app.renderer);
   }
 
   static bool print_frame_report = false;

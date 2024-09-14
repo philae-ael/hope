@@ -57,6 +57,7 @@ AppPFNs init_app_stub() {
 
 void* libapp_handle = nullptr;
 AppState* uninit_app(App& app) {
+  LOG_INFO("uninit app");
   AppState* app_state = nullptr;
 
   if (libapp_handle != nullptr) {

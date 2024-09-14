@@ -65,8 +65,8 @@ void on_dep_file_modified(void* userdata) {
   renderer.need_rebuild = true;
 }
 
-Renderer init_renderer(core::Arena& arena, subsystem::video& v) {
-  Renderer rdata{};
+Renderer* init_renderer(core::Arena& arena, subsystem::video& v) {
+  Renderer& rdata    = *new (arena.allocate<Renderer>()) Renderer{};
   rdata.need_rebuild = false;
 
   VkCommandPoolCreateInfo command_pool_create_info{
@@ -94,7 +94,7 @@ Renderer init_renderer(core::Arena& arena, subsystem::video& v) {
     scratch.retire();
   }
 
-  return rdata;
+  return &rdata;
 }
 
 AppEvent render(subsystem::video& v, Renderer& renderer) {

@@ -1,52 +1,31 @@
 #ifndef INCLUDE_APP_TRIANGLE_RENDERER_CPP_
 #define INCLUDE_APP_TRIANGLE_RENDERER_CPP_
 
-#include "core/debug/time.h"
 #include "core/vulkan/image.h"
 #include <core/vulkan.h>
 #include <core/vulkan/subsystem.h>
 #include <vulkan/vulkan_core.h>
 
+struct Mesh {
+  u32 count;
+};
+
 struct TriangleRenderer {
   VkDescriptorPool descriptor_pool;
   VkPipeline pipeline;
   VkPipelineLayout pipeline_layout;
-  VkBuffer buffer;
-  VmaAllocation buf_allocation;
+  VkBuffer vertex_buffer;
+  VmaAllocation vertex_buf_allocation;
+  VkBuffer index_buffer;
+  VmaAllocation index_buf_allocation;
+
+  Mesh mesh;
 
   static TriangleRenderer init(subsystem::video& v, VkFormat format);
 
   static core::storage<core::str8> file_deps();
 
-  void render(VkCommandBuffer cmd, vk::image2D target) {
-    using namespace core::literals;
-    auto triangle_scope = debug::scope_start("triangle"_hs);
-    defer { debug::scope_end(triangle_scope); };
-    core::array color_attachments{target.as_attachment(
-        vk::image2D::AttachmentLoadOp::Clear{{.color = {.float32 = {0.0, 0.0, 0.0, 0.0}}}},
-        vk::image2D::AttachmentStoreOp::Store
-    )};
-    VkRenderingInfo rendering_info{
-        .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO,
-        .renderArea           = {{}, target.extent2},
-        .layerCount           = 1,
-        .colorAttachmentCount = (u32)color_attachments.size(),
-        .pColorAttachments    = color_attachments.data
-    };
-
-    vkCmdBeginRendering(cmd, &rendering_info);
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-    VkRect2D scissor{{}, target.extent2};
-    vkCmdSetScissor(cmd, 0, 1, &scissor);
-
-    VkViewport viewport{0, 0, (f32)target.extent2.width, (f32)target.extent2.height, 0, 1};
-    vkCmdSetViewport(cmd, 0, 1, &viewport);
-
-    VkDeviceSize offset = 0;
-    vkCmdBindVertexBuffers(cmd, 0, 1, &buffer, &offset);
-    vkCmdDraw(cmd, 3, 1, 0, 0);
-    vkCmdEndRendering(cmd);
-  }
+  void render(VkCommandBuffer cmd, vk::image2D target);
   void uninit(subsystem::video& v);
 };
 

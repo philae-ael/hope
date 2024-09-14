@@ -64,12 +64,10 @@ target_compile_definitions(core PUBLIC -DVMA_DEBUG)
 # target_compile_definitions(core PRIVATE -DMEM_USE_MALLOC)
 # target_compile_definitions(core PRIVATE -DSCRATCH_DEBUG )
 
-target_link_libraries(core PUBLIC SDL3::SDL3 Vulkan::Vulkan stdc++exp imgui GPUOpen::VulkanMemoryAllocator)
+target_link_libraries(core PUBLIC SDL3::SDL3 Vulkan::Vulkan stdc++exp imgui GPUOpen::VulkanMemoryAllocator misc)
 
 
-add_executable(loader
-  src/loader/main.cpp
-)
+add_executable(loader src/loader/main.cpp)
 
 if (BUILD_SHARED_LIBS)
   target_compile_definitions(core PUBLIC -DSHARED=1)
