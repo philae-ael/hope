@@ -8,134 +8,88 @@
 #include <cstring>
 
 namespace core {
-struct raw_vec {
-  LayoutInfo layout;
-  storage<u8> store;
+template <class T>
+struct vec {
+  storage<T> store{};
+  usize size_{};
 
-  usize size{};
+  vec() {}
+  template <usize len>
+  vec(T (&a)[len])
+      : store(storage{a})
+      , size_(len) {}
 
-  constexpr void pop(Arena& ar, storage<u8> d) {
-    pop(noalloc, d);
-    if (capacity() > 8 && capacity() > 2 * size) {
-      set_capacity(ar, size);
+  vec(storage<T> s)
+      : store(s)
+      , size_(s.size) {}
+
+  constexpr T pop(noalloc_t) {
+    if (size_ == 0) {
+      panic("Trying to pop empty vec");
     }
+
+    T t    = store[size_ - 1];
+    size_ -= 1;
+    return t;
   }
 
-  constexpr void pop(noalloc_t, storage<u8> d) {
-    DEBUG_ASSERT(d.size == layout.size);
-    if (size == 0) {
-      panic("Trying to pop empty raw_vec");
+  constexpr T pop(Arena& ar) {
+    T t = pop(noalloc);
+    if (capacity() > 8 && capacity() > 2 * size()) {
+      set_capacity(ar, size_);
     }
-
-    memcpy(d.data, store.data + layout.array(size - 1).size, d.size);
-    size -= 1;
+    return t;
   }
 
-  constexpr void push(Arena& ar, storage<const u8> d) {
-    DEBUG_ASSERT(d.size == layout.size);
+  constexpr void push(noalloc_t, const T& t) {
+    ASSERT(store.data != nullptr);
+    ASSERT(size() <= capacity());
+    store[size_]  = t;
+    size_        += 1;
+  }
 
-    if (size == capacity()) {
+  constexpr void push(Arena& ar, const T& t) {
+    if (size() >= capacity()) {
       set_capacity(ar, MAX(4, capacity() * 2));
     }
 
-    push(noalloc, d);
+    push(noalloc, t);
   }
 
-  constexpr void push(noalloc_t, storage<const u8> d) {
-    ASSERTM(size < capacity(), "No more capacity in raw_vec");
-    memcpy(store.data + layout.array(size).size, d.data, layout.size);
-    size += 1;
+  void set_size(usize new_size) {
+    ASSERT(new_size <= capacity());
+    size_ = new_size;
   }
-
   void set_capacity(Arena& ar, usize new_capacity, bool try_grow = true) {
     if (try_grow &&
-        ar.try_resize(store.data, store.size, new_capacity * layout.size, "raw_vec::resize")) {
-      store.size = new_capacity * layout.size;
+        ar.try_resize(store.data, store.size, new_capacity * sizeof(T), "vec::resize")) {
+      store.size = new_capacity;
       return;
     }
 
-    auto new_store = ar.allocate_array(layout, new_capacity, "raw_vec::resize");
-    memcpy(new_store.data, store.data, size * layout.size);
+    auto new_store = ar.allocate_array<T>(new_capacity, "vec::resize");
+    memcpy(new_store.data, store.data, size() * sizeof(T));
     store = new_store;
   }
 
-  raw_vec clone(Arena& ar) {
-    raw_vec copy = *this;
+  vec clone(Arena& ar) {
+    vec copy = *this;
     copy.set_capacity(ar, capacity(), false);
     return copy;
   }
 
   constexpr usize capacity() const {
-    return store.size / layout.size;
-  }
-};
-
-template <class T>
-struct vec {
-  raw_vec inner{default_layout_of<T>()};
-
-  vec(unsafe_t, raw_vec v)
-      : inner(v) {}
-  vec(LayoutInfo layout = default_layout_of<T>())
-      : inner(layout) {}
-
-  template <usize len>
-  vec(T (&a)[len], LayoutInfo layout = default_layout_of<T>())
-      : inner(layout, storage{a}.into_bytes(), len) {}
-
-  vec(storage<T> s, LayoutInfo layout = default_layout_of<T>())
-      : inner(layout, s.into_bytes(), s.size) {}
-
-  vec(clear_t, storage<T> s, LayoutInfo layout = default_layout_of<T>())
-      : inner(layout, s.into_bytes()) {}
-
-  constexpr T pop(noalloc_t) {
-    T t;
-    inner.pop(noalloc, storage<u8>::from(unsafe, t));
-    return t;
-  }
-
-  constexpr T pop(Arena& ar) {
-    T t;
-    ASSERT(type_info<T>().layout == inner.layout);
-    inner.pop(ar, storage<u8>::from(unsafe, t));
-    return t;
-  }
-
-  constexpr void push(Arena& ar, const T& t) {
-    ASSERT(default_layout_of<T>() == inner.layout);
-    inner.push(ar, storage<const u8>::from(unsafe, t));
-  }
-
-  constexpr void push(noalloc_t, const T& t) {
-    ASSERT(default_layout_of<T>() == inner.layout);
-    inner.push(noalloc, storage<const u8>::from(unsafe, t));
-  }
-
-  void set_size(usize new_size) {
-    ASSERT(new_size <= capacity());
-    inner.size = new_size;
-  }
-  void set_capacity(Arena& ar, usize new_capacity) {
-    inner.set_capacity(ar, new_capacity);
-  }
-
-  vec clone(Arena& ar) {
-    return {unsafe, inner.clone(ar)};
-  }
-
-  constexpr usize capacity() const {
-    return inner.capacity();
+    return store.size;
   }
 
   constexpr usize size() const {
-    return inner.size;
+    return size_;
   }
   constexpr T* data() {
-    return (T*)inner.store.data;
+    return store.data;
   }
   constexpr const T* data() const {
-    return (T*)inner.store.data;
+    return store.data;
   }
 
   constexpr operator storage<T>() {

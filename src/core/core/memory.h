@@ -73,11 +73,11 @@ struct Arena {
     };
   }
   template <class T>
-  storage<T> allocate_array(usize element_count) {
+  storage<T> allocate_array(usize element_count, const char* src = type_name<T>()) {
     auto arr_layout = default_layout_of<T>().array(element_count);
     return {
         element_count,
-        (T*)allocate(arr_layout, type_name<T>()),
+        (T*)allocate(arr_layout, src),
     };
   }
 
