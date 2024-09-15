@@ -95,6 +95,7 @@ struct hstr8 {
     return other.hash == hash;
   }
   hstr8 clone(Arena& arena);
+  const char* cstring(Arena& arena);
 };
 
 constexpr u64 hash(const u8* data, size_t len) {

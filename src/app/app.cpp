@@ -8,6 +8,7 @@
 #include <SDL3/SDL_video.h>
 
 #include <core/core.h>
+#include <core/debug/config.h>
 #include <core/debug/time.h>
 #include <core/vulkan/frame.h>
 #include <core/vulkan/init.h>
@@ -129,7 +130,7 @@ handle_events: {
   }
 
   static bool print_frame_report = false;
-  // debug::config_bool("Print frame report", &print_frame_report);
+  debug::config_bool("Print frame report", &print_frame_report);
   if (print_frame_report) {
     auto frame_report_scope = debug::scope_start("frame report"_hs);
     defer { debug::scope_end(frame_report_scope); };

@@ -163,4 +163,7 @@ EXPORT hstr8 unintern(u64 hash) {
   return it->second;
 }
 
+const char* hstr8::cstring(Arena& arena) {
+  return to_str8(*this).cstring(arena);
+}
 } // namespace core

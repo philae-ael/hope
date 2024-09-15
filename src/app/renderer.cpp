@@ -6,6 +6,7 @@
 #include "triangle_renderer.h"
 
 #include <core/core.h>
+#include <core/debug/config.h>
 #include <core/debug/time.h>
 #include <core/fs/fs.h>
 #include <core/vulkan.h>
@@ -124,6 +125,7 @@ AppEvent render(subsystem::video& v, Renderer& renderer) {
   ImGui_ImplSDL3_NewFrame();
   ImGui::NewFrame();
   defer { ImGui::EndFrame(); };
+  debug::config_new_frame();
   profiling_window();
 
   VkCommandBufferBeginInfo command_buffer_begin_info{

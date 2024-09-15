@@ -72,6 +72,13 @@ struct vec {
     store = new_store;
   }
 
+  void reset(noalloc_t) {
+    set_size(0);
+  }
+  void reset(Arena& ar) {
+    reset(noalloc);
+    set_capacity(ar, 0);
+  }
   vec clone(Arena& ar) {
     vec copy = *this;
     copy.set_capacity(ar, capacity(), false);

@@ -39,6 +39,7 @@ add_library(core
   src/core/vulkan/timings.cpp
   src/core/fs/fs.cpp
   src/core/debug/time.cpp
+  src/core/debug/config.cpp
 )
 target_include_directories(core PUBLIC src)
 
