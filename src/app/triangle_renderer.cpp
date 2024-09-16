@@ -3,6 +3,7 @@
 #include "core/core.h"
 #include "core/debug/time.h"
 #include "core/fs/fs.h"
+#include "core/os/time.h"
 #include "core/vulkan/image.h"
 #include "core/vulkan/pipeline.h"
 #include <core/vulkan/subsystem.h>
@@ -119,13 +120,21 @@ TriangleRenderer TriangleRenderer::init(subsystem::video& v, VkFormat format) {
   VkDescriptorPool descriptor_pool;
   vkCreateDescriptorPool(v.device, &descriptor_pool_create_info, nullptr, &descriptor_pool);
 
+  core::array push_constants{
+      VkPushConstantRange{
+          .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+          .offset     = 0,
+          .size       = 2 * 4 * 4 * sizeof(f32), // 1 mat4
+      },
+  };
+
   // # Layout
   VkPipelineLayoutCreateInfo pipeline_layout_create_info{
       .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
       .setLayoutCount         = 0,
       .pSetLayouts            = nullptr,
-      .pushConstantRangeCount = 0,
-      .pPushConstantRanges    = nullptr
+      .pushConstantRangeCount = (u32)push_constants.size(),
+      .pPushConstantRanges    = push_constants.data,
   };
   VkPipelineLayout pipeline_layout;
   vkCreatePipelineLayout(v.device, &pipeline_layout_create_info, nullptr, &pipeline_layout);
@@ -227,9 +236,21 @@ void TriangleRenderer::render(VkCommandBuffer cmd, vk::image2D target) {
       0, (f32)target.extent2.height, (f32)target.extent2.width, -(f32)target.extent2.height, 0, 1
   };
   vkCmdSetViewport(cmd, 0, 1, &viewport);
+  f32 aspect_ratio    = (f32)target.extent2.width / (f32)target.extent2.height;
 
   VkDeviceSize offset = 0;
   vkCmdBindVertexBuffers(cmd, 0, 1, &vertex_buffer, &offset);
+
+  core::Mat4 proj_mat = core::projection_matrix_from_hfov(0.1f, 5.0f, DEGREE(70.0f), aspect_ratio);
+  core::Mat4 rot =
+      core::Quat::from_axis_angle(core::Vec4::Y + 0.3f * core::Vec4::X, os::time_monotonic().secs())
+          .into_mat4();
+  auto transform = core::translation_matrix(-1.5f * core::Vec4::Z) * rot;
+  core::Mat4 matrices[2]{proj_mat, transform};
+  vkCmdPushConstants(
+      cmd, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, 2 * sizeof(core::Mat4), matrices
+  );
+
   vkCmdBindIndexBuffer(cmd, index_buffer, 0, VK_INDEX_TYPE_UINT16);
   vkCmdDrawIndexed(cmd, mesh.count, 1, 0, 0, 0);
   vkCmdEndRendering(cmd);

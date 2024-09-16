@@ -68,7 +68,6 @@ void ImGuiRenderer::render(VkCommandBuffer cmd, vk::image2D& image) {
         .layerCount           = 1,
         .colorAttachmentCount = (u32)color_attachments.size(),
         .pColorAttachments    = color_attachments.data
-
     };
     vkCmdBeginRendering(cmd, &rendering_info);
   }

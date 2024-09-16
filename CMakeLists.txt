@@ -51,6 +51,8 @@ if (UNIX)
 endif()
 target_compile_link_options(core PUBLIC -fdiagnostics-color=always)
 target_compile_options(core PUBLIC -O0 -g -fPIC)
+target_compile_options(core PUBLIC -msse  -msse2  -msse3)
+
 target_compile_options(core PUBLIC -Wall -Wextra -Wconversion)
 target_compile_options(core PUBLIC -Wno-unused-parameter -Wno-missing-field-initializers)
 target_link_options(core PUBLIC -rdynamic)

@@ -17,8 +17,8 @@ struct time {
   time since(const time& other) const {
     return {ns - other.ns};
   }
-  f64 timestampf64() const {
-    return static_cast<f64>(ns) / 1e9F;
+  f32 secs() const {
+    return f32(ns) * 1e-9f;
   }
   time operator+(time other) const {
     return {ns + other.ns};
@@ -30,7 +30,7 @@ struct time {
   }
 
   f32 hz() const {
-    return 1e+9f / (f32)ns;
+    return 1 / secs();
   }
 };
 

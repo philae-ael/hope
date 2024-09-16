@@ -31,7 +31,7 @@ struct render_profiling_config {
   f32 legend_text_margin_margin = 2;
   f32 margin_vertical           = 1;
   f32 min_draw_height           = 0;
-  f32 max_decay                 = 10.f;
+  f32 max_decay                 = 3.f;
 };
 
 ImVec2 to_ImVec2(core::Vec2 v) {
@@ -54,8 +54,8 @@ void render_profiling_graph(
   const core::Vec2 graph_pos{p.x, p.y};
   const core::Vec2 graph_size{config.graph_width, config.height};
 
-  const core::Vec2 frame_width{config.frame_width, 0};
-  const core::Vec2 frame_padding_horizontal{config.frame_padding_horizontal, 0};
+  const core::Vec2 frame_width              = config.frame_width * core::Vec2::X;
+  const core::Vec2 frame_padding_horizontal = config.frame_padding_horizontal * core::Vec2::X;
 
   const usize max_frame_drawn = u32((graph_size.x - 2 * config.frame_margin_horizontal) /
                                     (frame_width + frame_padding_horizontal).x) -
@@ -68,7 +68,7 @@ void render_profiling_graph(
   };
 
   const core::Vec2 graph_right_for_frame = graph_pos + graph_size - graph_horizontal_margins -
-                                           core::Vec2{config.frame_margin_horizontal, 0};
+                                           config.frame_margin_horizontal * core::Vec2::X;
 
   f32 max_s = {};
   {
@@ -104,7 +104,7 @@ void render_profiling_graph(
       const f32 height = ((f32)t.t.ns * 1e-9f / max_s) * config.height;
       if (height > config.min_draw_height) {
         drawList->AddRectFilled(
-            to_ImVec2(frame_left + core::Vec2{0, -(height + cur_height)}),
+            to_ImVec2(frame_left - (height + cur_height) * core::Vec2::Y),
             to_ImVec2(frame_left + core::Vec2{config.frame_width, -cur_height}), t.color
         );
       }
@@ -115,7 +115,7 @@ void render_profiling_graph(
   // Draw Legend
   {
     const core::Vec2 legend_pos =
-        graph_pos + graph_size + core::Vec2{config.legend_horizontal_margin, 0};
+        graph_pos + graph_size + config.legend_horizontal_margin * core::Vec2::X;
 
     const usize frame_idx   = (2 * frame_data.size + offset) % frame_data.size;
     const auto& frame_datum = frame_data[frame_idx];
@@ -131,8 +131,8 @@ void render_profiling_graph(
       if (height > config.min_draw_height) {
         // Legend
         core::array points{
-            to_ImVec2(legend_pos - core::Vec2{0, height + cur_height}),
-            to_ImVec2(legend_pos - core::Vec2{0, cur_height}),
+            to_ImVec2(legend_pos - (height + cur_height) * core::Vec2::Y),
+            to_ImVec2(legend_pos - cur_height * core::Vec2::Y),
             to_ImVec2(textPos + (1.0f - 0.2f) * textSizeY),
             to_ImVec2(textPos + 0.4f * textSizeY),
         };
@@ -143,7 +143,7 @@ void render_profiling_graph(
         sb.pushf(*ar, "%3d.%03d ms", duration.msec, duration.usec);
         auto txt = sb.commit(*ar);
         drawList->AddText(
-            to_ImVec2(textPos + core::Vec2{config.legend_text_margin_margin, 0}), t.color,
+            to_ImVec2(textPos + config.legend_text_margin_margin * core::Vec2::X), t.color,
             (const char*)txt.data, (const char*)(txt.data + txt.len)
         );
         textPos.y -= textHeight;

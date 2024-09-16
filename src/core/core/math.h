@@ -7,67 +7,112 @@
 
 #include "fwd.h"
 
-#if GCC || CLANG
-typedef f32 __m128 __attribute__((vector_size(16), aligned(16)));
-typedef f32 __m256 __attribute__((vector_size(32), aligned(32)));
-#else
-  #include <immintrin.h>
-#endif
+#include <immintrin.h>
+#include <xmmintrin.h>
 
 namespace core {
-struct Arena;
 
 using f32x4 = __m128;
+using u32x4 = __m128i;
 using f32x8 = __m128;
 
-struct Vec2 {
-  f32 x, y;
-  Vec2 operator+(Vec2 other) const {
+namespace consts {
+constexpr f32 TAU          = 6.283185307179586f;
+constexpr f32 PI           = 3.141592653589793f;
+constexpr f32 FRAC_PI_2    = 1.570796326794896f;
+constexpr f32 FRAC_PI_4    = 0.785398163397443f;
+constexpr f32 DEG_TO_RAD   = 0.017453292519943f;
+constexpr f32 RAD_TO_DEG   = 57.29577951308232f;
+
+constexpr f32 SQRT2        = 1.4142135623730951f;
+constexpr f32 FRAC_1_SQRT2 = 0.7071067811865475f;
+constexpr f32 SQRT3        = 0.5773502691896258f;
+constexpr f32 FRAC_1_SQRT3 = 0.7071067811865475f;
+constexpr f32 LN2          = 0.693147180559945f;
+} // namespace consts
+
+#define DEGREE(x) ((x) * ::core::consts::DEG_TO_RAD)
+
+/// VECTORS
+/// ======
+
+union Vec2 {
+  f32 _coeffs[2];
+  struct {
+    f32 x, y;
+  };
+  inline constexpr Vec2(f32 x, f32 y)
+      : x(x)
+      , y(y) {}
+
+  inline constexpr Vec2 operator+(Vec2 other) const {
     return {
         x + other.x,
         y + other.y,
     };
   }
-  Vec2 operator*(Vec2 other) const {
+  inline constexpr Vec2 operator*(Vec2 other) const {
     return {
         x * other.x,
         y * other.y,
     };
   }
-  Vec2 operator-(Vec2 other) const {
+  inline constexpr Vec2 operator-(Vec2 other) const {
     return {
         x - other.x,
         y - other.y,
     };
   }
-  friend Vec2 operator*(f32 lambda, Vec2 self) {
+
+  friend inline constexpr Vec2 operator*(Vec2 self, f32 lambda) {
     return {
         lambda * self.x,
         lambda * self.y,
     };
   }
+  friend inline constexpr Vec2 operator*(f32 lambda, Vec2 self) {
+    return {
+        lambda * self.x,
+        lambda * self.y,
+    };
+  }
+  inline constexpr f32& operator[](usize i) {
+    return _coeffs[i];
+  }
+  inline constexpr const f32& operator[](usize i) const {
+    return _coeffs[i];
+  }
+
+  static const Vec2 Zero;
+  static const Vec2 X;
+  static const Vec2 Y;
 };
+inline const Vec2 Vec2::Zero{0, 0};
+inline const Vec2 Vec2::X{1, 0};
+inline const Vec2 Vec2::Y{0, 1};
+
 struct uVec2 {
   u32 x, y;
-  uVec2 operator+(uVec2 other) const {
+
+  inline constexpr uVec2 operator+(uVec2 other) const {
     return {
         x + other.x,
         y + other.y,
     };
   }
-  uVec2 operator*(uVec2 other) const {
+  inline constexpr uVec2 operator*(uVec2 other) const {
     return {
         x * other.x,
         y * other.y,
     };
   }
-  uVec2 operator-(uVec2 other) const {
+  inline constexpr uVec2 operator-(uVec2 other) const {
     return {
         x - other.x,
         y - other.y,
     };
   }
-  friend uVec2 operator*(u32 lambda, uVec2 self) {
+  friend inline constexpr uVec2 operator*(u32 lambda, uVec2 self) {
     return {
         lambda * self.x,
         lambda * self.y,
@@ -75,41 +120,114 @@ struct uVec2 {
   }
 };
 
-struct Vec4 {
-  f32 x, y, z, w;
-  Vec4 operator+(Vec4 other) const {
-    return {
-        x + other.x,
-        y + other.y,
-        z + other.z,
-        w + other.w,
-    };
+union Vec4 {
+  f32 _coeffs[4];
+  f32x4 _vcoeffs;
+  struct {
+    f32 x, y, z, w;
+  };
+  struct {
+    f32 r, g, b, a;
+  };
+  inline constexpr Vec4(f32 x, f32 y, f32 z, f32 w)
+      : x(x)
+      , y(y)
+      , z(z)
+      , w(w) {}
+  inline constexpr Vec4(f32x4 v)
+      : _vcoeffs(v) {}
+
+  inline constexpr friend Vec4 operator+(Vec4 lhs, Vec4 rhs) {
+    if consteval {
+      return {
+          lhs.x + rhs.x,
+          lhs.y + rhs.y,
+          lhs.z + rhs.z,
+          lhs.w + rhs.w,
+      };
+    }
+    // Implicit vectorization may already happen... or not idk
+    return _mm_add_ps(lhs, rhs);
   }
-  Vec4 operator*(Vec4 other) const {
-    return {
-        x * other.x,
-        y * other.y,
-        z * other.z,
-        w * other.w,
-    };
+  inline constexpr Vec4 operator-() const {
+    if consteval {
+      return {-x, -y, -z, -w};
+    }
+    return _mm_xor_ps(*this, _mm_set1_ps(-0.0));
   }
-  Vec4 operator-(Vec4 other) const {
-    return {
-        x - other.x,
-        y - other.y,
-        z - other.z,
-        w - other.w,
-    };
+  inline constexpr friend Vec4 operator*(Vec4 lhs, Vec4 rhs) {
+    if consteval {
+      return {
+          lhs.x * rhs.x,
+          lhs.y * rhs.y,
+          lhs.z * rhs.z,
+          lhs.w * rhs.w,
+      };
+    }
+    return _mm_mul_ps(lhs, rhs);
   }
-  friend Vec4 operator*(f32 lambda, Vec4 self) {
-    return {
-        lambda * self.x,
-        lambda * self.y,
-        lambda * self.z,
-        lambda * self.w,
-    };
+  inline constexpr friend Vec4 operator*(f32 lambda, Vec4 self) {
+    return Vec4::broadast(lambda) * self;
   }
+  inline constexpr friend Vec4 operator*(Vec4 self, f32 lambda) {
+    return Vec4::broadast(lambda) * self;
+  }
+  inline constexpr friend Vec4 operator-(Vec4 lhs, Vec4 rhs) {
+    if consteval {
+      return {
+          lhs.x - rhs.x,
+          lhs.y - rhs.y,
+          lhs.z - rhs.z,
+          lhs.w - rhs.w,
+      };
+    }
+    return _mm_sub_ps(lhs, rhs);
+  }
+
+  inline constexpr f32 dot(Vec4 other) const {
+    return x * other.x + y * other.y + z * other.z + w * other.w;
+  }
+
+  inline constexpr f32& operator[](usize index) {
+    return _coeffs[index];
+  }
+  inline constexpr const f32& operator[](usize index) const {
+    return _coeffs[index];
+  }
+  inline constexpr operator f32x4() const {
+    return _vcoeffs;
+  }
+  inline constexpr static Vec4 broadast(f32 lambda) {
+    return {lambda, lambda, lambda, lambda};
+  }
+  template <usize i, usize j, usize k, usize l>
+  inline constexpr Vec4 shuffle() const {
+    if consteval {
+      return {_coeffs[i], _coeffs[j], _coeffs[k], _coeffs[l]};
+    }
+
+    return (f32x4)_mm_shuffle_epi32((u32x4)this->_vcoeffs, _MM_SHUFFLE(l, k, j, i));
+  }
+  inline constexpr Vec4 normalize(this Vec4 self) {
+    return self * (1.f / self.norm2());
+  }
+
+  inline constexpr f32 norm2(this Vec4 self) {
+    return self.dot(self);
+  }
+
+  static const Vec4 Zero;
+  static const Vec4 X;
+  static const Vec4 Y;
+  static const Vec4 Z;
+  static const Vec4 W;
 };
+
+inline const Vec4 Vec4::Zero{0, 0, 0, 0};
+inline const Vec4 Vec4::X{1, 0, 0, 0};
+inline const Vec4 Vec4::Y{0, 1, 0, 0};
+inline const Vec4 Vec4::Z{0, 0, 1, 0};
+inline const Vec4 Vec4::W{0, 0, 0, 1};
 
 struct Vec4x4 {
   f32x4 x, y, z, w;
@@ -142,6 +260,204 @@ constexpr VectorFormat VectorFormatPretty{
 
 str8 to_str8(Arena& arena, Vec4 v, VectorFormat format = {});
 str8 to_str8(Arena& arena, Vec2 v, VectorFormat format = {});
+
+/// MATRICES
+/// ======
+
+TAG(row_major);
+TAG(col_major);
+
+// Stored in column-major
+union Mat4x4 {
+  Vec4 _cols[4];
+  f32 _coeffs[16];
+
+  inline constexpr Mat4x4(col_major_t, Vec4 r1, Vec4 r2, Vec4 r3, Vec4 r4)
+      : _cols{r1, r2, r3, r4} {}
+
+  inline constexpr Mat4x4(row_major_t, Vec4 r1, Vec4 r2, Vec4 r3, Vec4 r4) {
+    *this = Mat4x4(col_major, r1, r2, r3, r4).transpose();
+  }
+
+  inline constexpr f32& at(usize x, usize y) {
+    return _cols[y][x];
+  }
+  inline constexpr const f32& at(usize x, usize y) const {
+    return _cols[y][x];
+  }
+  inline constexpr f32& operator[](usize x, usize y) {
+    return _cols[y][x];
+  }
+  inline constexpr const f32& operator[](usize x, usize y) const {
+    return _cols[y][x];
+  }
+  inline constexpr Vec4& col(usize x) {
+    return _cols[x];
+  }
+  inline constexpr const Vec4& col(usize x) const {
+    return _cols[x];
+  }
+  inline constexpr const Mat4x4 transpose() const {
+    if consteval {
+      return {
+          col_major,
+          {_coeffs[0], _coeffs[4], _coeffs[8], _coeffs[12]},
+          {_coeffs[1], _coeffs[5], _coeffs[9], _coeffs[13]},
+          {_coeffs[2], _coeffs[6], _coeffs[10], _coeffs[14]},
+          {_coeffs[3], _coeffs[7], _coeffs[11], _coeffs[15]},
+      };
+    }
+    f32x4 m00_m10_m01_m11 = _mm_unpacklo_ps(_cols[0], _cols[1]);
+    f32x4 m02_m12_m03_m13 = _mm_unpackhi_ps(_cols[0], _cols[1]);
+    f32x4 m20_m30_m21_m31 = _mm_unpacklo_ps(_cols[2], _cols[3]);
+    f32x4 m22_m32_m23_m33 = _mm_unpackhi_ps(_cols[2], _cols[3]);
+    return {
+        col_major,
+        _mm_movelh_ps(m00_m10_m01_m11, m20_m30_m21_m31),
+        _mm_movehl_ps(m20_m30_m21_m31, m00_m10_m01_m11),
+        _mm_movelh_ps(m02_m12_m03_m13, m22_m32_m23_m33),
+        _mm_movehl_ps(m22_m32_m23_m33, m02_m12_m03_m13),
+    };
+  }
+  inline constexpr const Mat4x4 operator*(const Mat4x4& B) const {
+    return {
+        col_major,
+        col(0) * B[0, 0] + col(1) * B[1, 0] + col(2) * B[2, 0] + col(3) * B[3, 0],
+        col(0) * B[0, 1] + col(1) * B[1, 1] + col(2) * B[2, 1] + col(3) * B[3, 1],
+        col(0) * B[0, 2] + col(1) * B[1, 2] + col(2) * B[2, 2] + col(3) * B[3, 2],
+        col(0) * B[0, 3] + col(1) * B[1, 3] + col(2) * B[2, 3] + col(3) * B[3, 3],
+    };
+  }
+
+  inline constexpr const Vec4 operator*(const Vec4 v) const {
+    return col(0) * v[0] + col(1) * v[1] + col(2) * v[2] + col(3) * v[3];
+  }
+  static const Mat4x4 Zero;
+  static const Mat4x4 Id;
+};
+
+inline constexpr Mat4x4
+    Mat4x4::Zero{col_major, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}};
+
+inline constexpr Mat4x4
+    Mat4x4::Id{col_major, {1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+
+using Mat4 = Mat4x4;
+
+inline constexpr Mat4x4 projection_matrix_from_far_plane_size(
+    f32 near,
+    f32 far,
+    f32 half_far_plane_width,
+    f32 half_far_plane_height
+) {
+  f32 r = half_far_plane_width;
+  f32 t = half_far_plane_height;
+  f32 n = near;
+  f32 f = far;
+  return {
+      row_major,
+      // clang-format off
+      {  n/r  ,   0   ,        0       ,        0        },
+      {   0   ,  n/t  ,        0       ,        0        },
+      {   0   ,   0   , -(f+n) / (f-n) , -2*f*n / (f-n)  },
+      {   0   ,   0   ,       -1       ,        0        }
+      // clang-format on
+  };
+}
+
+// Note: aspect ratio = width / height
+inline constexpr Mat4x4 projection_matrix_from_hfov(f32 near, f32 far, f32 hfov, f32 aspect_ratio) {
+  auto half_far_plane_width = near * std::tan(hfov / 2);
+  return projection_matrix_from_far_plane_size(
+      near, far, half_far_plane_width, half_far_plane_width / aspect_ratio
+  );
+}
+
+inline constexpr Mat4x4 projection_matrix_from_vfov(f32 near, f32 far, f32 vfov, f32 aspect_ratio) {
+  auto half_far_plane_height = near * std::tan(vfov / 2);
+  return projection_matrix_from_far_plane_size(
+      near, far, half_far_plane_height * aspect_ratio, half_far_plane_height
+  );
+}
+
+inline constexpr Mat4x4 translation_matrix(Vec4 translation) {
+  translation.w = 1.0;
+  return {col_major, Vec4::X, Vec4::Y, Vec4::Z, translation};
+}
+
+/// QUATERNIONS
+/// ======
+
+union Quat {
+  Vec4 v;
+  struct {
+    f32 x, y, z, w;
+  };
+
+  inline constexpr friend Quat operator*(Quat a, Quat b) {
+    Vec4 res = a.w * b.v + b.w * a.v;
+    res      = res + a.v.shuffle<1, 2, 0, 3>() * b.v.shuffle<2, 0, 1, 3>();
+    res      = res - b.v.shuffle<1, 2, 0, 3>() * a.v.shuffle<2, 0, 1, 3>();
+    res.w    = a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z;
+
+    return {res};
+  }
+
+  constexpr inline Quat conjugate() const {
+    return {.v = {-x, -y, -z, w}};
+  }
+  constexpr inline Quat inverse() const {
+    return conjugate();
+  }
+  constexpr inline Quat normalize() const {
+    return {v.normalize()};
+  }
+
+  static constexpr inline Quat from_axis_angle(Vec4 axis, f32 theta) {
+    f32 cos_frac_theta_2 = std::cos(theta / 2);
+    f32 sin_frac_theta_2 = std::sin(theta / 2);
+
+    return Quat{
+        .v =
+            {
+                sin_frac_theta_2 * axis.x,
+                sin_frac_theta_2 * axis.y,
+                sin_frac_theta_2 * axis.z,
+                cos_frac_theta_2 * 1,
+            }
+    }.normalize();
+  }
+
+  constexpr inline Vec4 rotate(this Quat self, Vec4 v) {
+    v.w      = 0;
+    auto res = (self * Quat{v} * self.conjugate()).v;
+    res.w    = 0;
+    return res;
+  }
+
+  constexpr inline f32 angle() {
+    return 2 * std::acos(w);
+  }
+  constexpr inline Vec4 axis() {
+    return Vec4{x, y, z, 0}.normalize();
+  }
+  constexpr inline Mat4 into_mat4() {
+    f32 s = 1 / v.norm2();
+
+    return Mat4{
+        col_major,
+        // clang-format off
+        { 1 - 2*s*(y*y + z*z),     2*s*(x*y + z*w),     2*s*(x*z - y*w), 0},
+        {     2*s*(x*y - z*w), 1 - 2*s*(x*x + z*z),     2*s*(y*z + x*w), 0},
+        {     2*s*(x*z + y*w),     2*s*(y*z - x*w), 1 - 2*s*(x*x + y*y), 0},
+        // clang-format on
+        core::Vec4::W,
+    };
+  }
+};
+
+/// DATA SERIES
+/// ======
 
 /// Compute
 /// - mean,
@@ -230,6 +546,5 @@ struct windowed_series {
 constexpr bool f32_close_enough(f32 a, f32 b, f32 epsilon = 1e-5f) {
   return fabs(b - a) <= epsilon;
 }
-
 } // namespace core
 #endif // INCLUDE_CORE_MATH_H_

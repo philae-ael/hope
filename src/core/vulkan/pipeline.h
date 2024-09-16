@@ -12,7 +12,7 @@ namespace vk::pipeline {
 struct VertexInput {
   core::storage<VkVertexInputBindingDescription> vertex_input_binding_descriptions;
   core::storage<VkVertexInputAttributeDescription> vertex_input_attributes_descriptions;
-  inline VkPipelineVertexInputStateCreateInfo vk() {
+  inline VkPipelineVertexInputStateCreateInfo vk() const {
     return {
         .sType                         = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .vertexBindingDescriptionCount = (u32)vertex_input_binding_descriptions.size,
@@ -26,7 +26,7 @@ struct VertexInput {
 struct InputAssembly {
   VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 
-  inline VkPipelineInputAssemblyStateCreateInfo vk() {
+  inline VkPipelineInputAssemblyStateCreateInfo vk() const {
     return {
         .sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
         .topology               = topology,
@@ -36,7 +36,7 @@ struct InputAssembly {
 };
 
 struct Viewport {
-  inline VkPipelineViewportStateCreateInfo vk() {
+  inline VkPipelineViewportStateCreateInfo vk() const {
     return {
         .sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
         .viewportCount = 1,
@@ -46,7 +46,7 @@ struct Viewport {
 };
 
 struct Rasterization {
-  inline VkPipelineRasterizationStateCreateInfo vk() {
+  inline VkPipelineRasterizationStateCreateInfo vk() const {
     return {
         .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
         .depthClampEnable        = false,
@@ -63,7 +63,7 @@ struct Rasterization {
 };
 
 struct Multisample {
-  inline VkPipelineMultisampleStateCreateInfo vk() {
+  inline VkPipelineMultisampleStateCreateInfo vk() const {
     return {
         .sType                 = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
         .rasterizationSamples  = VK_SAMPLE_COUNT_1_BIT,
@@ -75,7 +75,7 @@ struct Multisample {
 };
 
 struct DepthStencil {
-  inline VkPipelineDepthStencilStateCreateInfo vk() {
+  inline VkPipelineDepthStencilStateCreateInfo vk() const {
     return {
         .sType                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
         .depthTestEnable       = false,
@@ -87,20 +87,20 @@ struct DepthStencil {
 };
 
 struct ColorBlendAttachement {
-  inline VkPipelineColorBlendAttachmentState vk() {
+  inline VkPipelineColorBlendAttachmentState vk() const {
     return {
         .blendEnable    = false,
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                           VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
     };
   }
-  static ColorBlendAttachement NoBlend;
+  static const ColorBlendAttachement NoBlend;
 };
-inline ColorBlendAttachement ColorBlendAttachement::NoBlend{};
+inline const ColorBlendAttachement ColorBlendAttachement::NoBlend{};
 
 struct ColorBlend {
   core::storage<VkPipelineColorBlendAttachmentState> color_blend_attachements;
-  inline VkPipelineColorBlendStateCreateInfo vk() {
+  inline VkPipelineColorBlendStateCreateInfo vk() const {
     return {
         .sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
         .logicOpEnable   = false,
@@ -113,7 +113,7 @@ struct ColorBlend {
 
 struct DynamicState {
   core::storage<VkDynamicState> dynamic_states;
-  inline VkPipelineDynamicStateCreateInfo vk() {
+  inline VkPipelineDynamicStateCreateInfo vk() const {
     return {
         .sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
         .dynamicStateCount = (u32)dynamic_states.size,
@@ -126,7 +126,7 @@ struct Rendering {
   core::storage<VkFormat> color_attachment_formats;
   VkFormat depth_attachment_format;
   VkFormat stencil_attachment_format;
-  inline VkPipelineRenderingCreateInfo vk() {
+  inline VkPipelineRenderingCreateInfo vk() const {
     return {
         .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
         .colorAttachmentCount    = (u32)color_attachment_formats.size,
