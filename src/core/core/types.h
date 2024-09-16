@@ -345,6 +345,9 @@ struct storage {
   S& operator[](usize index) {
     return data[index];
   }
+  const S& operator[](usize index) const {
+    return data[index];
+  }
 
   template <class U>
   struct storage_iter : cpp_iter<U&, storage_iter<U>> {

@@ -1,9 +1,11 @@
 
 #include "triangle_renderer.h"
+#include "app/app.h"
 #include "core/core.h"
 #include "core/core/math.h"
 #include "core/debug/time.h"
 #include "core/fs/fs.h"
+#include "core/os/time.h"
 #include "core/vulkan/image.h"
 #include "core/vulkan/pipeline.h"
 #include <core/vulkan/subsystem.h>
@@ -211,7 +213,7 @@ core::storage<core::str8> TriangleRenderer::file_deps() {
   return deps;
 }
 
-void TriangleRenderer::render(VkCommandBuffer cmd, vk::image2D target) {
+void TriangleRenderer::render(AppState* app_state, VkCommandBuffer cmd, vk::image2D target) {
   using namespace core::literals;
   auto triangle_scope = debug::scope_start("triangle"_hs);
   defer { debug::scope_end(triangle_scope); };
@@ -236,19 +238,14 @@ void TriangleRenderer::render(VkCommandBuffer cmd, vk::image2D target) {
       0, (f32)target.extent2.height, (f32)target.extent2.width, -(f32)target.extent2.height, 0, 1
   };
   vkCmdSetViewport(cmd, 0, 1, &viewport);
-  f32 aspect_ratio    = (f32)target.extent2.width / (f32)target.extent2.height;
 
   VkDeviceSize offset = 0;
   vkCmdBindVertexBuffers(cmd, 0, 1, &vertex_buffer, &offset);
 
-  core::Mat4 proj_mat = core::projection_matrix_from_hfov(0.1f, 5.0f, DEGREE(70.0f), aspect_ratio);
-  core::Mat4 rot =
-      core::Quat::from_axis_angle(core::Vec4::Y + 0.3f * core::Vec4::X, os::time_monotonic().secs())
-          .into_mat4();
-  auto transform = core::translation_matrix(-1.5f * core::Vec4::Z) * rot;
-  core::Mat4 matrices[2]{proj_mat, transform};
+  f32 aspect_ratio = (f32)target.extent2.width / (f32)target.extent2.height;
+  auto matrices    = app_state->camera.matrices(aspect_ratio);
   vkCmdPushConstants(
-      cmd, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, 2 * sizeof(core::Mat4), matrices
+      cmd, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, 2 * sizeof(core::Mat4), &matrices
   );
 
   vkCmdBindIndexBuffer(cmd, index_buffer, 0, VK_INDEX_TYPE_UINT16);

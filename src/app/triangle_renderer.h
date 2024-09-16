@@ -6,6 +6,8 @@
 #include <core/vulkan/subsystem.h>
 #include <vulkan/vulkan_core.h>
 
+struct AppState;
+
 struct Mesh {
   u32 count;
 };
@@ -25,7 +27,7 @@ struct TriangleRenderer {
 
   static core::storage<core::str8> file_deps();
 
-  void render(VkCommandBuffer cmd, vk::image2D target);
+  void render(AppState* app_state, VkCommandBuffer cmd, vk::image2D target);
   void uninit(subsystem::video& v);
 };
 

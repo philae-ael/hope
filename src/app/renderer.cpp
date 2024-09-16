@@ -17,7 +17,6 @@
 #include <core/vulkan/sync.h>
 #include <imgui.h>
 #include <loader/app_loader.h>
-#include <new>
 #include <vulkan/vulkan_core.h>
 
 using namespace core::enum_helpers;
@@ -30,12 +29,12 @@ MainRenderer MainRenderer::init(subsystem::video& v) {
   return self;
 }
 
-void MainRenderer::render(VkCommandBuffer cmd, vk::image2D& swapchain_image) {
+void MainRenderer::render(AppState* app_state, VkCommandBuffer cmd, vk::image2D& swapchain_image) {
   vk::pipeline_barrier(cmd, swapchain_image.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}));
 
   auto triangle_scope =
       vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "triangle"_hs);
-  triangle_renderer.render(cmd, swapchain_image);
+  triangle_renderer.render(app_state, cmd, swapchain_image);
   vk::timestamp_scope_end(cmd, VK_PIPELINE_STAGE_2_NONE, triangle_scope);
 
   auto imgui_scope =
@@ -99,7 +98,7 @@ Renderer* init_renderer(core::Arena& arena, subsystem::video& v) {
   return &rdata;
 }
 
-AppEvent render(subsystem::video& v, Renderer& renderer) {
+AppEvent render(AppState* app_state, subsystem::video& v, Renderer& renderer) {
   AppEvent sev{};
   if (renderer.need_rebuild) {
     sev |= AppEvent::RebuildRenderer;
@@ -134,7 +133,7 @@ AppEvent render(subsystem::video& v, Renderer& renderer) {
       .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
   };
   vkBeginCommandBuffer(renderer.cmd, &command_buffer_begin_info);
-  renderer.main_renderer.render(renderer.cmd, frame->swapchain_image);
+  renderer.main_renderer.render(app_state, renderer.cmd, frame->swapchain_image);
 
   using namespace core::literals;
   auto render_scope = debug::scope_start("end cmd buffer"_hs);

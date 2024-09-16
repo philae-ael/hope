@@ -47,6 +47,7 @@ void scope_end(scope);
 void scope_import(scope_category cat, core::hstr8 name, os::time t);
 
 timing_infos get_last_frame_timing_infos(core::Arena& ar, scope_category cat = scope_category::CPU);
+os::time get_last_frame_dt();
 } // namespace debug
 
 #endif // INCLUDE_DEBUG_TIME_H_

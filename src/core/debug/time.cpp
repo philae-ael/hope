@@ -106,4 +106,8 @@ EXPORT timing_infos get_last_frame_timing_infos(core::Arena& ar, scope_category 
       }
   };
 }
+
+EXPORT os::time get_last_frame_dt() {
+  return os::time{(u64)frame_time_series.mean()};
+}
 } // namespace debug

@@ -12,7 +12,7 @@ struct MainRenderer {
   TriangleRenderer triangle_renderer;
 
   static MainRenderer init(subsystem::video& v);
-  void render(VkCommandBuffer cmd, vk::image2D& swapchain_image);
+  void render(AppState* app_state, VkCommandBuffer cmd, vk::image2D& swapchain_image);
   void uninit(subsystem::video& v);
 
   core::vec<core::str8> file_deps(core::Arena& arena);
@@ -31,7 +31,7 @@ struct Renderer {
 Renderer* init_renderer(core::Arena& ar, subsystem::video& v);
 void uninit_renderer(subsystem::video& v, Renderer& renderer);
 
-AppEvent render(subsystem::video& v, Renderer& renderer);
+AppEvent render(AppState* app_state, subsystem::video& v, Renderer& renderer);
 void swapchain_rebuilt(subsystem::video& v, Renderer& renderer);
 
 #endif // INCLUDE_APP_RENDERER_H_

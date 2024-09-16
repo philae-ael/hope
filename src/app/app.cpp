@@ -17,9 +17,8 @@
 #include <imgui.h>
 
 using namespace core::enum_helpers;
-AppEvent handle_events(SDL_Event& ev) {
-  using namespace core::enum_helpers;
 
+AppEvent handle_events(SDL_Event& ev, InputState& input_state) {
   ImGui_ImplSDL3_ProcessEvent(&ev);
   AppEvent sev{};
   switch (ev.type) {
@@ -29,6 +28,36 @@ AppEvent handle_events(SDL_Event& ev) {
   }
   case SDL_EVENT_WINDOW_CLOSE_REQUESTED: {
     sev |= AppEvent::Exit;
+    break;
+  }
+  case SDL_EVENT_KEY_UP: {
+    if (ImGui::GetIO().WantCaptureKeyboard) {
+      break;
+    }
+    switch (ev.key.key) {
+    case SDLK_Q: {
+      sev |= AppEvent::Exit;
+      break;
+    }
+    case SDLK_R: {
+      sev |= AppEvent::RebuildRenderer;
+      break;
+    }
+    case SDLK_ESCAPE: {
+      sev |= AppEvent::ReloadApp;
+      break;
+    }
+    case SDLK_RIGHT:
+    case SDLK_LEFT: {
+      input_state.yaw = 0.0f;
+      break;
+    }
+    case SDLK_UP:
+    case SDLK_DOWN: {
+      input_state.pitch = 0.0f;
+      break;
+    }
+    }
     break;
   }
   case SDL_EVENT_KEY_DOWN: {
@@ -48,10 +77,37 @@ AppEvent handle_events(SDL_Event& ev) {
       sev |= AppEvent::ReloadApp;
       break;
     }
+    case SDLK_LEFT: {
+      input_state.yaw = +1.0f;
+      break;
+    }
+    case SDLK_RIGHT: {
+      input_state.yaw = -1.0f;
+      break;
+    }
+    case SDLK_UP: {
+      input_state.pitch = +1.0f;
+      break;
+    }
+    case SDLK_DOWN: {
+      input_state.pitch = -1.0f;
+      break;
+    }
     }
     break;
   }
   }
+  if (ImGui::GetIO().WantCaptureKeyboard) {
+    return sev;
+  }
+
+  input_state.x.updatePos(ev, SDLK_D, 0, 0);
+  input_state.x.updateNeg(ev, SDLK_A, 0, 0);
+  input_state.y.updatePos(ev, SDLK_SPACE, SDL_KMOD_LSHIFT, 0);
+  input_state.y.updateNeg(ev, SDLK_SPACE, SDL_KMOD_LSHIFT, SDL_KMOD_LSHIFT);
+  input_state.z.updatePos(ev, SDLK_S, 0, 0);
+  input_state.z.updateNeg(ev, SDLK_W, 0, 0);
+
   return sev;
 }
 
@@ -81,7 +137,9 @@ EXPORT App* init(core::Arena& arena, App* app, AppState* app_state, subsystem::v
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
   ImGui_ImplSDL3_InitForOther(video->window);
-  app->renderer = init_renderer(*app->arena, *app->video);
+  app->renderer              = init_renderer(*app->arena, *app->video);
+
+  app_state->camera.position = 1.5f * core::Vec4::Z;
 
   return app;
 }
@@ -107,11 +165,26 @@ handle_events: {
   defer { debug::scope_end(poll_event_scope); };
 
   while (SDL_PollEvent(&ev)) {
-    sev |= handle_events(ev);
+    sev |= handle_events(ev, app.input_state);
   }
 }
 
-  AppEvent renderev = render(*app.video, *app.renderer);
+  auto dt                    = debug::get_last_frame_dt().secs();
+  auto forward               = app.state->camera.rotation.rotate(-core::Vec4::Z);
+  auto sideway               = app.state->camera.rotation.rotate(core::Vec4::X);
+  auto upward                = core::Vec4::Y;
+
+  // clang-format off
+  app.state->camera.position += dt * (+ app.input_state.x.value() * sideway 
+                                      + app.input_state.y.value() * upward 
+                                      - app.input_state.z.value() * forward);
+  // clang-format on
+
+  app.state->camera.rotation = core::Quat::from_axis_angle(sideway, dt * app.input_state.pitch) *
+                               core::Quat::from_axis_angle(upward, dt * app.input_state.yaw) *
+                               app.state->camera.rotation;
+
+  AppEvent renderev = render(app.state, *app.video, *app.renderer);
   if (any(renderev & AppEvent::SkipRender)) {
     LOG_TRACE("skip");
     goto handle_events;

@@ -147,6 +147,9 @@ union Vec4 {
     // Implicit vectorization may already happen... or not idk
     return _mm_add_ps(lhs, rhs);
   }
+  inline constexpr friend Vec4& operator+=(Vec4& lhs, Vec4 rhs) {
+    return lhs = lhs + rhs;
+  }
   inline constexpr Vec4 operator-() const {
     if consteval {
       return {-x, -y, -z, -w};
@@ -213,11 +216,12 @@ union Vec4 {
   inline constexpr f32 norm2(this Vec4 self) {
     return self.dot(self);
   }
-  inline constexpr f32 norm() {
+  inline constexpr f32 norm() const {
     return std::sqrt(norm2());
   }
 
   static const Vec4 Zero;
+  static const Vec4 One;
   static const Vec4 X;
   static const Vec4 Y;
   static const Vec4 Z;
@@ -225,6 +229,7 @@ union Vec4 {
 };
 
 inline const Vec4 Vec4::Zero{0, 0, 0, 0};
+inline const Vec4 Vec4::One{1, 1, 1, 1};
 inline const Vec4 Vec4::X{1, 0, 0, 0};
 inline const Vec4 Vec4::Y{0, 1, 0, 0};
 inline const Vec4 Vec4::Z{0, 0, 1, 0};
@@ -416,6 +421,9 @@ union Quat {
 
     return {res};
   }
+  inline constexpr friend Quat& operator*=(Quat& a, Quat b) {
+    return a = a * b;
+  }
 
   constexpr inline Quat conjugate() const {
     return {.v = {-x, -y, -z, w}};
@@ -449,13 +457,13 @@ union Quat {
     return res;
   }
 
-  constexpr inline f32 angle() {
+  constexpr inline f32 angle() const {
     return 2 * std::atan2(v.norm(), w);
   }
-  constexpr inline Vec4 axis() {
+  constexpr inline Vec4 axis() const {
     return Vec4{x, y, z, 0}.normalize();
   }
-  constexpr inline Mat4 into_mat4() {
+  constexpr inline Mat4 into_mat4() const {
     f32 s = 1 / v.norm2();
 
     return Mat4{
@@ -468,7 +476,10 @@ union Quat {
         core::Vec4::W,
     };
   }
+  static const Quat Id;
 };
+
+inline const Quat Quat::Id{Vec4::W};
 
 /// DATA SERIES
 /// ======
@@ -545,6 +556,9 @@ struct windowed_series {
     sum2                                += sample * sample;
   }
 
+  constexpr f32 last_sample() const {
+    return store[(start + count - 1) % store.size];
+  }
   constexpr f32 mean() const {
     return sum / f32(count);
   }
