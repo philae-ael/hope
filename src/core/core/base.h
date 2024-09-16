@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstring>
 #include <limits.h>
+#include <new>
 
 #define FWD(t) static_cast<decltype(t)&&>(t)
 

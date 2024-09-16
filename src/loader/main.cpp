@@ -29,7 +29,7 @@ log_entry timed_formatter(void* u, Arena& arena, core::log_entry entry) {
 int main(int argc, char* argv[]) {
   auto& ar = arena_alloc();
   setup_crash_handler();
-  log_register_global_formatter(timed_formatter, nullptr);
+  log_register_global_formatter(log_timed_formatter, nullptr);
   log_set_global_level(core::LogLevel::Trace);
   {
     const char* cwd = realpath(".", nullptr);

@@ -1,4 +1,5 @@
 #include "log.h"
+#include "core/os/time.h"
 
 #include <cstdarg>
 #include <cstdio>
@@ -85,7 +86,7 @@ EXPORT void log_emit(Arena& arena, log_entry& entry) {
 
 EXPORT str8 to_str8(LogLevel level) {
   return (str8[]){
-      "trace"_s, "debug"_s, "info"_s, "warning"_s, "error"_s,
+      "trace  "_s, "debug  "_s, "info   "_s, "warning"_s, "error  "_s,
   }[(usize)level];
 }
 
@@ -150,6 +151,15 @@ EXPORT log_builder& log_builder::with_stacktrace() {
 EXPORT log_builder& log_builder::panic() {
   flags = flags | flags_t::panic;
   return *this;
+}
+
+EXPORT log_entry log_timed_formatter(void* u, Arena& arena, core::log_entry entry) {
+  entry         = log_fancy_formatter(nullptr, arena, entry);
+  entry.builder = string_builder{}
+                      .push(arena, os::time_monotonic(), os::TimeFormat::MM_SS_MMM)
+                      .push(arena, " ")
+                      .append(entry.builder);
+  return entry;
 }
 
 } // namespace core

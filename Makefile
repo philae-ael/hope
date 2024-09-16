@@ -1,18 +1,28 @@
 BUILD_TYPE?=Debug
 BUILD_SHARED_LIBS?=ON
 OUTPUT_DIR?=build
-CC:=gcc
-CXX:=g++
+CC:=clang
+CXX:=clang++
 
 .PHONY: all run clean format iwyu build-all
 
 all: build-all
 
-build-all: $(OUTPUT_DIR)/build.ninja
-	ninja -C$(OUTPUT_DIR) 
+build-loader: $(OUTPUT_DIR)/build.ninja
+	ninja -C$(OUTPUT_DIR) loader app
 
-run:  build-all
+build-all : $(OUTPUT_DIR)/build.ninja
+	ninja -C$(OUTPUT_DIR)
+
+
+build-tests: $(OUTPUT_DIR)/build.ninja
+	ninja -C$(OUTPUT_DIR) testcore
+
+run:  build-loader
 	$(OUTPUT_DIR)/loader
+
+tests:  build-tests
+	$(OUTPUT_DIR)/testcore
 
 clean:
 	rm -rf ./$(OUTPUT_DIR)

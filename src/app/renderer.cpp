@@ -17,6 +17,7 @@
 #include <core/vulkan/sync.h>
 #include <imgui.h>
 #include <loader/app_loader.h>
+#include <new>
 #include <vulkan/vulkan_core.h>
 
 using namespace core::enum_helpers;

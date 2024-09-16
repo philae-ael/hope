@@ -1,5 +1,3 @@
-// IWYU pragma: private
-
 #ifndef INCLUDE_CORE_MATH_H_
 #define INCLUDE_CORE_MATH_H_
 
@@ -209,11 +207,14 @@ union Vec4 {
     return (f32x4)_mm_shuffle_epi32((u32x4)this->_vcoeffs, _MM_SHUFFLE(l, k, j, i));
   }
   inline constexpr Vec4 normalize(this Vec4 self) {
-    return self * (1.f / self.norm2());
+    return self * (1.f / self.norm());
   }
 
   inline constexpr f32 norm2(this Vec4 self) {
     return self.dot(self);
+  }
+  inline constexpr f32 norm() {
+    return std::sqrt(norm2());
   }
 
   static const Vec4 Zero;
@@ -332,6 +333,19 @@ union Mat4x4 {
   inline constexpr const Vec4 operator*(const Vec4 v) const {
     return col(0) * v[0] + col(1) * v[1] + col(2) * v[2] + col(3) * v[3];
   }
+
+  constexpr inline friend Mat4x4 operator+(core::Mat4x4 lhs, core::Mat4x4 rhs) {
+    return {
+        col_major,
+        lhs.col(0) + rhs.col(0),
+        lhs.col(1) + rhs.col(1),
+        lhs.col(2) + rhs.col(2),
+        lhs.col(3) + rhs.col(3),
+    };
+  }
+  constexpr inline friend Mat4x4 operator*(f32 l, core::Mat4x4 rhs) {
+    return {col_major, l * rhs.col(0), l * rhs.col(1), l * rhs.col(2), l * rhs.col(3)};
+  }
   static const Mat4x4 Zero;
   static const Mat4x4 Id;
 };
@@ -436,7 +450,7 @@ union Quat {
   }
 
   constexpr inline f32 angle() {
-    return 2 * std::acos(w);
+    return 2 * std::atan2(v.norm(), w);
   }
   constexpr inline Vec4 axis() {
     return Vec4{x, y, z, 0}.normalize();

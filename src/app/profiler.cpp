@@ -1,5 +1,6 @@
 
 #include "core/core.h"
+#include "core/core/math.h"
 #include "core/debug/time.h"
 #include "core/os/time.h"
 #include <imgui.h>

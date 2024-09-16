@@ -1,9 +1,9 @@
 
 #include "triangle_renderer.h"
 #include "core/core.h"
+#include "core/core/math.h"
 #include "core/debug/time.h"
 #include "core/fs/fs.h"
-#include "core/os/time.h"
 #include "core/vulkan/image.h"
 #include "core/vulkan/pipeline.h"
 #include <core/vulkan/subsystem.h>

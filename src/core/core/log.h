@@ -66,6 +66,7 @@ struct log_builder {
 };
 
 log_entry log_fancy_formatter(void*, core::Arena& arena, core::log_entry entry);
+log_entry log_timed_formatter(void* u, Arena& arena, core::log_entry entry);
 
 #define LOG_BUILDER(level, instr) \
   (log_filter(level) ? core::log_builder(level, CURRENT_SOURCE_LOCATION).instr.emit() : (void)0)
