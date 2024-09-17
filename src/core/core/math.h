@@ -209,12 +209,12 @@ union Vec4 {
 
     return (f32x4)_mm_shuffle_epi32((u32x4)this->_vcoeffs, _MM_SHUFFLE(l, k, j, i));
   }
-  inline constexpr Vec4 normalize(this Vec4 self) {
-    return self * (1.f / self.norm());
+  inline constexpr Vec4 normalize() const {
+    return *this * (1.f / norm());
   }
 
-  inline constexpr f32 norm2(this Vec4 self) {
-    return self.dot(self);
+  inline constexpr f32 norm2() const {
+    return dot(*this);
   }
   inline constexpr f32 norm() const {
     return std::sqrt(norm2());
@@ -291,12 +291,12 @@ union Mat4x4 {
   inline constexpr const f32& at(usize x, usize y) const {
     return _cols[y][x];
   }
-  inline constexpr f32& operator[](usize x, usize y) {
-    return _cols[y][x];
-  }
-  inline constexpr const f32& operator[](usize x, usize y) const {
-    return _cols[y][x];
-  }
+  //inline constexpr f32& operator[](usize x, usize y) {
+  //  return _cols[y][x];
+  //}
+  //inline constexpr const f32& operator[](usize x, usize y) const {
+  //  return _cols[y][x];
+  //}
   inline constexpr Vec4& col(usize x) {
     return _cols[x];
   }
@@ -328,10 +328,10 @@ union Mat4x4 {
   inline constexpr const Mat4x4 operator*(const Mat4x4& B) const {
     return {
         col_major,
-        col(0) * B[0, 0] + col(1) * B[1, 0] + col(2) * B[2, 0] + col(3) * B[3, 0],
-        col(0) * B[0, 1] + col(1) * B[1, 1] + col(2) * B[2, 1] + col(3) * B[3, 1],
-        col(0) * B[0, 2] + col(1) * B[1, 2] + col(2) * B[2, 2] + col(3) * B[3, 2],
-        col(0) * B[0, 3] + col(1) * B[1, 3] + col(2) * B[2, 3] + col(3) * B[3, 3],
+        col(0) * B.at(0, 0) + col(1) * B.at(1, 0) + col(2) * B.at(2, 0) + col(3) * B.at(3, 0),
+        col(0) * B.at(0, 1) + col(1) * B.at(1, 1) + col(2) * B.at(2, 1) + col(3) * B.at(3, 1),
+        col(0) * B.at(0, 2) + col(1) * B.at(1, 2) + col(2) * B.at(2, 2) + col(3) * B.at(3, 2),
+        col(0) * B.at(0, 3) + col(1) * B.at(1, 3) + col(2) * B.at(2, 3) + col(3) * B.at(3, 3),
     };
   }
 
@@ -450,9 +450,9 @@ union Quat {
     }.normalize();
   }
 
-  constexpr inline Vec4 rotate(this Quat self, Vec4 v) {
+  constexpr inline Vec4 rotate(Vec4 v) {
     v.w      = 0;
-    auto res = (self * Quat{v} * self.conjugate()).v;
+    auto res = (*this * Quat{v} * this->conjugate()).v;
     res.w    = 0;
     return res;
   }

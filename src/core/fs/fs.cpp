@@ -1,10 +1,14 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "fs.h"
 #include "core/containers/vec.h"
 #include "core/core/fwd.h"
 #include <cerrno>
 #include <core/containers/pool.h>
 #include <core/core.h>
+
 #include <cstdio>
+
 #include <filesystem>
 
 namespace std {

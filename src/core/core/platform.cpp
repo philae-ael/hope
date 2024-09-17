@@ -4,10 +4,11 @@ using namespace core::literals;
 
 namespace core {
 str8 to_str8(Os os) {
-  return (str8[]){
+  str8 data[]{
       "windows"_s,
       "linux"_s,
-  }[(usize)os];
+  };
+  return data[(usize)os];
 }
 
 template <>

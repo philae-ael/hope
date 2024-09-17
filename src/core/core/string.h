@@ -72,7 +72,7 @@ struct string_builder {
 };
 
 namespace literals {
-constexpr inline str8 operator""_s(const char* s, std::size_t len) {
+inline str8 operator""_s(const char* s, std::size_t len) {
   return str8::from(s, len);
 }
 

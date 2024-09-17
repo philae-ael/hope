@@ -19,7 +19,7 @@ char (&_ArraySizeHelper(T (&arr)[N]))[N];
   #define EXPORT __attribute__((visibility("default")))
 #elif MSVC
   #define PRINTF_ATTRIBUTE(a, b)
-  #define EXPORT __declspec(dllexport)
+  #define EXPORT
 #else
   #error platform not supported
 #endif
@@ -59,7 +59,7 @@ using u16 = unsigned short;
 static_assert(sizeof(u16) == 2);
 using u32 = unsigned int;
 static_assert(sizeof(u32) == 4);
-using u64 = unsigned long;
+using u64 = std::uint64_t;
 static_assert(sizeof(u64) == 8);
 
 using s8 = signed char;
@@ -68,7 +68,7 @@ using s16 = signed short;
 static_assert(sizeof(s16) == 2);
 using s32 = signed int;
 static_assert(sizeof(s32) == 4);
-using s64 = signed long;
+using s64 = std::int64_t;
 static_assert(sizeof(s64) == 8);
 using usize = size_t;
 using uptr  = u64;

@@ -85,9 +85,10 @@ EXPORT void log_emit(Arena& arena, log_entry& entry) {
 /* LogLevel */
 
 EXPORT str8 to_str8(LogLevel level) {
-  return (str8[]){
+  str8 data[] {
       "trace  "_s, "debug  "_s, "info   "_s, "warning"_s, "error  "_s,
-  }[(usize)level];
+  };
+  return data[(usize)level];
 }
 
 template <>

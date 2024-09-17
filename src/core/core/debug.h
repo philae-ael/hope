@@ -7,6 +7,8 @@
 
 #if GCC || CLANG
   #define TRAP asm volatile("int $3")
+#elif MSVC
+  #define TRAP __debugbreak()
 #else
   #error NOT IMPLEMENTED
 #endif
@@ -70,11 +72,11 @@ void dump_backtrace(usize skip = 1);
 void setup_crash_handler();
 
 inline void blackbox(auto& x) {
-  void* ptr = &x;
 #if LINUX
+  void* ptr = &x;
   asm volatile("nop" : "+rm"(ptr));
 #else
-  #error Plaform not supported
+  // blackbox will do nothing
 #endif
 }
 

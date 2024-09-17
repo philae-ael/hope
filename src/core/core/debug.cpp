@@ -4,9 +4,7 @@
 
 #include <core/core.h>
 
-#if LINUX
-  #include <signal.h>
-#endif
+#include <signal.h>
 
 #ifndef USE_STACKTRACE
   #define USE_STACKTRACE 1

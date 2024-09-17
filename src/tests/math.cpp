@@ -9,14 +9,14 @@ TEST(matmul) {
         for (auto l : range{0zu, 4zu}.iter()) {
           Mat4 M   = Mat4::Zero;
           Mat4 N   = Mat4::Zero;
-          M[i, j]  = 1.0f;
-          N[k, l]  = 1.0f;
+          M.at(i, j)  = 1.0f;
+          N.at(k, l)  = 1.0f;
           Mat4 res = M * N;
 
           for (auto m : range{0zu, 4zu}.iter()) {
             for (auto n : range{0zu, 4zu}.iter()) {
               f32 expected = (m == i && j == k && l == n) ? 1.0f : 0.0f;
-              f32 got      = res[m, n];
+              f32 got      = res.at(m, n);
               tassert(
                   expected == got, "e_%zu_%zu * e_%zu_%zu at %zu %zu, expected %g, got %g", i, j, k,
                   l, m, n, expected, got
@@ -32,7 +32,7 @@ TEST(matmul) {
 bool mat_eq(Mat4 a, Mat4 b) {
   for (auto i : range{0zu, 4zu}.iter()) {
     for (auto j : range{0zu, 4zu}.iter()) {
-      if (!f32_close_enough(a[i, j], b[i, j])) {
+      if (!f32_close_enough(a.at(i, j), b.at(i, j))) {
         return false;
       }
     }
@@ -47,15 +47,15 @@ TEST(matlin) {
         for (auto l : range{0zu, 4zu}.iter()) {
           Mat4 M   = Mat4::Zero;
           Mat4 N   = Mat4::Zero;
-          M[i, j]  = 1.0f;
-          N[k, l]  = 1.0f;
+          M.at(i, j)  = 1.0f;
+          N.at(k, l)  = 1.0f;
           Mat4 res = M + 2.f * N;
 
           for (auto m : range{0zu, 4zu}.iter()) {
             for (auto n : range{0zu, 4zu}.iter()) {
               f32 expected =
                   (m == i && j == n ? 1.0f : 0.0f) + 2 * (m == k && l == n ? 1.0f : 0.0f);
-              f32 got = res[m, n];
+              f32 got = res.at(m, n);
               tassert(
                   expected == got, "e_%zu_%zu + 2*e_%zu_%zu at %zu %zu, expected %g, got %g", i, j,
                   k, l, m, n, expected, got

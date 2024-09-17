@@ -10,20 +10,20 @@ namespace core {
 #elif defined(__GNUC__) || defined(__GNUG__)
   #define GCC 1
 #elif defined(_MSC_VER)
-  #define MSCV 1
+  #define MSVC 1
 #else
   #error Unknown Compiler
 #endif
 
 #if defined(__linux__)
   #define LINUX 1
-#elif defined(__WIN32)
+#elif defined(_WIN32)
   #define WINDOWS 1
 #else
   #error Unknown OS
 #endif
 
-#if defined(__x86_64__)
+#if defined(__x86_64__) || defined(_M_X64)
   #define X86_64 1
 #else
   #error Unknown OS
@@ -39,10 +39,10 @@ enum class Architecture { Windows, Linux };
 #endif
 
 #ifndef MSVC
-  #define MSCV 0
+  #define MSVC 0
 #endif
 
-#ifndef WINDOW
+#ifndef WINDOWS
   #define WINDOWS 0
 #endif
 

@@ -11,14 +11,14 @@ add_library(imgui STATIC
   imgui/backends/imgui_impl_vulkan.cpp
 )
 
-
-target_compile_options(imgui PRIVATE  -fPIC)
+find_package(Vulkan REQUIRED)
+target_compile_options(imgui PRIVATE)
 target_include_directories(imgui PUBLIC imgui)
-target_link_libraries(imgui PRIVATE SDL3::SDL3)
+target_link_libraries(imgui PRIVATE SDL3::SDL3 Vulkan::Vulkan)
 
 add_library(misc STATIC
   misc/cgltf.c
   misc/stb_image.c
 )
-target_compile_options(misc PRIVATE -fPIC)
+target_compile_options(misc PRIVATE)
 target_include_directories(misc PUBLIC misc)

@@ -9,7 +9,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} --ld-path=/usr/bin/mold")
 
 project("app")
-option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
+option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 
 function(target_compile_link_options target)
   target_compile_options(${target} ${ARGN})
@@ -48,9 +48,19 @@ if (UNIX)
     src/core/os/linux/time.cpp
     src/core/os/linux/memory.cpp
   )
+else()
+  target_sources(core PRIVATE
+    src/core/os/windows/time.cpp
+    src/core/os/windows/memory.cpp
+  )
 endif()
+
+if (MSVC) 
+target_compile_options(core PUBLIC /Zc:preprocessor /std:c++latest )
+else()
 target_compile_link_options(core PUBLIC -fdiagnostics-color=always)
-target_compile_options(core PUBLIC -O0 -g -fPIC)
+target_compile_options(core PUBLIC -O0 -g -std=c++23)
+# target_compile_options(core PUBLIC -fPIC)
 target_compile_options(core PUBLIC -msse  -msse2  -msse3)
 
 target_compile_options(core PUBLIC -Wall -Wextra -Wconversion)
@@ -68,7 +78,9 @@ target_compile_definitions(core PUBLIC -DVMA_DEBUG)
 # target_compile_definitions(core PRIVATE -DMEM_USE_MALLOC)
 # target_compile_definitions(core PRIVATE -DSCRATCH_DEBUG )
 
-target_link_libraries(core PUBLIC SDL3::SDL3 Vulkan::Vulkan stdc++exp imgui GPUOpen::VulkanMemoryAllocator misc)
+endif()
+
+target_link_libraries(core PUBLIC SDL3::SDL3 Vulkan::Vulkan imgui GPUOpen::VulkanMemoryAllocator misc)
 
 
 add_executable(loader src/loader/main.cpp)
