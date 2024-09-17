@@ -8,7 +8,7 @@
 #define NSEC(x) (x)
 #define USEC(x) NSEC(x) * 1000
 #define MSEC(x) USEC(x) * 1000
-#define SEC(x) SEC(x) * 1000
+#define SEC(x) MSEC(x) * 1000
 
 namespace os {
 struct time {

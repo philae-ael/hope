@@ -687,7 +687,7 @@ EXPORT SwapchainConfig create_default_swapchain_config(const Device& device, VkS
       int score = 0;
       switch (present_mode) {
       case VK_PRESENT_MODE_IMMEDIATE_KHR:
-        score = 8;
+        score = 1;
         break;
       case VK_PRESENT_MODE_MAILBOX_KHR:
         score = 2;

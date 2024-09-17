@@ -6,30 +6,48 @@
 #include "core/core.h"
 #include "core/vulkan/subsystem.h"
 #include <SDL3/SDL_events.h>
+#include <SDL3/SDL_gamepad.h>
 #include <SDL3/SDL_keycode.h>
+
+namespace core {
+inline f32 clamp_positive(f32 value) {
+  return MAX(0, value);
+}
+inline f32 sign(f32 value) {
+  return value >= 0 ? 1.0 : -1.0;
+}
+inline f32 abs(f32 value) {
+  return sign(value) * value;
+}
+} // namespace core
+
+#define GAMEPAD_DEAD_ZONE 0.1
 
 struct Axis {
   bool neg;
   bool pos;
-  f32 value() {
-    return -1.f * neg + +1 * pos;
+  f32 axisPos;
+  f32 axisNeg;
+  f32 value() const {
+    auto v = axisPos - axisNeg;
+    return core::sign(v) * core::clamp_positive(core::abs(v) - 0.1f) + -1.f * neg + +1 * pos;
   }
-  void updateNeg(SDL_Event& ev, SDL_Keycode key, SDL_Keymod modmask, SDL_Keymod mod) {
+  void updateNeg(SDL_Event& ev, core::Maybe<SDL_Keycode> key, SDL_Keymod modmask, SDL_Keymod mod) {
     if (shoulHandle(ev, key)) {
-      neg = (ev.type == SDL_EVENT_KEY_DOWN) && ((ev.key.mod & modmask) == mod);
+      neg = (key.is_none() || ev.type == SDL_EVENT_KEY_DOWN) && ((ev.key.mod & modmask) == mod);
     }
   }
-  void updatePos(SDL_Event& ev, SDL_Keycode key, SDL_Keymod modmask, SDL_Keymod mod) {
+  void updatePos(SDL_Event& ev, core::Maybe<SDL_Keycode> key, SDL_Keymod modmask, SDL_Keymod mod) {
     if (shoulHandle(ev, key)) {
-      pos = (ev.type == SDL_EVENT_KEY_DOWN) && ((ev.key.mod & modmask) == mod);
+      pos = (key.is_none() || ev.type == SDL_EVENT_KEY_DOWN) && ((ev.key.mod & modmask) == mod);
     }
   }
 
-  bool shoulHandle(SDL_Event& ev, SDL_Keycode key) {
+  bool shoulHandle(SDL_Event& ev, core::Maybe<SDL_Keycode> key) {
     if (ev.type != SDL_EVENT_KEY_DOWN && ev.type != SDL_EVENT_KEY_UP) {
       return false;
     }
-    if (ev.key.key != key) {
+    if (key.is_some() && ev.key.key != *key) {
       return false;
     }
     return true;
@@ -37,12 +55,13 @@ struct Axis {
 };
 
 struct InputState {
+  SDL_Gamepad* gamepad;
   Axis x;
   Axis y;
   Axis z;
 
-  f32 pitch; // x
-  f32 yaw;   // y
+  Axis pitch;
+  Axis yaw;
 };
 
 struct App {
