@@ -14,6 +14,7 @@ add_library(imgui STATIC
 find_package(Vulkan REQUIRED)
 target_compile_options(imgui PRIVATE)
 target_include_directories(imgui PUBLIC imgui)
+set_property(TARGET imgui PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(imgui PRIVATE SDL3::SDL3 Vulkan::Vulkan)
 
 add_library(misc STATIC

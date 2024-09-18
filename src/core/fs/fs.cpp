@@ -128,7 +128,7 @@ EXPORT core::storage<u8> read_all(core::Arena& arena, core::str8 path) {
 
   auto realpath = resolve_path(*scratch, path).cstring(*scratch);
 
-  FILE* f       = fopen(realpath, "r");
+  FILE* f       = fopen(realpath, "rb");
   if (f == nullptr) {
     LOG_BUILDER(
         core::LogLevel::Error,
@@ -141,8 +141,9 @@ EXPORT core::storage<u8> read_all(core::Arena& arena, core::str8 path) {
   fseek(f, 0, SEEK_SET);
 
   auto storage = arena.allocate_array<u8>(sz);
-  fread(storage.data, 1, sz, f);
-
+  usize data_read = fread(storage.data, 1, sz, f);
+  ASSERT(data_read == sz);
+  
   fclose(f);
   return storage;
 }

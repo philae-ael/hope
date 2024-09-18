@@ -91,7 +91,7 @@ AppEvent handle_events(SDL_Event& ev, InputState& input_state) {
     break;
   }
   case SDL_EVENT_GAMEPAD_ADDED:
-    if (input_state.gamepad != nullptr) {
+    if (input_state.gamepad == nullptr) {
       input_state.gamepad = SDL_OpenGamepad(ev.gdevice.which);
       LOG_INFO("connected to gamepad %s", SDL_GetGamepadName(input_state.gamepad));
     }
@@ -101,10 +101,14 @@ AppEvent handle_events(SDL_Event& ev, InputState& input_state) {
         ev.gdevice.which == SDL_GetJoystickID(SDL_GetGamepadJoystick(input_state.gamepad))) {
       LOG_INFO("disconnecting gamepad %s", SDL_GetGamepadName(input_state.gamepad));
       SDL_CloseGamepad(input_state.gamepad);
+      input_state.gamepad = nullptr;
       input_state.gamepad = find_gamepad();
     }
     break;
   case SDL_EVENT_GAMEPAD_AXIS_MOTION:
+      if (input_state.gamepad == nullptr || ev.gbutton.which != SDL_GetJoystickID(SDL_GetGamepadJoystick(input_state.gamepad))) {
+      break;
+    }
     switch (ev.gaxis.axis) {
     case SDL_GAMEPAD_AXIS_LEFTX:
       input_state.x.axisPos = f32(ev.gaxis.value) / 32767.f;
@@ -127,7 +131,7 @@ AppEvent handle_events(SDL_Event& ev, InputState& input_state) {
     }
     break;
   case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
-    if (ev.gbutton.which != SDL_GetJoystickID(SDL_GetGamepadJoystick(input_state.gamepad))) {
+    if (input_state.gamepad == nullptr || ev.gbutton.which != SDL_GetJoystickID(SDL_GetGamepadJoystick(input_state.gamepad))) {
       break;
     }
     switch (ev.gbutton.button) {

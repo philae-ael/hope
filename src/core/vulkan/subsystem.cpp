@@ -63,7 +63,7 @@ EXPORT subsystem::video subsystem::init_video(core::Arena& ar) {
 
   vk::init();
   SDL_Window* window =
-      SDL_CreateWindow("title", 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_BORDERLESS);
+      SDL_CreateWindow("title", 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
   ASSERTM(window != nullptr, "can't create SDL window: %s", SDL_GetError());
   auto instance_extensions = enumerate_SDL_vulkan_instance_extensions();
   const char* layers[]     = {
