@@ -15,6 +15,7 @@ struct timing_info {
 struct timing_infos {
   core::vec<timing_info> timings;
   struct {
+    os::time raw_frame_time;
     os::time mean_frame_time;
     os::time sigma_frame_time;
   } stats;

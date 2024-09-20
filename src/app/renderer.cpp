@@ -121,13 +121,6 @@ AppEvent render(AppState* app_state, subsystem::video& v, Renderer& renderer) {
     }
   }
 
-  ImGui_ImplVulkan_NewFrame();
-  ImGui_ImplSDL3_NewFrame();
-  ImGui::NewFrame();
-  defer { ImGui::EndFrame(); };
-  debug::config_new_frame();
-  profiling_window();
-
   VkCommandBufferBeginInfo command_buffer_begin_info{
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
       .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,

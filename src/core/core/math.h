@@ -291,12 +291,12 @@ union Mat4x4 {
   inline constexpr const f32& at(usize x, usize y) const {
     return _cols[y][x];
   }
-  //inline constexpr f32& operator[](usize x, usize y) {
-  //  return _cols[y][x];
-  //}
-  //inline constexpr const f32& operator[](usize x, usize y) const {
-  //  return _cols[y][x];
-  //}
+  // inline constexpr f32& operator[](usize x, usize y) {
+  //   return _cols[y][x];
+  // }
+  // inline constexpr const f32& operator[](usize x, usize y) const {
+  //   return _cols[y][x];
+  // }
   inline constexpr Vec4& col(usize x) {
     return _cols[x];
   }
@@ -489,6 +489,12 @@ inline const Quat Quat::Id{Vec4::W};
 /// - variance
 /// - sample_count
 /// Using Welford's algorithm
+/// - 1% low
+/// - 5% low
+/// - 5% high
+/// - 1% high
+/// - median
+/// using FAME estimator
 struct data_series {
   u32 count;
   f32 m;

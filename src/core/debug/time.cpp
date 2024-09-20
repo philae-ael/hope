@@ -32,7 +32,7 @@ struct string_map {
 };
 
 #define DEBUG_MAX_SCOPES 150
-#define FRAME_COUNT 100
+#define FRAME_COUNT 200
 
 static string_map::Data storagea[2][DEBUG_MAX_SCOPES], storageb[2][DEBUG_MAX_SCOPES];
 
@@ -101,6 +101,7 @@ EXPORT timing_infos get_last_frame_timing_infos(core::Arena& ar, scope_category 
   return {
       v,
       {
+          {(u64)frame_time_series.last_sample()},
           {(u64)frame_time_series.mean()},
           {(u64)frame_time_series.sigma()},
       }

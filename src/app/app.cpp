@@ -1,23 +1,23 @@
 #include "app.h"
-#include "app/renderer.h"
-#include "core/core/memory.h"
-#include "core/os/time.h"
-#include "loader/app_loader.h"
+#include "profiler.h"
+#include "renderer.h"
 
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_gamepad.h>
 #include <SDL3/SDL_joystick.h>
 #include <SDL3/SDL_keycode.h>
 #include <SDL3/SDL_video.h>
-
-#include <core/core.h>
-#include <core/debug/config.h>
-#include <core/debug/time.h>
-#include <core/vulkan/frame.h>
-#include <core/vulkan/init.h>
-
 #include <backends/imgui_impl_sdl3.h>
 #include <imgui.h>
+
+#include <core/core.h>
+#include <core/core/memory.h>
+#include <core/debug/config.h>
+#include <core/debug/time.h>
+#include <core/os/time.h>
+#include <core/vulkan/frame.h>
+#include <core/vulkan/init.h>
+#include <loader/app_loader.h>
 
 using namespace core::enum_helpers;
 
@@ -106,7 +106,8 @@ AppEvent handle_events(SDL_Event& ev, InputState& input_state) {
     }
     break;
   case SDL_EVENT_GAMEPAD_AXIS_MOTION:
-      if (input_state.gamepad == nullptr || ev.gbutton.which != SDL_GetJoystickID(SDL_GetGamepadJoystick(input_state.gamepad))) {
+    if (input_state.gamepad == nullptr ||
+        ev.gbutton.which != SDL_GetJoystickID(SDL_GetGamepadJoystick(input_state.gamepad))) {
       break;
     }
     switch (ev.gaxis.axis) {
@@ -131,7 +132,8 @@ AppEvent handle_events(SDL_Event& ev, InputState& input_state) {
     }
     break;
   case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
-    if (input_state.gamepad == nullptr || ev.gbutton.which != SDL_GetJoystickID(SDL_GetGamepadJoystick(input_state.gamepad))) {
+    if (input_state.gamepad == nullptr ||
+        ev.gbutton.which != SDL_GetJoystickID(SDL_GetGamepadJoystick(input_state.gamepad))) {
       break;
     }
     switch (ev.gbutton.button) {
@@ -213,6 +215,13 @@ EXPORT AppEvent frame(core::Arena& frame_arena, App& app) {
   AppEvent sev{};
   SDL_Event ev{};
 
+  ImGui_ImplVulkan_NewFrame();
+  ImGui_ImplSDL3_NewFrame();
+  ImGui::NewFrame();
+  defer { ImGui::EndFrame(); };
+  debug::config_new_frame();
+  profiling_window();
+
 handle_events: {
   auto poll_event_scope = debug::scope_start("poll event start"_hs);
   defer { debug::scope_end(poll_event_scope); };
@@ -222,20 +231,31 @@ handle_events: {
   }
 }
 
-  auto dt      = debug::get_last_frame_dt().secs();
-  auto forward = app.state->camera.rotation.rotate(-core::Vec4::Z);
-  auto sideway = app.state->camera.rotation.rotate(core::Vec4::X);
-  auto upward  = core::Vec4::Y;
+  auto dt              = debug::get_last_frame_dt().secs();
+  auto forward         = app.state->camera.rotation.rotate(-core::Vec4::Z);
+  auto sideway         = app.state->camera.rotation.rotate(core::Vec4::X);
+  auto upward          = core::Vec4::Y;
+
+  static float speed_x = 2;
+  static float speed_y = 2;
+  static float speed_z = 2;
+  debug::config_f32("input.speed_x", &speed_x);
+  debug::config_f32("input.speed_y", &speed_y);
+  debug::config_f32("input.speed_z", &speed_z);
 
   // clang-format off
-  app.state->camera.position += dt * (+ app.input_state.x.value() * sideway 
-                                      + app.input_state.y.value() * upward 
-                                      - app.input_state.z.value() * forward);
+  app.state->camera.position += dt * (+ speed_x * app.input_state.x.value() * sideway 
+                                      + speed_y * app.input_state.y.value() * upward 
+                                      - speed_z * app.input_state.z.value() * forward);
   // clang-format on
 
+  static float rot_speed_pitch = 2;
+  static float rot_speed_yaw   = 2;
+  debug::config_f32("input.rot_speed_pitch", &rot_speed_pitch);
+  debug::config_f32("input.rot_speed_yaw", &rot_speed_yaw);
   app.state->camera.rotation =
-      core::Quat::from_axis_angle(sideway, dt * app.input_state.pitch.value()) *
-      core::Quat::from_axis_angle(upward, dt * app.input_state.yaw.value()) *
+      core::Quat::from_axis_angle(sideway, rot_speed_pitch * dt * app.input_state.pitch.value()) *
+      core::Quat::from_axis_angle(upward, rot_speed_yaw * dt * app.input_state.yaw.value()) *
       app.state->camera.rotation;
 
   AppEvent renderev = render(app.state, *app.video, *app.renderer);
@@ -255,9 +275,20 @@ handle_events: {
     subsystem::video_rebuild_swapchain(*app.video);
     swapchain_rebuilt(*app.video, *app.renderer);
   }
+  static bool wait_timing_target = false;
+  static u64 timing_target_usec  = 5500;
+  u64 timing_target              = USEC(timing_target_usec);
+  debug::config_bool("timing.wait_timing_target", &wait_timing_target);
+  debug::config_u64("timing.timing_target_usec", &timing_target_usec);
+  if (wait_timing_target) {
+    auto frame_report_scope = debug::scope_start("wait timing target"_hs);
+    defer { debug::scope_end(frame_report_scope); };
+    LOG_TRACE("%lu", timing_target);
+    os::sleep(timing_target);
+  }
 
   static bool print_frame_report = false;
-  debug::config_bool("Print frame report", &print_frame_report);
+  debug::config_bool("debug.frame_report", &print_frame_report);
   if (print_frame_report) {
     auto frame_report_scope = debug::scope_start("frame report"_hs);
     defer { debug::scope_end(frame_report_scope); };
