@@ -391,10 +391,16 @@ struct array_storage<S, 0> {
 template <class S, usize N>
 struct array {
   detail_::array_storage<S, N>::type data;
-  operator storage<S>() {
+  operator core::storage<S>() {
     return {N, data};
   }
-  operator storage<const S>() const {
+  operator core::storage<const S>() const {
+    return {N, data};
+  }
+  core::storage<S> storage() {
+    return {N, data};
+  }
+  core::storage<const S> storage() const {
     return {N, data};
   }
   inline S& operator[](auto idx) {
@@ -405,17 +411,17 @@ struct array {
     return data[idx];
   }
   auto iter() {
-    return storage{*this}.iter();
+    return core::storage{*this}.iter();
   }
   auto iter() const {
-    return storage{*this}.iter();
+    return core::storage{*this}.iter();
   }
   usize size() const {
     return N;
   }
 };
-template <class... Args>
-array(Args&&... args) -> array<std::common_type_t<Args...>, sizeof...(Args)>;
+template <class Arg, class... Args>
+array(Arg&& arg, Args&&... args) -> array<Arg, 1 + sizeof...(Args)>;
 
 template <class Idx, iterable It>
 struct EnumerateItem {

@@ -484,17 +484,44 @@ inline const Quat Quat::Id{Vec4::W};
 /// DATA SERIES
 /// ======
 
+// Estimate a percentile using an online alhorithme
+// Seems to work
+// The algorithm is named FAME (Fast Algorithm for Median Estimation) in a random slide
+// (adapted for arbitrary percentile)
+// So idk if it really works
+// But in my tests it seems to do quite well on median estimation and percentile estimation
+// (on a standard normal so idk if it works in a more general setting / with a bimodal
+// distribution)
+struct percentile_online_algorithm {
+  f32 percentile;
+  f32 estimated = 0.0;
+  f32 step      = 0.0;
+  bool init     = false;
+
+  constexpr void add_sample(f32 sample) {
+    if (init) {
+      if (estimated < sample) {
+        estimated += percentile * step;
+      } else if (estimated > sample) {
+        estimated -= (1.0f - percentile) * step;
+      }
+
+      if (std::abs(sample - estimated) < step) {
+        step /= 2.0f;
+      }
+    } else {
+      estimated = sample;
+      step      = MAX(std::abs(sample), 0.1f);
+      init      = true;
+    }
+  }
+};
+
 /// Compute
 /// - mean,
 /// - variance
 /// - sample_count
 /// Using Welford's algorithm
-/// - 1% low
-/// - 5% low
-/// - 5% high
-/// - 1% high
-/// - median
-/// using FAME estimator
 struct data_series {
   u32 count;
   f32 m;
@@ -574,6 +601,21 @@ struct windowed_series {
   }
   constexpr f32 sigma() const {
     return sqrtf(variance());
+  }
+
+  constexpr f32 low_99() const {
+    percentile_online_algorithm low99{0.99f};
+    for (usize i = 0; i < count; i++) {
+      low99.add_sample(store[(start + i) % store.size]);
+    }
+    return low99.estimated;
+  }
+  constexpr f32 low_95() const {
+    percentile_online_algorithm low95{0.95f};
+    for (usize i = 0; i < count; i++) {
+      low95.add_sample(store[(start + i) % store.size]);
+    }
+    return low95.estimated;
   }
 };
 

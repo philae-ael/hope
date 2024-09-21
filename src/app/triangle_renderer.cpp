@@ -1,18 +1,17 @@
-
 #include "triangle_renderer.h"
-#include "app/app.h"
-#include "core/core.h"
-#include "core/core/math.h"
-#include "core/debug/time.h"
-#include "core/fs/fs.h"
-#include "core/os/time.h"
-#include "core/vulkan/image.h"
-#include "core/vulkan/pipeline.h"
+#include "app.h"
+
+#include <core/core.h>
+#include <core/core/math.h>
+#include <core/debug/time.h>
+#include <core/fs/fs.h>
+#include <core/vulkan/image.h>
+#include <core/vulkan/pipeline.h>
 #include <core/vulkan/subsystem.h>
-#include <vk_mem_alloc.h>
 #include <vulkan/vulkan_core.h>
 
-#include "cgltf.h"
+#include <cgltf.h>
+#include <vk_mem_alloc.h>
 
 using namespace core::literals;
 
@@ -96,7 +95,7 @@ TriangleRenderer TriangleRenderer::init(subsystem::video& v, VkFormat format) {
   VmaAllocation index_buf_alloc;
   VkBufferCreateInfo index_buf_create_info{
       .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-      .size                  = vertices.into_bytes().size,
+      .size                  = indices.into_bytes().size,
       .usage                 = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
       .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
       .queueFamilyIndexCount = 1,

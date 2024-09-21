@@ -18,6 +18,8 @@ struct timing_infos {
     os::time raw_frame_time;
     os::time mean_frame_time;
     os::time sigma_frame_time;
+    os::time low_95;
+    os::time low_99;
   } stats;
 };
 

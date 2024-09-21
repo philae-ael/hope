@@ -229,15 +229,27 @@ void profiling_window() {
 
     render_profiling_config config{};
 
-    ImVec2 vMin        = ImGui::GetWindowContentRegionMin();
-    ImVec2 vMax        = ImGui::GetWindowContentRegionMax();
-    config.graph_width = vMax.x - vMin.x - config.legend_width;
-    config.height      = (vMax.y - vMin.y) / 2 - 31;
+    ImGui::Text(
+        "CPU: mean  %3d ms %03d us %03d ns |  %.0f FPS", duration.msec, duration.usec,
+        duration.nsec, frame_timing_infos.stats.mean_frame_time.hz()
+    );
+
+    auto duration_95 = os::duration_info::from_time(frame_timing_infos.stats.low_95);
+    ImGui::Text(
+        "     low95 %3d ms %03d us %03d ns |  %.0f FPS", duration_95.msec, duration_95.usec,
+        duration_95.nsec, frame_timing_infos.stats.low_95.hz()
+    );
+
+    auto duration_99 = os::duration_info::from_time(frame_timing_infos.stats.low_99);
+    ImGui::Text(
+        "     low99 %3d ms %03d us %03d ns |  %.0f FPS", duration_99.msec, duration_99.usec,
+        duration_99.nsec, frame_timing_infos.stats.low_99.hz()
+    );
+
+    ImVec2 v           = ImGui::GetContentRegionAvail();
+    config.graph_width = v.x - config.legend_width;
+    config.height      = v.y / 2 - 10;
     if (config.graph_width > 10 && config.height > 25) {
-      ImGui::Text(
-          "CPU: %3d ms %03d us %03d ns |  %.0f FPS", duration.msec, duration.usec, duration.nsec,
-          frame_timing_infos.stats.mean_frame_time.hz()
-      );
       f32 dt = (f32)frame_timing_infos.stats.mean_frame_time.ns * 1e-9f;
       render_profiling_graph(
           *scratch, cpu_frame_data,

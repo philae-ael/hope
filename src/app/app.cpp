@@ -287,18 +287,35 @@ handle_events: {
     os::sleep(timing_target);
   }
 
-  static bool print_frame_report = false;
+  static bool print_frame_report      = false;
+  static bool print_frame_report_full = true;
   debug::config_bool("debug.frame_report", &print_frame_report);
+  debug::config_bool("debug.frame_report.full", &print_frame_report_full);
   if (print_frame_report) {
     auto frame_report_scope = debug::scope_start("frame report"_hs);
     defer { debug::scope_end(frame_report_scope); };
 
     auto timing_infos = debug::get_last_frame_timing_infos(frame_arena);
-    for (auto [name, t] : timing_infos.timings.iter()) {
-      LOG_BUILDER(
-          core::LogLevel::Trace, push(name).push(" at ").push(t, os::TimeFormat::MMM_UUU_NNN)
-      );
+    if (print_frame_report_full) {
+      for (auto [name, t] : timing_infos.timings.iter()) {
+        LOG_BUILDER(
+            core::LogLevel::Trace, push(name).push(" at ").push(t, os::TimeFormat::MMM_UUU_NNN)
+        );
+      }
     }
+
+    LOG_BUILDER(
+        core::LogLevel::Trace,
+        push("frame mean: ").push(timing_infos.stats.mean_frame_time, os::TimeFormat::MMM_UUU_NNN)
+    );
+    LOG_BUILDER(
+        core::LogLevel::Trace,
+        push("frame low 95: ").push(timing_infos.stats.low_95, os::TimeFormat::MMM_UUU_NNN)
+    );
+    LOG_BUILDER(
+        core::LogLevel::Trace,
+        push("frame low 99: ").push(timing_infos.stats.low_99, os::TimeFormat::MMM_UUU_NNN)
+    );
   }
 
   return sev;

@@ -62,7 +62,8 @@ EXPORT void init() {
 EXPORT void reset() {}
 
 EXPORT void frame_end() {
-  frame_time_series.add_sample((f32)os::time_monotonic().since(frame_start_t).ns);
+  f32 sample = (f32)os::time_monotonic().since(frame_start_t).ns;
+  frame_time_series.add_sample(sample);
 }
 
 EXPORT void frame_start(scope_category cat) {
@@ -104,6 +105,8 @@ EXPORT timing_infos get_last_frame_timing_infos(core::Arena& ar, scope_category 
           {(u64)frame_time_series.last_sample()},
           {(u64)frame_time_series.mean()},
           {(u64)frame_time_series.sigma()},
+          {(u64)frame_time_series.low_95()},
+          {(u64)frame_time_series.low_99()},
       }
   };
 }
