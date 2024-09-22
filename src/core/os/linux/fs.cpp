@@ -7,7 +7,7 @@
 
 namespace os {
 EXPORT core::str8 getcwd(core::Allocator alloc) {
-  auto buf             = alloc.allocate_array<u8>(1024, "getcwd");
+  auto buf = alloc.allocate_array<u8>(1024, "getcwd");
 
   const usize max_size = KB(16);
 

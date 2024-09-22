@@ -126,7 +126,7 @@ Result<VkSwapchainKHR> create_swapchain(
 );
 
 SwapchainConfig create_default_swapchain_config(const Device& device, VkSurfaceKHR surface);
-Result<Swapchain> create_default_swapchain(core::Arena& ar, const Device& device, VkSurfaceKHR surface);
+Result<Swapchain> create_default_swapchain(core::Allocator alloc, const Device& device, VkSurfaceKHR surface);
 
 Result<core::unit_t> rebuild_default_swapchain(const Device& device, VkSurfaceKHR surface, Swapchain& swapchain);
 

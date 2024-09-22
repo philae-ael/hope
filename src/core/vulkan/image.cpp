@@ -21,15 +21,15 @@ EXPORT image2D image2D::create(subsystem::video& v, const Config& config, Sync s
   image.extent3 = extent;
 
   VkImageCreateInfo image_create_info{
-      .sType       = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-      .imageType   = VK_IMAGE_TYPE_2D,
-      .format      = config.format,
-      .extent      = extent,
-      .mipLevels   = 1,
-      .arrayLayers = 1,
-      .samples     = VK_SAMPLE_COUNT_1_BIT,
-      .usage       = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+      .sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+      .imageType             = VK_IMAGE_TYPE_2D,
+      .format                = config.format,
+      .extent                = extent,
+      .mipLevels             = 1,
+      .arrayLayers           = 1,
+      .samples               = VK_SAMPLE_COUNT_1_BIT,
+      .usage                 = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+      .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
       .queueFamilyIndexCount = 1,
       .pQueueFamilyIndices   = &v.device.omni_queue_family_index,
       .initialLayout         = sync.layout,
@@ -37,9 +37,9 @@ EXPORT image2D image2D::create(subsystem::video& v, const Config& config, Sync s
   VmaAllocationCreateInfo alloc_create_info{
       .usage = VMA_MEMORY_USAGE_GPU_ONLY,
   };
-  VK_ASSERT(vmaCreateImage(
-      v.allocator, &image_create_info, &alloc_create_info, &image.image, &image.allocation, nullptr
-  ));
+  VK_ASSERT(
+      vmaCreateImage(v.allocator, &image_create_info, &alloc_create_info, &image.image, &image.allocation, nullptr)
+  );
   VkImageViewCreateInfo image_view_create_info{
       .sType      = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
       .image      = image.image,
@@ -62,16 +62,15 @@ EXPORT VkImageMemoryBarrier2 image2D::sync_to(image2D::Sync new_sync) {
   sync                   = new_sync;
 
   return {
-      .sType         = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-      .srcStageMask  = old_sync.stage,
-      .srcAccessMask = old_sync.access,
-      .dstStageMask  = new_sync.stage,
-      .dstAccessMask = new_sync.access,
-      .oldLayout     = old_sync.layout,
-      .newLayout     = new_sync.layout,
-      .image         = image,
-      .subresourceRange =
-          {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1},
+      .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+      .srcStageMask     = old_sync.stage,
+      .srcAccessMask    = old_sync.access,
+      .dstStageMask     = new_sync.stage,
+      .dstAccessMask    = new_sync.access,
+      .oldLayout        = old_sync.layout,
+      .newLayout        = new_sync.layout,
+      .image            = image,
+      .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1},
   };
 }
 
@@ -94,15 +93,12 @@ EXPORT void full_barrier(VkCommandBuffer cmd) {
   };
 
   VkDependencyInfo dep_info = {
-      .sType              = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-      .memoryBarrierCount = 1,
-      .pMemoryBarriers    = &barrier
+      .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO, .memoryBarrierCount = 1, .pMemoryBarriers = &barrier
   };
   vkCmdPipelineBarrier2(cmd, &dep_info);
 }
 
-EXPORT VkRenderingAttachmentInfo
-image2D::as_attachment(AttachmentLoadOp loadop, AttachmentStoreOp storeop) {
+EXPORT VkRenderingAttachmentInfo image2D::as_attachment(AttachmentLoadOp loadop, AttachmentStoreOp storeop) {
   return VkRenderingAttachmentInfo{
       .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
       .imageView   = image_view,

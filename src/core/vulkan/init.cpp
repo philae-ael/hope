@@ -287,7 +287,7 @@ EXPORT core::Maybe<core::vec<queue_creation_info>> find_physical_device_queue_al
 ) {
   auto queue_family_properties = enumerate_physical_device_queue_family_properties(ar, physical_device);
 
-  auto queue_requests          = core::vec{required_features.queues}.clone(ar);
+  auto queue_requests = core::vec{required_features.queues}.clone(ar);
   core::vec<queue_creation_info> queues;
   for (auto [family_index, queue_family_property] : core::enumerate{queue_family_properties.iter()}) {
 
@@ -569,11 +569,11 @@ EXPORT core::vec<VkSurfaceFormatKHR> enumerate_physical_device_surface_formats(
   return v;
 }
 
-EXPORT core::vec<VkImage> get_swapchain_images(core::Arena& ar, VkDevice device, VkSwapchainKHR swapchain) {
+EXPORT core::vec<VkImage> get_swapchain_images(core::Allocator alloc, VkDevice device, VkSwapchainKHR swapchain) {
   core::vec<VkImage> v;
   u32 swapchain_image_count;
   vkGetSwapchainImagesKHR(device, swapchain, &swapchain_image_count, nullptr);
-  v.set_capacity(ar, swapchain_image_count);
+  v.set_capacity(alloc, swapchain_image_count);
   vkGetSwapchainImagesKHR(device, swapchain, &swapchain_image_count, v.data());
   v.set_size(swapchain_image_count);
 
@@ -716,14 +716,15 @@ EXPORT SwapchainConfig create_default_swapchain_config(const Device& device, VkS
   ASSERT((swapchain_config.image_usage_flags & VK_IMAGE_USAGE_TRANSFER_DST_BIT) != 0);
   return swapchain_config;
 }
-EXPORT Result<Swapchain> create_default_swapchain(core::Arena& ar, const Device& device, VkSurfaceKHR surface) {
+
+EXPORT Result<Swapchain> create_default_swapchain(core::Allocator alloc, const Device& device, VkSurfaceKHR surface) {
   auto swapchain_config = create_default_swapchain_config(device, surface);
   u32 queue_families[]{device.omni_queue_family_index};
   auto swapchain = create_swapchain(device, queue_families, surface, swapchain_config);
   return {{
       *swapchain,
       swapchain_config,
-      get_swapchain_images(ar, device, *swapchain),
+      get_swapchain_images(alloc, device, *swapchain),
   }};
 }
 EXPORT Result<core::unit_t> rebuild_default_swapchain(

@@ -69,9 +69,7 @@ int main() {
             .pushf("RUNNING tests %s: FAILED (%s)", test.name, f.reason)
             .emit();
       } else {
-        core::log_builder(core::LogLevel::Error, loc)
-            .pushf("RUNNING tests %s: FAILED", test.name)
-            .emit();
+        core::log_builder(core::LogLevel::Error, loc).pushf("RUNNING tests %s: FAILED", test.name).emit();
       }
       failed += 1;
       continue;

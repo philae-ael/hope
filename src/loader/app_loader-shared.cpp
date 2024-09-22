@@ -11,7 +11,7 @@ AppPFNs init_app_stub() {
       .handle = nullptr,
       .init   = [](core::Allocator alloc, App*, AppState*, subsystem ::video*) -> App* { return (App*)(0); },
       .uninit = [](App&) -> AppState* { return (AppState*)(0); },
-      .frame  = [](core ::Arena&, App&) -> AppEvent {
+      .frame  = [](App&) -> AppEvent {
         using namespace core::enum_helpers;
         AppEvent sev{};
         SDL_Event ev{};

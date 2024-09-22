@@ -53,7 +53,7 @@ static os::time frame_start_t;
 
 namespace utils {
 
-EXPORT void init_timing_tracking() {
+EXPORT void timings_init() {
   lasts[0].reset();
   curs[0].reset();
   lasts[1].reset();
@@ -61,12 +61,12 @@ EXPORT void init_timing_tracking() {
 }
 EXPORT void reset() {}
 
-EXPORT void frame_end() {
+EXPORT void timings_frame_end() {
   f32 sample = (f32)os::time_monotonic().since(frame_start_t).ns;
   frame_time_series.add_sample(sample);
 }
 
-EXPORT void frame_start(scope_category cat) {
+EXPORT void timings_frame_start(scope_category cat) {
   auto& cur  = curs[(usize)cat];
   auto& last = lasts[(usize)cat];
 
@@ -92,12 +92,12 @@ EXPORT void scope_import(scope_category cat, core::hstr8 name, os::time t) {
   cur[core::intern(name)] += t;
 }
 
-EXPORT timing_infos get_last_frame_timing_infos(core::Arena& ar, scope_category cat) {
+EXPORT timing_infos get_last_frame_timing_infos(core::Allocator alloc, scope_category cat) {
   auto& last = lasts[(usize)cat];
   core::vec<timing_info> v;
 
   for (auto& scope : last.iter()) {
-    v.push(ar, {scope.key, scope.value});
+    v.push(alloc, {scope.key, scope.value});
   }
   return {
       v,

@@ -197,8 +197,7 @@ template <class T>
   requires std::is_enum_v<T>
 constexpr T enum_or(T lhs, T rhs) {
   return static_cast<T>(
-      static_cast<std::underlying_type<T>::type>(lhs) |
-      static_cast<std::underlying_type<T>::type>(rhs)
+      static_cast<std::underlying_type<T>::type>(lhs) | static_cast<std::underlying_type<T>::type>(rhs)
   );
 }
 
@@ -206,8 +205,7 @@ template <class T>
   requires std::is_enum_v<T>
 constexpr T enum_and(T lhs, T rhs) {
   return static_cast<T>(
-      static_cast<std::underlying_type<T>::type>(lhs) &
-      static_cast<std::underlying_type<T>::type>(rhs)
+      static_cast<std::underlying_type<T>::type>(lhs) & static_cast<std::underlying_type<T>::type>(rhs)
   );
 }
 

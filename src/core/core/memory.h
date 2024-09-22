@@ -6,6 +6,7 @@
 #include "fwd.h"
 #include "type_info.h"
 #include "types.h"
+#include <cstdlib>
 
 #ifndef SCRATCH_ARENA_AMOUNT
   #define SCRATCH_ARENA_AMOUNT 6
@@ -39,7 +40,7 @@
 namespace core {
 
 struct AllocatorVTable {
-  using allocate_pfn   = void* (*)(void*, usize size, usize alignement, const char* src);
+  using allocate_pfn = void* (*)(void*, usize size, usize alignement, const char* src);
 
   // if size == 0, it should be best effort
   using deallocate_pfn = void (*)(void*, void* alloc_base_ptr, usize size, const char* src);
@@ -125,6 +126,15 @@ struct Arena {
   void pop_pos(u64 pos);
   void deallocate(usize size);
 };
+inline const AllocatorVTable Arena::vtable{
+    .allocate   = [](void* userdata, usize size, usize alignement, const char* src
+                ) { return static_cast<Arena*>(userdata)->allocate(size, alignement, src); },
+    .deallocate = [](void* userdata, void* alloc_base_ptr, usize size, const char* src
+                  ) { return static_cast<Arena*>(userdata)->deallocate(alloc_base_ptr, size, src); },
+    .try_resize = [](void* userdata, void* ptr, usize cur_size, usize new_size, const char* src
+                  ) { return static_cast<Arena*>(userdata)->try_resize(ptr, cur_size, new_size, src); },
+    .owns       = [](void* userdata, void* ptr) { return static_cast<Arena*>(userdata)->owns(ptr); },
+};
 
 Arena& arena_alloc(usize capacity = DEFAULT_ARENA_CAPACITY);
 void arena_dealloc(Arena& arena);
@@ -160,6 +170,27 @@ struct Scratch : ArenaTemp {
     scratch_retire(*this);
   }
 };
+
+inline constexpr AllocatorVTable MallocVtable{
+    .allocate   = [](void*, usize size, usize alignement, const char* src) { return calloc(size, 1); },
+    .deallocate = [](void* userdata, void* alloc_base_ptr, usize size, const char* src
+                  ) { return free(alloc_base_ptr); },
+    .try_resize = [](void* userdata, void* ptr, usize cur_size, usize new_size, const char* src) { return false; },
+    .owns       = [](void* userdata, void* ptr) { return false; },
+};
+
+enum class AllocatorName {
+  General,
+  Frame,
+  LastFrame,
+};
+enum class ArenaName {
+  Frame,
+  LastFrame,
+};
+
+Allocator get_named_allocator(AllocatorName name);
+Arena& get_named_arena(ArenaName name);
 
 } // namespace core
 #endif // INCLUDE_CORE_MEMORY_H_

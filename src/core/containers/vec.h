@@ -67,6 +67,7 @@ struct vec {
 
     auto new_store = alloc.allocate_array<T>(new_capacity, "vec::resize");
     memcpy(new_store.data, store.data, size() * sizeof(T));
+    alloc.deallocate(store.data, store.size);
     store = new_store;
   }
 

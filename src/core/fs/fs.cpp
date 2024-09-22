@@ -73,7 +73,7 @@ EXPORT void register_path(core::str8 path, core::str8 target) {
     }
     auto hpart = part.hash();
 
-    auto pth   = t->find_child(hpart);
+    auto pth = t->find_child(hpart);
     if (pth.is_none()) {
       t = &t->insert_child(*fs.arena, intern(part.hash()));
     } else {
@@ -83,11 +83,11 @@ EXPORT void register_path(core::str8 path, core::str8 target) {
   t->target = core::intern(target.hash());
 }
 
-EXPORT core::str8 resolve_path(core::Arena& arena, core::str8 path) {
+EXPORT core::str8 resolve_path(core::Allocator alloc, core::str8 path) {
   auto tmp = fs.arena->make_temp();
   defer { tmp.retire(); };
 
-  auto parts         = core::split{path, '/'};
+  auto parts = core::split{path, '/'};
 
   auto* t            = &fs.root;
   core::hstr8 target = fs.root.target.expect("root not set");
@@ -118,7 +118,7 @@ EXPORT core::str8 resolve_path(core::Arena& arena, core::str8 path) {
   sb.push(*tmp, target);
   sb.push(*tmp, rest);
 
-  return sb.commit(arena, core::str8::from("/"));
+  return sb.commit(alloc, core::str8::from("/"));
 }
 
 EXPORT core::storage<u8> read_all(core::Allocator alloc, core::str8 path) {
@@ -127,7 +127,7 @@ EXPORT core::storage<u8> read_all(core::Allocator alloc, core::str8 path) {
 
   auto realpath = resolve_path(*scratch, path).cstring(*scratch);
 
-  FILE* f       = fopen(realpath, "rb");
+  FILE* f = fopen(realpath, "rb");
   if (f == nullptr) {
     LOG_BUILDER(core::LogLevel::Error, with_stacktrace().panic().pushf("can't open file: %s", strerror(errno)));
   }

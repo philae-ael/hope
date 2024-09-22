@@ -22,7 +22,7 @@ union SDL_Event;
 
 using PFN_init   = App* (*)(core::Allocator alloc, App*, AppState*, subsystem ::video*);
 using PFN_uninit = AppState* (*)(App&);
-using PFN_frame  = AppEvent (*)(core::Arena&, App&);
+using PFN_frame  = AppEvent (*)(App&);
 
 struct AppPFNs {
   void* handle;

@@ -18,6 +18,7 @@
 #include <core/vulkan/frame.h>
 #include <core/vulkan/init.h>
 #include <loader/app_loader.h>
+#include <type_traits>
 
 using namespace core::enum_helpers;
 using math::Quat;
@@ -186,6 +187,7 @@ EXPORT App* init(core::Allocator alloc, App* app, AppState* app_state, subsystem
 
   return app;
 }
+static_assert(std::is_same_v<decltype(&init), PFN_init>);
 
 EXPORT AppState* uninit(App& app) {
   LOG_DEBUG("Uninit app");
@@ -194,45 +196,43 @@ EXPORT AppState* uninit(App& app) {
   core::arena_dealloc(*app.arena);
   return app.state;
 }
+static_assert(std::is_same_v<decltype(&uninit), PFN_uninit>);
 
 using namespace core::literals;
 
-void update(core::Arena& frame_arena, App& app) {
-  static float speed_x         = 2;
-  static float speed_y         = 2;
-  static float speed_z         = 2;
-  static float rot_speed_pitch = 2;
-  static float rot_speed_yaw   = 2;
+void update(App& app) {
+  static Vec4 speed = Vec4{2, 2, 2, 0};
+  static struct {
+    f32 pitch = 2;
+    f32 yaw   = 2;
+  } rot_speed;
 
-  utils::config_f32("input.speed_x", &speed_x);
-  utils::config_f32("input.speed_y", &speed_y);
-  utils::config_f32("input.speed_z", &speed_z);
-  utils::config_f32("input.rot_speed_pitch", &rot_speed_pitch);
-  utils::config_f32("input.rot_speed_yaw", &rot_speed_yaw);
+  utils::config_f32xN("input.speed", speed._coeffs, 3);
+  utils::config_f32xN("input.rot_speed", (f32*)&rot_speed, 2);
 
-  auto dt                    = utils::get_last_frame_dt().secs();
-  auto forward               = app.state->camera.rotation.rotate(-Vec4::Z);
-  auto sideway               = app.state->camera.rotation.rotate(Vec4::X);
-  auto upward                = Vec4::Y;
+  auto dt      = utils::get_last_frame_dt().secs();
+  auto forward = app.state->camera.rotation.rotate(-Vec4::Z);
+  auto sideway = app.state->camera.rotation.rotate(Vec4::X);
+  auto upward  = Vec4::Y;
 
   // clang-format off
-  app.state->camera.position += dt * (+ speed_x * app.input_state.x.value() * sideway 
-                                      + speed_y * app.input_state.y.value() * upward 
-                                      - speed_z * app.input_state.z.value() * forward);
+  app.state->camera.position += dt * (+ speed.x * app.input_state.x.value() * sideway 
+                                      + speed.y * app.input_state.y.value() * upward 
+                                      - speed.z * app.input_state.z.value() * forward);
   // clang-format on
 
-  app.state->camera.rotation = Quat::from_axis_angle(sideway, rot_speed_pitch * dt * app.input_state.pitch.value()) *
-                               Quat::from_axis_angle(upward, rot_speed_yaw * dt * app.input_state.yaw.value()) *
+  app.state->camera.rotation = Quat::from_axis_angle(sideway, rot_speed.pitch * dt * app.input_state.pitch.value()) *
+                               Quat::from_axis_angle(upward, rot_speed.yaw * dt * app.input_state.yaw.value()) *
                                app.state->camera.rotation;
 }
 
-void debug_stuff(core::Arena& frame_arena, App& app) {
+void debug_stuff(App& app) {
   static bool wait_timing_target      = false;
   static u64 timing_target_usec       = 5500;
   static bool print_frame_report      = false;
   static bool print_frame_report_full = true;
 
-  u64 timing_target                   = USEC(timing_target_usec);
+  u64 timing_target = USEC(timing_target_usec);
   utils::config_bool("timing.wait_timing_target", &wait_timing_target);
   utils::config_u64("timing.timing_target_usec", &timing_target_usec);
   if (wait_timing_target) {
@@ -247,7 +247,7 @@ void debug_stuff(core::Arena& frame_arena, App& app) {
     auto frame_report_scope = utils::scope_start("frame report"_hs);
     defer { utils::scope_end(frame_report_scope); };
 
-    auto timing_infos = utils::get_last_frame_timing_infos(frame_arena);
+    auto timing_infos = utils::get_last_frame_timing_infos(core::get_named_allocator(core::AllocatorName::Frame));
     if (print_frame_report_full) {
       for (auto [name, t] : timing_infos.timings.iter()) {
         LOG_BUILDER(core::LogLevel::Debug, push(name).push(" at ").push(t, os::TimeFormat::MMM_UUU_NNN));
@@ -265,9 +265,12 @@ void debug_stuff(core::Arena& frame_arena, App& app) {
         core::LogLevel::Debug, push("frame low 99: ").push(timing_infos.stats.low_99, os::TimeFormat::MMM_UUU_NNN)
     );
   }
+
+  utils::config_f32xN("camera.pos", app.state->camera.position._coeffs, 3, true);
+  utils::config_f32xN("camera.rot", app.state->camera.rotation.v._coeffs, 3, true);
 }
 
-EXPORT AppEvent frame(core::Arena& frame_arena, App& app) {
+EXPORT AppEvent frame(App& app) {
   AppEvent sev{};
   SDL_Event ev{};
 
@@ -276,7 +279,9 @@ EXPORT AppEvent frame(core::Arena& frame_arena, App& app) {
   ImGui::NewFrame();
   defer { ImGui::EndFrame(); };
   utils::config_new_frame();
+
   profiling_window();
+  debug_stuff(app);
 
 handle_events: {
   auto poll_event_scope = utils::scope_start("poll event start"_hs);
@@ -287,7 +292,7 @@ handle_events: {
   }
 }
 
-  update(frame_arena, app);
+  update(app);
 
   AppEvent renderev = render(app.state, *app.video, *app.renderer);
   if (any(renderev & AppEvent::SkipRender)) {
@@ -306,8 +311,6 @@ handle_events: {
     subsystem::video_rebuild_swapchain(*app.video);
     swapchain_rebuilt(*app.video, *app.renderer);
   }
-
-  debug_stuff(frame_arena, app);
 
   return sev;
 }

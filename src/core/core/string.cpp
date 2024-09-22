@@ -28,8 +28,8 @@ EXPORT string_builder& string_builder::vpushf(Allocator alloc, const char* fmt, 
       sizeof(string_node) + len + 1, alignof(string_node),
       "string_buffer::vpushf"
   ); // vsnprintf writes a \0 at the end!
-  n->str.len      = len;
-  n->str.data     = (u8*)n + sizeof(string_node);
+  n->str.len  = len;
+  n->str.data = (u8*)n + sizeof(string_node);
 
   usize len_wrote = (usize)vsnprintf((char*)n->str.data, len + 1, fmt, ap);
   ASSERT(len_wrote == len);
@@ -132,19 +132,14 @@ EXPORT const char* str8::cstring(Allocator alloc) {
   return (const char*)cstr;
 }
 
-struct {
+static struct {
   std::unordered_map<u64, hstr8> m;
-  Arena* arena = nullptr;
 } interned;
 
 EXPORT hstr8 intern(hstr8 s) {
-  if (interned.arena == nullptr) {
-    interned.arena = &arena_alloc();
-  }
-
   auto it = interned.m.find(s.hash);
   if (it == interned.m.end()) {
-    auto h = s.clone(*interned.arena);
+    auto h = s.clone(get_named_allocator(AllocatorName::General));
     interned.m.insert({h.hash, h});
     return h;
   }

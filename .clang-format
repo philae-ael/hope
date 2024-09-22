@@ -4,7 +4,7 @@ BasedOnStyle: LLVM
 Language: Cpp
 Standard: Latest
 
-ColumnLimit: 100
+ColumnLimit: 120
 
 AccessModifierOffset: -2
 IndentWidth: 2
@@ -33,6 +33,6 @@ AttributeMacros:
   - EXPORT
 AlignConsecutiveAssignments:
   Enabled: true
-  AcrossEmptyLines: true
+  AcrossEmptyLines: false
   AlignCompound: true
   AcrossComments: true

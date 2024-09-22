@@ -10,7 +10,7 @@ using realpath    = core::str8;
 
 void init();
 void register_path(virtualpath path, realpath target);
-realpath resolve_path(core::Arena& ar, virtualpath);
+realpath resolve_path(core::Allocator alloc, virtualpath);
 core::storage<u8> read_all(core::Allocator alloc, core::str8 path);
 
 using on_file_modified_t      = void (*)(void*);

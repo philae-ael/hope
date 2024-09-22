@@ -13,20 +13,20 @@ time from_timespec_raw(timespec tp) {
   };
 }
 
-const os::time resolution = []{
+const os::time resolution = [] {
   unsigned __int64 freq;
   QueryPerformanceFrequency((LARGE_INTEGER*)&freq);
-  f64 timerResolution = (1.0e9/(f64)freq);
+  f64 timerResolution = (1.0e9 / (f64)freq);
   return os::time{u64(timerResolution)};
 }();
 
 time get_boottime() {
   unsigned __int64 freq;
   QueryPerformanceFrequency((LARGE_INTEGER*)&freq);
-  f64 timerResolution = (1.0e9/(f64)freq);
+  f64 timerResolution = (1.0e9 / (f64)freq);
 
   unsigned __int64 startTime;
-  QueryPerformanceCounter((LARGE_INTEGER *)&startTime);
+  QueryPerformanceCounter((LARGE_INTEGER*)&startTime);
   return {u64(startTime) * u64(timerResolution)};
 }
 const time boottime = get_boottime();
@@ -37,14 +37,13 @@ EXPORT time time_monotonic_resolution() {
 
 EXPORT time time_monotonic() {
   unsigned __int64 startTime;
-  QueryPerformanceCounter((LARGE_INTEGER *)&startTime);
+  QueryPerformanceCounter((LARGE_INTEGER*)&startTime);
   return os::time{u64(startTime) * resolution.ns}.since(boottime);
 }
 
 EXPORT duration_info time_realtime() {
   time_t t{};
   ::time(&t);
-
 
   struct tm tm;
   localtime_s(&tm, &t);

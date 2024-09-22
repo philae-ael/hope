@@ -18,8 +18,8 @@ TEST(matmul) {
               f32 expected = (m == i && j == k && l == n) ? 1.0f : 0.0f;
               f32 got      = res.at(m, n);
               tassert(
-                  expected == got, "e_%zu_%zu * e_%zu_%zu at %zu %zu, expected %g, got %g", i, j, k,
-                  l, m, n, expected, got
+                  expected == got, "e_%zu_%zu * e_%zu_%zu at %zu %zu, expected %g, got %g", i, j, k, l, m, n, expected,
+                  got
               );
             }
           }
@@ -53,12 +53,11 @@ TEST(matlin) {
 
           for (auto m : core::range{0zu, 4zu}.iter()) {
             for (auto n : core::range{0zu, 4zu}.iter()) {
-              f32 expected =
-                  (m == i && j == n ? 1.0f : 0.0f) + 2 * (m == k && l == n ? 1.0f : 0.0f);
-              f32 got = res.at(m, n);
+              f32 expected = (m == i && j == n ? 1.0f : 0.0f) + 2 * (m == k && l == n ? 1.0f : 0.0f);
+              f32 got      = res.at(m, n);
               tassert(
-                  expected == got, "e_%zu_%zu + 2*e_%zu_%zu at %zu %zu, expected %g, got %g", i, j,
-                  k, l, m, n, expected, got
+                  expected == got, "e_%zu_%zu + 2*e_%zu_%zu at %zu %zu, expected %g, got %g", i, j, k, l, m, n,
+                  expected, got
               );
             }
           }

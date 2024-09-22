@@ -14,9 +14,9 @@ struct VertexInput {
   core::storage<VkVertexInputAttributeDescription> vertex_input_attributes_descriptions;
   inline VkPipelineVertexInputStateCreateInfo vk() const {
     return {
-        .sType                         = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .vertexBindingDescriptionCount = (u32)vertex_input_binding_descriptions.size,
-        .pVertexBindingDescriptions    = vertex_input_binding_descriptions.data,
+        .sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount   = (u32)vertex_input_binding_descriptions.size,
+        .pVertexBindingDescriptions      = vertex_input_binding_descriptions.data,
         .vertexAttributeDescriptionCount = (u32)vertex_input_attributes_descriptions.size,
         .pVertexAttributeDescriptions    = vertex_input_attributes_descriptions.data,
     };
@@ -89,9 +89,9 @@ struct DepthStencil {
 struct ColorBlendAttachement {
   inline VkPipelineColorBlendAttachmentState vk() const {
     return {
-        .blendEnable    = false,
-        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                          VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
+        .blendEnable = false,
+        .colorWriteMask =
+            VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
     };
   }
   static const ColorBlendAttachement NoBlend;
@@ -178,9 +178,7 @@ struct Pipeline {
         .renderPass          = VK_NULL_HANDLE,
     };
     VkPipeline pipeline;
-    VK_ASSERT(vkCreateGraphicsPipelines(
-        device, VK_NULL_HANDLE, 1, &graphic_pipeline_create_info, nullptr, &pipeline
-    ));
+    VK_ASSERT(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &graphic_pipeline_create_info, nullptr, &pipeline));
     return pipeline;
   }
 };

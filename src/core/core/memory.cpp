@@ -120,13 +120,13 @@ EXPORT Arena& arena_alloc(usize capacity) {
   usize page_size        = arena_page_size();
   const usize alloc_size = ALIGN_UP(sizeof(Arena) + capacity, page_size);
 
-  u8* memory             = (u8*)os::mem_allocate(nullptr, alloc_size, os::MemAllocationFlags::Reserve);
+  u8* memory = (u8*)os::mem_allocate(nullptr, alloc_size, os::MemAllocationFlags::Reserve);
   ARENA_DEBUG_STMT(printf("Arena: got range [%p, %p)\n", memory, memory + alloc_size));
   ASSERT(memory != nullptr);
 
   os::mem_allocate(memory, page_size, os::MemAllocationFlags::Commit);
 
-  capacity      = alloc_size - sizeof(Arena);
+  capacity = alloc_size - sizeof(Arena);
 
   Arena* arena_ = (Arena*)memory;
   arena_->mem = arena_->base = memory + sizeof(Arena);
@@ -232,14 +232,27 @@ EXPORT void scratch_retire(Scratch& scr) {
   arena_dealloc(*arena_);
 }
 
-EXPORT const AllocatorVTable Arena::vtable{
-    .allocate   = [](void* userdata, usize size, usize alignement, const char* src
-                ) { return static_cast<Arena*>(userdata)->allocate(size, alignement, src); },
-    .deallocate = [](void* userdata, void* alloc_base_ptr, usize size, const char* src
-                  ) { return static_cast<Arena*>(userdata)->deallocate(alloc_base_ptr, size, src); },
-    .try_resize = [](void* userdata, void* ptr, usize cur_size, usize new_size, const char* src
-                  ) { return static_cast<Arena*>(userdata)->try_resize(ptr, cur_size, new_size, src); },
-    .owns       = [](void* userdata, void* ptr) { return static_cast<Arena*>(userdata)->owns(ptr); },
-};
+EXPORT Arena& get_named_arena(ArenaName name) {
+  switch (name) {
+  case ArenaName::Frame: {
+    static Arena frame_arena = arena_alloc();
+    return frame_arena;
+  }
+  case ArenaName::LastFrame: {
+    static Arena ar = arena_alloc();
+    return ar;
+  }
+  }
+}
 
+EXPORT Allocator get_named_allocator(AllocatorName name) {
+  switch (name) {
+  case AllocatorName::General:
+    return {nullptr, &MallocVtable};
+  case AllocatorName::Frame:
+    return get_named_arena(ArenaName::Frame);
+  case AllocatorName::LastFrame:
+    return get_named_arena(ArenaName::LastFrame);
+  }
+}
 } // namespace core

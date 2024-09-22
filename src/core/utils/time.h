@@ -30,11 +30,11 @@ struct scope {
   os::time t;
 };
 
-void init_timing_tracking();
+void timings_init();
 void reset();
 
-void frame_start(scope_category cat = scope_category::CPU);
-void frame_end();
+void timings_frame_start(scope_category cat = scope_category::CPU);
+void timings_frame_end();
 
 // Note: This is not recursion compatible:
 // Scope A:
@@ -49,7 +49,7 @@ scope scope_start(core::hstr8 name);
 void scope_end(scope);
 void scope_import(scope_category cat, core::hstr8 name, os::time t);
 
-timing_infos get_last_frame_timing_infos(core::Arena& ar, scope_category cat = scope_category::CPU);
+timing_infos get_last_frame_timing_infos(core::Allocator alloc, scope_category cat = scope_category::CPU);
 os::time get_last_frame_dt();
 } // namespace utils
 

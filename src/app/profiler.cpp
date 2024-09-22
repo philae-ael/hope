@@ -60,9 +60,8 @@ void render_profiling_graph(
   const Vec2 frame_width              = config.frame_width * Vec2::X;
   const Vec2 frame_padding_horizontal = config.frame_padding_horizontal * Vec2::X;
 
-  const usize max_frame_drawn         = u32((graph_size.x - 2 * config.frame_margin_horizontal) /
-                                            (frame_width + frame_padding_horizontal).x) -
-                                1;
+  const usize max_frame_drawn =
+      u32((graph_size.x - 2 * config.frame_margin_horizontal) / (frame_width + frame_padding_horizontal).x) - 1;
   const Vec2 graph_horizontal_margins{
       ((graph_size.x - 2 * config.frame_margin_horizontal) -
        f32(max_frame_drawn) * (frame_width + frame_padding_horizontal).x) /
@@ -81,8 +80,7 @@ void render_profiling_graph(
 
       max_s =
           MAX(max_s, (f32)frame_datum.sum.ns * 1e-9f * config.height /
-                         (config.height -
-                          MAX(0.f, (f32)frame_datum.as.size - 1.f) * config.frame_padding_vertical -
+                         (config.height - MAX(0.f, (f32)frame_datum.as.size - 1.f) * config.frame_padding_vertical -
                           2 * config.margin_vertical));
     }
 
@@ -91,16 +89,13 @@ void render_profiling_graph(
     max_s       *= 1.01f;
   }
 
-  drawList->AddRect(
-      to_ImVec2(graph_pos), to_ImVec2(graph_pos + graph_size), Color{0x5F, 0x5F, 0x5F}
-  );
+  drawList->AddRect(to_ImVec2(graph_pos), to_ImVec2(graph_pos + graph_size), Color{0x5F, 0x5F, 0x5F});
 
   // Draw graph
   for (usize idx = 0; idx < max_frame_drawn; idx++) {
     const usize frame_idx   = (2 * frame_data.size - idx + offset) % frame_data.size;
     const auto& frame_datum = frame_data[frame_idx];
-    const Vec2 frame_left =
-        graph_right_for_frame - f32(idx) * (frame_width + frame_padding_horizontal) - frame_width;
+    const Vec2 frame_left   = graph_right_for_frame - f32(idx) * (frame_width + frame_padding_horizontal) - frame_width;
 
     f32 cur_height = config.margin_vertical;
     for (auto& t : frame_datum.as.iter()) {
@@ -117,7 +112,7 @@ void render_profiling_graph(
 
   // Draw Legend
   {
-    const Vec2 legend_pos   = graph_pos + graph_size + config.legend_horizontal_margin * Vec2::X;
+    const Vec2 legend_pos = graph_pos + graph_size + config.legend_horizontal_margin * Vec2::X;
 
     const usize frame_idx   = (2 * frame_data.size + offset) % frame_data.size;
     const auto& frame_datum = frame_data[frame_idx];
@@ -144,8 +139,8 @@ void render_profiling_graph(
         sb.pushf(*ar, "%3d.%03d ms", duration.msec, duration.usec);
         auto txt = sb.commit(*ar);
         drawList->AddText(
-            to_ImVec2(textPos + config.legend_text_margin_margin * Vec2::X), t.color,
-            (const char*)txt.data, (const char*)(txt.data + txt.len)
+            to_ImVec2(textPos + config.legend_text_margin_margin * Vec2::X), t.color, (const char*)txt.data,
+            (const char*)(txt.data + txt.len)
         );
         textPos.y -= textHeight;
       }
@@ -165,7 +160,7 @@ static f32 cpu_max = 0;
 
 static frame_datum::entry gpu_frame_data_entries[PROFILER_MAX_FRAME][PROFILER_MAX_FRAME_ENTRY];
 static frame_datum gpu_frame_data[PROFILER_MAX_FRAME];
-static f32 gpu_max         = 0;
+static f32 gpu_max = 0;
 
 static usize cur_frame_idx = 0;
 static bool freeze         = false;
@@ -181,8 +176,7 @@ void profiling_window() {
 
   auto scratch = core::scratch_get();
   defer { scratch.retire(); };
-  auto frame_timing_infos =
-      utils::get_last_frame_timing_infos(*scratch, utils::scope_category::CPU);
+  auto frame_timing_infos = utils::get_last_frame_timing_infos(*scratch, utils::scope_category::CPU);
 
   if (!freeze) {
     cur_frame_idx = (cur_frame_idx + 1) % PROFILER_MAX_FRAME;
@@ -190,9 +184,7 @@ void profiling_window() {
       os::time sum{};
       for (auto [entry_idx, timing_info] : core::enumerate{frame_timing_infos.timings.iter()}) {
         cpu_frame_data_entries[cur_frame_idx][entry_idx] = {
-            .name  = timing_info->name,
-            .t     = timing_info->time,
-            .color = color_map[entry_idx % color_map.size()]
+            .name = timing_info->name, .t = timing_info->time, .color = color_map[entry_idx % color_map.size()]
         };
         sum = sum + timing_info->time;
       }
@@ -203,14 +195,11 @@ void profiling_window() {
     }
 
     {
-      auto frame_timing_infos =
-          utils::get_last_frame_timing_infos(*scratch, utils::scope_category::GPU);
+      auto frame_timing_infos = utils::get_last_frame_timing_infos(*scratch, utils::scope_category::GPU);
       os::time sum{};
       for (auto [entry_idx, timing_info] : core::enumerate{frame_timing_infos.timings.iter()}) {
         gpu_frame_data_entries[cur_frame_idx][entry_idx] = {
-            .name  = timing_info->name,
-            .t     = timing_info->time,
-            .color = color_map[entry_idx % color_map.size()]
+            .name = timing_info->name, .t = timing_info->time, .color = color_map[entry_idx % color_map.size()]
         };
         sum = sum + timing_info->time;
       }
@@ -230,20 +219,20 @@ void profiling_window() {
     render_profiling_config config{};
 
     ImGui::Text(
-        "CPU: mean  %3d ms %03d us %03d ns |  %.0f FPS", duration.msec, duration.usec,
-        duration.nsec, frame_timing_infos.stats.mean_frame_time.hz()
+        "CPU: mean  %3d ms %03d us %03d ns |  %.0f FPS", duration.msec, duration.usec, duration.nsec,
+        frame_timing_infos.stats.mean_frame_time.hz()
     );
 
     auto duration_95 = os::duration_info::from_time(frame_timing_infos.stats.low_95);
     ImGui::Text(
-        "     low95 %3d ms %03d us %03d ns |  %.0f FPS", duration_95.msec, duration_95.usec,
-        duration_95.nsec, frame_timing_infos.stats.low_95.hz()
+        "     low95 %3d ms %03d us %03d ns |  %.0f FPS", duration_95.msec, duration_95.usec, duration_95.nsec,
+        frame_timing_infos.stats.low_95.hz()
     );
 
     auto duration_99 = os::duration_info::from_time(frame_timing_infos.stats.low_99);
     ImGui::Text(
-        "     low99 %3d ms %03d us %03d ns |  %.0f FPS", duration_99.msec, duration_99.usec,
-        duration_99.nsec, frame_timing_infos.stats.low_99.hz()
+        "     low99 %3d ms %03d us %03d ns |  %.0f FPS", duration_99.msec, duration_99.usec, duration_99.nsec,
+        frame_timing_infos.stats.low_99.hz()
     );
 
     ImVec2 v           = ImGui::GetContentRegionAvail();
@@ -253,16 +242,14 @@ void profiling_window() {
       f32 dt = (f32)frame_timing_infos.stats.mean_frame_time.ns * 1e-9f;
       render_profiling_graph(
           *scratch, cpu_frame_data,
-          (usize(int(ARRAY_SIZE(cpu_frame_data)) - frame_offset) + cur_frame_idx) %
-              ARRAY_SIZE(cpu_frame_data),
-          cpu_max, dt, config
+          (usize(int(ARRAY_SIZE(cpu_frame_data)) - frame_offset) + cur_frame_idx) % ARRAY_SIZE(cpu_frame_data), cpu_max,
+          dt, config
       );
       ImGui::Text("GPU: ");
       render_profiling_graph(
           *scratch, gpu_frame_data,
-          (usize(int(ARRAY_SIZE(gpu_frame_data)) - frame_offset) + cur_frame_idx) %
-              ARRAY_SIZE(gpu_frame_data),
-          gpu_max, dt, config
+          (usize(int(ARRAY_SIZE(gpu_frame_data)) - frame_offset) + cur_frame_idx) % ARRAY_SIZE(gpu_frame_data), gpu_max,
+          dt, config
       );
     }
   }

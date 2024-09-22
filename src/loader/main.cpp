@@ -34,12 +34,12 @@ int main(int argc, char* argv[]) {
   setup_crash_handler();
   log_register_global_formatter(log_timed_formatter, nullptr);
   log_set_global_level(core::LogLevel::Trace);
-  utils::init_timing_tracking();
+  utils::timings_init();
   fs::init();
 
-  auto& ar = arena_alloc();
+  auto global_alloc = core::get_named_allocator(core::AllocatorName::General);
 #ifdef SHARED
-  fs::register_path("lib"_s, fs::resolve_path(ar, "build"_s));
+  fs::register_path("lib"_s, fs::resolve_path(global_alloc, "build"_s));
 #endif
 
   /// === Load App ===
@@ -56,23 +56,22 @@ int main(int argc, char* argv[]) {
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
-  auto video      = subsystem::init_video(ar);
+  auto video = subsystem::init_video(global_alloc);
   ImGui_ImplSDL3_InitForOther(video.window);
 
-  App* app = app_pfns.init(ar, nullptr, nullptr, &video);
+  App* app = app_pfns.init(global_alloc, nullptr, nullptr, &video);
   LOG_INFO("App fully initialized");
 
   /// === Main loop ===
-  auto& frame_arena = arena_alloc();
   while (!false) {
-    utils::frame_start();
-    auto frame_ar = frame_arena.make_temp();
-    defer {
-      frame_ar.retire();
-      utils::frame_end();
-    };
+    {
+      core::get_named_arena(core::ArenaName::LastFrame).reset();
+      SWAP(core::get_named_arena(core::ArenaName::LastFrame), core::get_named_arena(core::ArenaName::Frame));
+    }
+    utils::timings_frame_start();
+    defer { utils::timings_frame_end(); };
 
-    auto sev = app_pfns.frame(*frame_ar, *app);
+    auto sev = app_pfns.frame(*app);
 
     /// === Handle system event ===
 
@@ -89,7 +88,7 @@ int main(int argc, char* argv[]) {
 
       auto app_state = app_pfns.uninit(*app);
       reload_app(app_pfns);
-      app = app_pfns.init(ar, app, app_state, &video);
+      app = app_pfns.init(global_alloc, app, app_state, &video);
       utils::reset();
     }
   }

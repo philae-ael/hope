@@ -78,11 +78,11 @@ else()
   # target_compile_definitions(core PRIVATE -DMEM_DEBUG )
   # target_compile_definitions(core PRIVATE -DMEM_USE_MALLOC)
   # target_compile_definitions(core PRIVATE -DSCRATCH_DEBUG )
-
 endif()
 
 target_link_libraries(core PUBLIC SDL3::SDL3 Vulkan::Vulkan imgui GPUOpen::VulkanMemoryAllocator misc)
 set_property(TARGET core PROPERTY POSITION_INDEPENDENT_CODE ON)
+# set_property(TARGET core PROPERTY UNITY_BUILD ON)
 
 
 if (UNIX)

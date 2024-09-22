@@ -22,11 +22,7 @@ core::storage<const char*> enumerate_SDL_vulkan_instance_extensions() {
   return {instance_extension_count, d};
 }
 
-vk::image2D swapchain_image_to_image2D(
-    VkDevice device,
-    vk::Swapchain& swapchain,
-    VkImage swapchain_image
-) {
+vk::image2D swapchain_image_to_image2D(VkDevice device, vk::Swapchain& swapchain, VkImage swapchain_image) {
   VkImageViewCreateInfo image_view_create_info{
       .sType      = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
       .image      = swapchain_image,
@@ -56,33 +52,29 @@ vk::image2D swapchain_image_to_image2D(
   };
 }
 
-EXPORT subsystem::video subsystem::init_video(core::Arena& ar) {
+EXPORT subsystem::video subsystem::init_video(core::Allocator alloc) {
   SDL_InitSubSystem(SDL_INIT_VIDEO);
 
   LOG_INFO("initializing video subsystem");
 
   vk::init();
-  SDL_Window* window =
-      SDL_CreateWindow("title", 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
+  SDL_Window* window = SDL_CreateWindow("title", 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
   ASSERTM(window != nullptr, "can't create SDL window: %s", SDL_GetError());
   auto instance_extensions = enumerate_SDL_vulkan_instance_extensions();
   const char* layers[]     = {
       "VK_LAYER_KHRONOS_validation",
   };
-  vk::Instance instance =
-      vk::create_default_instance(layers, instance_extensions).expect("can't create instance");
+  vk::Instance instance = vk::create_default_instance(layers, instance_extensions).expect("can't create instance");
   VkSurfaceKHR surface;
   {
     SDL_bool surface_created = SDL_Vulkan_CreateSurface(window, instance, nullptr, &surface);
     ASSERTM(surface_created == SDL_TRUE, "can't create surface: %s", SDL_GetError());
   }
 
-  vk::Device device =
-      vk::create_default_device(instance, surface, {}).expect("can't create device");
-  vk::Swapchain swapchain =
-      vk::create_default_swapchain(ar, device, surface).expect("can't acquire swapchain");
+  vk::Device device       = vk::create_default_device(instance, surface, {}).expect("can't create device");
+  vk::Swapchain swapchain = vk::create_default_swapchain(alloc, device, surface).expect("can't acquire swapchain");
 
-  vk::FrameSynchro frame_sync                  = vk::create_frame_synchro(ar, device, 1);
+  vk::FrameSynchro frame_sync                  = vk::create_frame_synchro(alloc, device, 1);
   VmaAllocatorCreateInfo allocator_create_info = {
       // .flags            = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT,
       .physicalDevice   = device.physical,
@@ -95,7 +87,7 @@ EXPORT subsystem::video subsystem::init_video(core::Arena& ar) {
 
   core::vec<vk::image2D> swapchain_images{};
   for (auto swapchain_image : swapchain.images.iter()) {
-    swapchain_images.push(ar, swapchain_image_to_image2D(device, swapchain, swapchain_image));
+    swapchain_images.push(alloc, swapchain_image_to_image2D(device, swapchain, swapchain_image));
   }
 
   vk::timestamp_init(device, device.properties.limits.timestampPeriod);

@@ -15,11 +15,7 @@ void timestamp_uninit(VkDevice device);
 
 void timestamp_frame_start(VkDevice device);
 
-timestamp_scope timestamp_scope_start(
-    VkCommandBuffer cmd,
-    VkPipelineStageFlags2 stage,
-    core::hstr8 name
-);
+timestamp_scope timestamp_scope_start(VkCommandBuffer cmd, VkPipelineStageFlags2 stage, core::hstr8 name);
 void timestamp_scope_end(VkCommandBuffer cmd, VkPipelineStageFlags2 stage, timestamp_scope sc);
 } // namespace vk
 

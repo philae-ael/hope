@@ -7,28 +7,27 @@
 
 using namespace core::enum_helpers;
 
-
 namespace os {
 #ifndef MEM_USE_MALLOC
 
 void* mem_allocate(void* ptr, usize size, MemAllocationFlags flags) {
-  DWORD fl {};
-  if  (any(flags & MemAllocationFlags::Reserve)) {
+  DWORD fl{};
+  if (any(flags & MemAllocationFlags::Reserve)) {
     fl |= MEM_RESERVE;
   }
-  if  (any(flags & MemAllocationFlags::Commit)) {
+  if (any(flags & MemAllocationFlags::Commit)) {
     fl |= MEM_COMMIT;
   }
   return VirtualAlloc(ptr, size, fl, PAGE_READWRITE);
 }
 
 void mem_deallocate(void* ptr, usize size, MemDeallocationFlags flags) {
-  DWORD fl {};
-  if  (any(flags & MemDeallocationFlags::Release)) {
-    fl |= MEM_RELEASE;
-    size = 0;
+  DWORD fl{};
+  if (any(flags & MemDeallocationFlags::Release)) {
+    fl   |= MEM_RELEASE;
+    size  = 0;
   }
-  if  (any(flags & MemDeallocationFlags::Decommit)) {
+  if (any(flags & MemDeallocationFlags::Decommit)) {
     fl |= MEM_DECOMMIT;
   }
   VirtualFree(ptr, size, fl);

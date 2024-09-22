@@ -17,9 +17,9 @@ ImGuiRenderer ImGuiRenderer::init(subsystem::video& v) {
       .poolSizeCount = ARRAY_SIZE(imgui_descriptor_pool_sizes),
       .pPoolSizes    = imgui_descriptor_pool_sizes,
   };
-  VK_ASSERT(vkCreateDescriptorPool(
-      v.device, &imgui_descriptor_pool_create_info, nullptr, &imgui_renderer.descriptor_pool
-  ));
+  VK_ASSERT(
+      vkCreateDescriptorPool(v.device, &imgui_descriptor_pool_create_info, nullptr, &imgui_renderer.descriptor_pool)
+  );
 
   ImGui_ImplVulkan_InitInfo imgui_implvulkan_info{
       .Instance            = v.instance,
@@ -58,9 +58,7 @@ void ImGuiRenderer::render(VkCommandBuffer cmd, vk::image2D& image) {
   vk::pipeline_barrier(cmd, image.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}));
   {
     core::array color_attachments{
-        image.as_attachment(
-            vk::image2D::AttachmentLoadOp::Load, vk::image2D::AttachmentStoreOp::Store
-        ),
+        image.as_attachment(vk::image2D::AttachmentLoadOp::Load, vk::image2D::AttachmentStoreOp::Store),
     };
     VkRenderingInfo rendering_info{
         .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO,

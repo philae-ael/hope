@@ -20,16 +20,13 @@
     }                                                          \
   } while (0)
 
-#define ASSERTEQ(a, b)                                                                     \
-  do {                                                                                     \
-    auto __a          = (a);                                                               \
-    decltype(__a) __b = (b);                                                               \
-    if (!(__a == __b)) [[unlikely]] {                                                      \
-      ::core::panic(                                                                       \
-          "assertion `%s == %s` failed: `%g != %g`", STRINGIFY(a), STRINGIFY(b), (f32)__a, \
-          (f32)__b                                                                         \
-      );                                                                                   \
-    }                                                                                      \
+#define ASSERTEQ(a, b)                                                                                          \
+  do {                                                                                                          \
+    auto __a          = (a);                                                                                    \
+    decltype(__a) __b = (b);                                                                                    \
+    if (!(__a == __b)) [[unlikely]] {                                                                           \
+      ::core::panic("assertion `%s == %s` failed: `%g != %g`", STRINGIFY(a), STRINGIFY(b), (f32)__a, (f32)__b); \
+    }                                                                                                           \
   } while (0)
 
 #define ASSERTM(cond, fmt, ...)                                                                 \
@@ -53,10 +50,9 @@
 #define DROP_3_ARG(a1, a2, a3, ...) (__VA_ARGS__)
 #define DROP_4_ARG(a1, a2, a3, a4, ...) (__VA_ARGS__)
 #define DROP_5_ARG(a1, a2, a3, a4, a5, ...) (__VA_ARGS__)
-#define todo(...)                                                               \
-  core::panic __VA_OPT__(DROP_4_ARG)(                                           \
-      "function %s has not been implemented in file %s:%d", __func__, __FILE__, \
-      __LINE__ __VA_OPT__(, __VA_ARGS__)                                        \
+#define todo(...)                                                                                                  \
+  core::panic __VA_OPT__(DROP_4_ARG)(                                                                              \
+      "function %s has not been implemented in file %s:%d", __func__, __FILE__, __LINE__ __VA_OPT__(, __VA_ARGS__) \
   )
 
 namespace core {

@@ -15,12 +15,12 @@ using u32x4 = __m128i;
 using f32x8 = __m128;
 
 namespace consts {
-constexpr f32 TAU          = 6.283185307179586f;
-constexpr f32 PI           = 3.141592653589793f;
-constexpr f32 FRAC_PI_2    = 1.570796326794896f;
-constexpr f32 FRAC_PI_4    = 0.785398163397443f;
-constexpr f32 DEG_TO_RAD   = 0.017453292519943f;
-constexpr f32 RAD_TO_DEG   = 57.29577951308232f;
+constexpr f32 TAU        = 6.283185307179586f;
+constexpr f32 PI         = 3.141592653589793f;
+constexpr f32 FRAC_PI_2  = 1.570796326794896f;
+constexpr f32 FRAC_PI_4  = 0.785398163397443f;
+constexpr f32 DEG_TO_RAD = 0.017453292519943f;
+constexpr f32 RAD_TO_DEG = 57.29577951308232f;
 
 constexpr f32 SQRT2        = 1.4142135623730951f;
 constexpr f32 FRAC_1_SQRT2 = 0.7071067811865475f;
@@ -575,8 +575,8 @@ struct windowed_series {
     store[(start + count) % store.size]  = sample;
     count                               += 1;
 
-    sum                                 += sample;
-    sum2                                += sample * sample;
+    sum  += sample;
+    sum2 += sample * sample;
   }
 
   constexpr f32 last_sample() const {

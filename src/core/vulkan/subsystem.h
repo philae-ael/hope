@@ -15,10 +15,7 @@ namespace core {
 struct Arena;
 } // namespace core
 
-core::vec<const char*> enumerate_SDL_vulkan_instance_extensions(
-    core::Arena& ar,
-    SDL_Window* window
-);
+core::vec<const char*> enumerate_SDL_vulkan_instance_extensions(core::Arena& ar, SDL_Window* window);
 
 namespace subsystem {
 
@@ -41,7 +38,7 @@ struct video {
   vk::Result<VideoFrame> begin_frame();
   VkResult end_frame(VideoFrame, VkCommandBuffer);
 };
-video init_video(core::Arena& ar);
+video init_video(core::Allocator alloc);
 void uninit_video(video& v);
 void video_rebuild_swapchain(video& v);
 

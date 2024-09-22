@@ -33,17 +33,17 @@ struct Axis {
     return core::sign(v) * core::clamp_positive(core::abs(v) - 0.1f) + -1.f * neg + +1 * pos;
   }
   void updateNeg(SDL_Event& ev, core::Maybe<SDL_Keycode> key, SDL_Keymod modmask, SDL_Keymod mod) {
-    if (shoulHandle(ev, key)) {
+    if (shouldHandle(ev, key)) {
       neg = (key.is_none() || ev.type == SDL_EVENT_KEY_DOWN) && ((ev.key.mod & modmask) == mod);
     }
   }
   void updatePos(SDL_Event& ev, core::Maybe<SDL_Keycode> key, SDL_Keymod modmask, SDL_Keymod mod) {
-    if (shoulHandle(ev, key)) {
+    if (shouldHandle(ev, key)) {
       pos = (key.is_none() || ev.type == SDL_EVENT_KEY_DOWN) && ((ev.key.mod & modmask) == mod);
     }
   }
 
-  bool shoulHandle(SDL_Event& ev, core::Maybe<SDL_Keycode> key) {
+  bool shouldHandle(SDL_Event& ev, core::Maybe<SDL_Keycode> key) {
     if (ev.type != SDL_EVENT_KEY_DOWN && ev.type != SDL_EVENT_KEY_UP) {
       return false;
     }

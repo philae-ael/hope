@@ -42,9 +42,8 @@ EXPORT void timestamp_uninit(VkDevice device) {
 EXPORT void timestamp_frame_start(VkDevice device) {
   if (timestamp_index > 0) {
     vkGetQueryPoolResults(
-        device, query_pool_timestamps, 0, u32(timestamp_index),
-        u32(timestamp_index) * 2 * sizeof(uint64_t), timestamps_storage.data, 2 * sizeof(uint64_t),
-        VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT
+        device, query_pool_timestamps, 0, u32(timestamp_index), u32(timestamp_index) * 2 * sizeof(uint64_t),
+        timestamps_storage.data, 2 * sizeof(uint64_t), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT
     );
   }
   record = true;
@@ -57,11 +56,10 @@ EXPORT void timestamp_frame_start(VkDevice device) {
 
   if (record) {
     for (auto& scope : scopes.iter()) {
-      auto t = f32(timestamps_storage[2 * scope.end] - timestamps_storage[2 * scope.start]) *
-               timestamp_period;
+      auto t = f32(timestamps_storage[2 * scope.end] - timestamps_storage[2 * scope.start]) * timestamp_period;
       utils::scope_import(utils::scope_category::GPU, scope.name, {u64(t)});
     }
-    utils::frame_start(utils::scope_category::GPU);
+    utils::timings_frame_start(utils::scope_category::GPU);
     timestamp_index = 0;
     scopes.set_size(0);
     vkResetQueryPool(device, query_pool_timestamps, 0, MAX_TIMESTAMPS);
@@ -77,15 +75,10 @@ u64 timestamp_push(VkCommandBuffer cmd, VkPipelineStageFlags2 stage) {
   return idx;
 }
 
-EXPORT timestamp_scope
-timestamp_scope_start(VkCommandBuffer cmd, VkPipelineStageFlags2 stage, core::hstr8 name) {
+EXPORT timestamp_scope timestamp_scope_start(VkCommandBuffer cmd, VkPipelineStageFlags2 stage, core::hstr8 name) {
   return {core::intern(name), timestamp_push(cmd, stage)};
 }
-EXPORT void timestamp_scope_end(
-    VkCommandBuffer cmd,
-    VkPipelineStageFlags2 stage,
-    timestamp_scope sc
-) {
+EXPORT void timestamp_scope_end(VkCommandBuffer cmd, VkPipelineStageFlags2 stage, timestamp_scope sc) {
   if (record) {
     scopes.push(
         core::noalloc,
