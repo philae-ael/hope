@@ -92,7 +92,9 @@ TEST(quatmulelem) {
 
 TEST(quatrot) {
   auto quat = Quat::from_axis_angle(Vec4::Y, consts::FRAC_PI_2);
-  tassert((quat.rotate(Vec4::X) + Vec4::Z).norm2() <= 0.001);
-  tassert((quat.rotate(Vec4::Y) - Vec4::Y).norm2() <= 0.001);
-  tassert((quat.rotate(Vec4::Z) - Vec4::X).norm2() <= 0.001);
+  // clang-format off
+  tassert((quat.rotate(Vec4::X) + Vec4::Z).norm2() <= 0.001, "rotation of X around Y by pi/2 rad = -Z");
+  tassert((quat.rotate(Vec4::Y) - Vec4::Y).norm2() <= 0.001, "rotation of Y around Y by pi/2 rad = +Y");
+  tassert((quat.rotate(Vec4::Z) - Vec4::X).norm2() <= 0.001, "rotation of Z around Y by pi/2 rad = +X");
+  // clang-format on
 }

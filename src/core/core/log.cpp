@@ -22,8 +22,8 @@ log_entry default_log_formatter(void*, Arena& arena, log_entry entry) {
 
 #define ESCAPE "\x1B"
 static core::str8 LEVEL_COLOR[]{
-    ESCAPE "[38;5;250m"_s, // Trace,
-    ""_s,                  // Debug,
+    ""_s,                  // Trace,
+    ESCAPE "[38;5;250m"_s, // Debug,
     ESCAPE "[34m"_s,       // Info, blue
     ESCAPE "[33m"_s,       // Warning, yellow
     ESCAPE "[31m"_s,       // Error, red
@@ -85,7 +85,7 @@ EXPORT void log_emit(Arena& arena, log_entry& entry) {
 /* LogLevel */
 
 EXPORT str8 to_str8(LogLevel level) {
-  str8 data[] {
+  str8 data[]{
       "trace  "_s, "debug  "_s, "info   "_s, "warning"_s, "error  "_s,
   };
   return data[(usize)level];

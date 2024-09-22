@@ -33,7 +33,7 @@ EXPORT void config_new_frame() {
     ar = &core::arena_alloc();
   }
 
-  if (ImGui::Begin("Config")) {
+  if (ImGui::Begin("config")) {
     static ImGuiTextFilter filter;
     filter.Draw();
 

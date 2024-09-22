@@ -75,9 +75,11 @@ struct App {
 struct AppState {
   u32 reload_count = 0;
   Camera camera{
-      .hfov = DEGREE(60),
-      .near = 0.1f,
-      .far  = 5,
+      .hfov     = DEGREE(60),
+      .near     = 0.1f,
+      .far      = 5,
+      .position = 1.5f * math::Vec4::Z,
+      .rotation = math::Quat::Id,
   };
 };
 

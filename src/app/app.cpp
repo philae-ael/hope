@@ -182,18 +182,8 @@ EXPORT App* init(core::Arena& arena, App* app, AppState* app_state, subsystem::v
     LOG_DEBUG("Reusing app state, reloaded %d times", app->state->reload_count);
   }
 
-  IMGUI_CHECKVERSION();
-  ImGui::CreateContext();
-  ImGuiIO& io     = ImGui::GetIO();
-  io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
-  io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-
-  ImGui_ImplSDL3_InitForOther(video->window);
-  app->renderer              = init_renderer(*app->arena, *app->video);
-
-  app_state->camera.position = 1.5f * Vec4::Z;
-  app_state->camera.rotation = Quat::Id;
-  app->input_state.gamepad   = find_gamepad();
+  app->renderer            = init_renderer(*app->arena, *app->video);
+  app->input_state.gamepad = find_gamepad();
 
   return app;
 }
@@ -202,9 +192,6 @@ EXPORT AppState* uninit(App& app) {
   LOG_DEBUG("Uninit app");
 
   uninit_renderer(*app.video, *app.renderer);
-  ImGui_ImplSDL3_Shutdown();
-  ImGui::DestroyContext();
-
   core::arena_dealloc(*app.arena);
   return app.state;
 }
@@ -253,7 +240,6 @@ void debug_stuff(core::Arena& frame_arena, App& app) {
   if (wait_timing_target) {
     auto frame_report_scope = utils::scope_start("wait timing target"_hs);
     defer { utils::scope_end(frame_report_scope); };
-    LOG_TRACE("%lu", timing_target);
     os::sleep(timing_target);
   }
 
@@ -267,21 +253,21 @@ void debug_stuff(core::Arena& frame_arena, App& app) {
     if (print_frame_report_full) {
       for (auto [name, t] : timing_infos.timings.iter()) {
         LOG_BUILDER(
-            core::LogLevel::Trace, push(name).push(" at ").push(t, os::TimeFormat::MMM_UUU_NNN)
+            core::LogLevel::Debug, push(name).push(" at ").push(t, os::TimeFormat::MMM_UUU_NNN)
         );
       }
     }
 
     LOG_BUILDER(
-        core::LogLevel::Trace,
+        core::LogLevel::Debug,
         push("frame mean: ").push(timing_infos.stats.mean_frame_time, os::TimeFormat::MMM_UUU_NNN)
     );
     LOG_BUILDER(
-        core::LogLevel::Trace,
+        core::LogLevel::Debug,
         push("frame low 95: ").push(timing_infos.stats.low_95, os::TimeFormat::MMM_UUU_NNN)
     );
     LOG_BUILDER(
-        core::LogLevel::Trace,
+        core::LogLevel::Debug,
         push("frame low 99: ").push(timing_infos.stats.low_99, os::TimeFormat::MMM_UUU_NNN)
     );
   }

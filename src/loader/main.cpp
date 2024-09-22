@@ -1,6 +1,7 @@
 
 #include "app_loader.h"
 
+#include <backends/imgui_impl_sdl3.h>
 #include <core/core.h>
 #include <core/fs/fs.h>
 #include <core/os.h>
@@ -11,6 +12,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_events.h>
 #include <cstdlib>
+#include <imgui.h>
 
 struct Renderer;
 
@@ -28,6 +30,7 @@ log_entry timed_formatter(void* u, Arena& arena, core::log_entry entry) {
 }
 
 int main(int argc, char* argv[]) {
+  /// === Env setup and globals initializations  ===
   setup_crash_handler();
   log_register_global_formatter(log_timed_formatter, nullptr);
   log_set_global_level(core::LogLevel::Trace);
@@ -39,30 +42,47 @@ int main(int argc, char* argv[]) {
   fs::register_path("lib"_s, fs::resolve_path(ar, "build"_s));
 #endif
 
-  SDL_Init(SDL_INIT_GAMEPAD);
+  /// === Load App ===
 
-  auto video = subsystem::init_video(ar);
   AppPFNs app_pfns;
   load_app(app_pfns);
+
+  /// === APP INIT ===
+
+  SDL_Init(SDL_INIT_GAMEPAD);
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+  ImGuiIO& io     = ImGui::GetIO();
+  io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+  io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+  auto video      = subsystem::init_video(ar);
+  ImGui_ImplSDL3_InitForOther(video.window);
+
   App* app = app_pfns.init(ar, nullptr, nullptr, &video);
   LOG_INFO("App fully initialized");
 
+  /// === Main loop ===
   auto& frame_arena = arena_alloc();
   while (!false) {
-    auto frame_ar = frame_arena.make_temp();
-    defer { frame_ar.retire(); };
-
     utils::frame_start();
-    defer { utils::frame_end(); };
+    auto frame_ar = frame_arena.make_temp();
+    defer {
+      frame_ar.retire();
+      utils::frame_end();
+    };
+
+    auto sev = app_pfns.frame(*frame_ar, *app);
+
+    /// === Handle system event ===
+
+    if (any(sev & AppEvent::Exit)) {
+      break;
+    }
 
     auto fs_process_scope = utils::scope_start("fs process"_hs);
     fs::process_modified_file_callbacks();
     utils::scope_end(fs_process_scope);
-
-    auto sev = app_pfns.frame(*frame_ar, *app);
-    if (any(sev & AppEvent::Exit)) {
-      break;
-    }
 
     if (any(sev & AppEvent::ReloadApp) || need_reload(app_pfns)) {
       LOG_INFO("reloading app");
@@ -74,9 +94,13 @@ int main(int argc, char* argv[]) {
     }
   }
 
+  /// === CLEANUP ===
+
   LOG_INFO("Exiting...");
   app_pfns.uninit(*app);
 
+  ImGui_ImplSDL3_Shutdown();
+  ImGui::DestroyContext();
   subsystem::uninit_video(video);
   SDL_Quit();
   LOG_INFO("Bye");

@@ -3,8 +3,8 @@
 
 #include "core/core.h"
 
-PRINTF_ATTRIBUTE(2, 3) void tassert(bool, const char* reason = "", ...);
-PRINTF_ATTRIBUTE(1, 2) void tfail(const char* reason = "", ...);
+PRINTF_ATTRIBUTE(2, 3) void tassert(bool, const char* reason, ...);
+PRINTF_ATTRIBUTE(1, 2) void tfail(const char* reason, ...);
 
 void register_test(const char* name, void (*)());
 
