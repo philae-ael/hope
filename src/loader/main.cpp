@@ -6,6 +6,7 @@
 #include <core/fs/fs.h>
 #include <core/os.h>
 #include <core/os/time.h>
+#include <core/utils/config.h>
 #include <core/utils/time.h>
 #include <core/vulkan/subsystem.h>
 
@@ -33,7 +34,7 @@ int main(int argc, char* argv[]) {
   /// === Env setup and globals initializations  ===
   setup_crash_handler();
   log_register_global_formatter(log_timed_formatter, nullptr);
-  log_set_global_level(core::LogLevel::Trace);
+  log_set_global_level(core::LogLevel::Debug);
   utils::timings_init();
   fs::init();
 
@@ -59,15 +60,12 @@ int main(int argc, char* argv[]) {
   auto video = subsystem::init_video(global_alloc);
   ImGui_ImplSDL3_InitForOther(video.window);
 
-  App* app = app_pfns.init(global_alloc, nullptr, nullptr, &video);
+  App* app = app_pfns.init(nullptr, &video);
   LOG_INFO("App fully initialized");
 
   /// === Main loop ===
   while (!false) {
-    {
-      core::get_named_arena(core::ArenaName::LastFrame).reset();
-      SWAP(core::get_named_arena(core::ArenaName::LastFrame), core::get_named_arena(core::ArenaName::Frame));
-    }
+    core::get_named_arena(core::ArenaName::Frame).reset();
     utils::timings_frame_start();
     defer { utils::timings_frame_end(); };
 
@@ -88,8 +86,9 @@ int main(int argc, char* argv[]) {
 
       auto app_state = app_pfns.uninit(*app);
       reload_app(app_pfns);
-      app = app_pfns.init(global_alloc, app, app_state, &video);
-      utils::reset();
+      app = app_pfns.init(app_state, &video);
+      utils::timings_reset();
+      utils::config_reset();
     }
   }
 

@@ -1,5 +1,7 @@
 
 #include "renderer.h"
+#include "app/mesh.h"
+#include "core/core/memory.h"
 #include "imgui_renderer.h"
 #include "triangle_renderer.h"
 
@@ -22,10 +24,17 @@
 using namespace core::enum_helpers;
 using namespace core::literals;
 
+static core::array deps{
+    "assets/scenes/sponza.glb"_s,
+};
+
 MainRenderer MainRenderer::init(subsystem::video& v) {
   MainRenderer self;
   self.triangle_renderer = TriangleRenderer::init(v, v.swapchain.config.surface_format.format);
   self.imgui_renderer    = ImGuiRenderer::init(v);
+
+  self.meshes = load_mesh(core::get_named_allocator(core::AllocatorName::General), v, deps[0]);
+
   return self;
 }
 
@@ -33,7 +42,9 @@ void MainRenderer::render(AppState* app_state, VkCommandBuffer cmd, vk::image2D&
   vk::pipeline_barrier(cmd, swapchain_image.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}));
 
   auto triangle_scope = vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "triangle"_hs);
-  triangle_renderer.render(app_state, cmd, swapchain_image);
+
+  triangle_renderer.render(app_state, cmd, swapchain_image, meshes);
+
   vk::timestamp_scope_end(cmd, VK_PIPELINE_STAGE_2_NONE, triangle_scope);
 
   auto imgui_scope = vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "imgui"_hs);
@@ -50,8 +61,13 @@ void MainRenderer::render(AppState* app_state, VkCommandBuffer cmd, vk::image2D&
 }
 
 void MainRenderer::uninit(subsystem::video& v) {
+  for (auto& mesh : meshes.iter())
+    unload_mesh(v, mesh);
+
   triangle_renderer.uninit(v);
   imgui_renderer.uninit(v);
+
+  return;
 }
 
 core::vec<core::str8> MainRenderer::file_deps(core::Arena& arena) {

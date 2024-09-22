@@ -1,22 +1,19 @@
 #version 450
 
 layout(location = 0) in vec3 position;
-layout (location = 0) out vec3 outColor;
+layout(location = 1) in vec3 normal;
+layout(location = 2) in vec2 texCoord;
+
+layout(location = 0) out vec3 outColor;
 
 layout(push_constant) uniform pc {
   mat4 projMatrix;
-  mat4 transform;
+  mat4 cameraFromLocal;
+  mat4 localFromWorld;
 };
 
 void main() 
 {
-	const vec3 colors[3] = vec3[3](
-		vec3(1.0f, 0.0f, 0.0f), //red
-		vec3(0.0f, 1.0f, 0.0f), //green
-		vec3(00.f, 0.0f, 1.0f)  //blue
-	);
-
-	gl_Position = transform * vec4(position.xyz, 1.0f);
-	gl_Position = projMatrix * gl_Position;
-	outColor = colors[gl_VertexIndex % 3];
+	gl_Position = projMatrix  * cameraFromLocal* localFromWorld* vec4(position.xyz, 1.0f);
+	outColor = (0.2 + 0.8*clamp(dot(normal, normalize(vec3(5.0, 5.0, 0.0) - position.xyz)), 0.0, 1.0)) * vec3(1.0,1.0,1.0);
 }

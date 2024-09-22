@@ -238,10 +238,6 @@ EXPORT Arena& get_named_arena(ArenaName name) {
     static Arena frame_arena = arena_alloc();
     return frame_arena;
   }
-  case ArenaName::LastFrame: {
-    static Arena ar = arena_alloc();
-    return ar;
-  }
   }
 }
 
@@ -251,8 +247,6 @@ EXPORT Allocator get_named_allocator(AllocatorName name) {
     return {nullptr, &MallocVtable};
   case AllocatorName::Frame:
     return get_named_arena(ArenaName::Frame);
-  case AllocatorName::LastFrame:
-    return get_named_arena(ArenaName::LastFrame);
   }
 }
 } // namespace core

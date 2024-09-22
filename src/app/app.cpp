@@ -164,28 +164,25 @@ AppEvent handle_events(SDL_Event& ev, InputState& input_state) {
 }
 
 extern "C" {
-EXPORT App* init(core::Allocator alloc, App* app, AppState* app_state, subsystem::video* video) {
-  LOG_DEBUG("Init app");
-  if (app == nullptr) {
-    app = new (alloc.allocate<App>()) App{};
-  }
-  app->arena = &core::arena_alloc();
-  app->video = video;
 
+EXPORT App* init(AppState* app_state, subsystem::video* video) {
+  static App app;
   if (app_state == nullptr) {
-    LOG_DEBUG("No app state, creating app state");
-    app_state  = alloc.allocate<AppState>();
-    app->state = new (app_state) AppState{};
-  } else {
-    app->state                = app_state;
-    app->state->reload_count += 1;
-    LOG_DEBUG("Reusing app state, reloaded %d times", app->state->reload_count);
+    app_state  = core::get_named_allocator(core::AllocatorName::General).allocate<AppState>();
+    *app_state = AppState{};
+  }
+  if (app_state->version != AppState::CUR_VERSION) {
+    LOG_ERROR("Resetting app_state: incompatible state version");
+    *app_state = AppState{};
   }
 
-  app->renderer            = init_renderer(*app->arena, *app->video);
-  app->input_state.gamepad = find_gamepad();
+  app.arena               = &core::arena_alloc();
+  app.video               = video;
+  app.state               = app_state;
+  app.renderer            = init_renderer(*app.arena, *app.video);
+  app.input_state.gamepad = find_gamepad();
 
-  return app;
+  return &app;
 }
 static_assert(std::is_same_v<decltype(&init), PFN_init>);
 
@@ -201,14 +198,8 @@ static_assert(std::is_same_v<decltype(&uninit), PFN_uninit>);
 using namespace core::literals;
 
 void update(App& app) {
-  static Vec4 speed = Vec4{2, 2, 2, 0};
-  static struct {
-    f32 pitch = 2;
-    f32 yaw   = 2;
-  } rot_speed;
-
-  utils::config_f32xN("input.speed", speed._coeffs, 3);
-  utils::config_f32xN("input.rot_speed", (f32*)&rot_speed, 2);
+  utils::config_f32xN("input.speed", app.state->config.speed._coeffs, 3);
+  utils::config_f32xN("input.rot_speed", (f32*)&app.state->config.rot_speed, 2);
 
   auto dt      = utils::get_last_frame_dt().secs();
   auto forward = app.state->camera.rotation.rotate(-Vec4::Z);
@@ -216,39 +207,39 @@ void update(App& app) {
   auto upward  = Vec4::Y;
 
   // clang-format off
-  app.state->camera.position += dt * (+ speed.x * app.input_state.x.value() * sideway 
-                                      + speed.y * app.input_state.y.value() * upward 
-                                      - speed.z * app.input_state.z.value() * forward);
+  app.state->camera.position += dt * (+ app.state->config.speed.x * app.input_state.x.value() * sideway 
+                                      + app.state->config.speed.y * app.input_state.y.value() * upward 
+                                      - app.state->config.speed.z * app.input_state.z.value() * forward);
   // clang-format on
 
-  app.state->camera.rotation = Quat::from_axis_angle(sideway, rot_speed.pitch * dt * app.input_state.pitch.value()) *
-                               Quat::from_axis_angle(upward, rot_speed.yaw * dt * app.input_state.yaw.value()) *
-                               app.state->camera.rotation;
+  app.state->camera.rotation =
+      Quat::from_axis_angle(sideway, app.state->config.rot_speed.pitch * dt * app.input_state.pitch.value()) *
+      Quat::from_axis_angle(upward, app.state->config.rot_speed.yaw * dt * app.input_state.yaw.value()) *
+      app.state->camera.rotation;
 }
 
 void debug_stuff(App& app) {
-  static bool wait_timing_target      = false;
-  static u64 timing_target_usec       = 5500;
-  static bool print_frame_report      = false;
-  static bool print_frame_report_full = true;
+  auto& appconf = app.state->config;
 
-  u64 timing_target = USEC(timing_target_usec);
-  utils::config_bool("timing.wait_timing_target", &wait_timing_target);
-  utils::config_u64("timing.timing_target_usec", &timing_target_usec);
-  if (wait_timing_target) {
+  utils::config_u64("app_state.version", &app.state->version, true);
+
+  utils::config_bool("timing.wait_timing_target", &appconf.wait_timing_target);
+  utils::config_u64("timing.timing_target_usec", &appconf.timing_target_usec);
+  if (app.state->config.wait_timing_target) {
     auto frame_report_scope = utils::scope_start("wait timing target"_hs);
     defer { utils::scope_end(frame_report_scope); };
-    os::sleep(timing_target);
+
+    os::sleep(USEC(appconf.timing_target_usec));
   }
 
-  utils::config_bool("debug.frame_report", &print_frame_report);
-  utils::config_bool("debug.frame_report.full", &print_frame_report_full);
-  if (print_frame_report) {
+  utils::config_bool("debug.frame_report", &appconf.print_frame_report);
+  utils::config_bool("debug.frame_report.full", &appconf.print_frame_report_full);
+  if (app.state->config.print_frame_report) {
     auto frame_report_scope = utils::scope_start("frame report"_hs);
     defer { utils::scope_end(frame_report_scope); };
 
     auto timing_infos = utils::get_last_frame_timing_infos(core::get_named_allocator(core::AllocatorName::Frame));
-    if (print_frame_report_full) {
+    if (appconf.print_frame_report_full) {
       for (auto [name, t] : timing_infos.timings.iter()) {
         LOG_BUILDER(core::LogLevel::Debug, push(name).push(" at ").push(t, os::TimeFormat::MMM_UUU_NNN));
       }
@@ -266,8 +257,17 @@ void debug_stuff(App& app) {
     );
   }
 
-  utils::config_f32xN("camera.pos", app.state->camera.position._coeffs, 3, true);
-  utils::config_f32xN("camera.rot", app.state->camera.rotation.v._coeffs, 3, true);
+  utils::config_f32xN("camera.position", app.state->camera.position._coeffs, 3, true);
+  utils::config_f32xN("camera.rotation", app.state->camera.rotation.v._coeffs, 4, true);
+
+  static Vec4 input_move_dir = Vec4::Zero;
+  input_move_dir             = Vec4{
+      app.input_state.x.value(),
+      app.input_state.y.value(),
+      app.input_state.z.value(),
+      0,
+  };
+  utils::config_f32xN("input.move_dir", input_move_dir._coeffs, 3, true);
 }
 
 EXPORT AppEvent frame(App& app) {

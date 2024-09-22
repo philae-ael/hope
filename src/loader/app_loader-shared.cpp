@@ -9,8 +9,8 @@ AppPFNs init_app_stub() {
   LOG_INFO("stub");
   return AppPFNs{
       .handle = nullptr,
-      .init   = [](core::Allocator alloc, App*, AppState*, subsystem ::video*) -> App* { return (App*)(0); },
-      .uninit = [](App&) -> AppState* { return (AppState*)(0); },
+      .init   = [](AppState* app_state, subsystem ::video*) -> App* { return (App*)app_state; },
+      .uninit = [](App& app_state) -> AppState* { return (AppState*)&app_state; },
       .frame  = [](App&) -> AppEvent {
         using namespace core::enum_helpers;
         AppEvent sev{};
@@ -62,7 +62,7 @@ AppState* uninit_app(App& app) {
   AppState* app_state = nullptr;
 
   if (libapp_handle != nullptr) {
-    auto pfn_uninit_app = (AppState * (*)(App&))(dlsym(libapp_handle, "uninit"));
+    auto pfn_uninit_app = (PFN_uninit)(dlsym(libapp_handle, "uninit"));
     CHECK_DLERROR("can't load symbol uninit");
     app_state = pfn_uninit_app(app);
 
@@ -72,6 +72,7 @@ AppState* uninit_app(App& app) {
   }
   return app_state;
 }
+static_assert(std::is_same_v<decltype(&uninit_app), PFN_uninit>);
 
 AppPFNs load_app(core::str8 soname_) {
   auto scratch = core::scratch_get();
@@ -107,8 +108,8 @@ AppPFNs load_app(core::str8 soname_) {
   app.frame = (PFN_frame)dlsym(libapp_handle, "frame");
   CHECK_DLERROR("can't open frame");
 
+  app.uninit = uninit_app;
 finish:
-  app.uninit      = uninit_app;
   app.need_reload = false;
   return app;
 

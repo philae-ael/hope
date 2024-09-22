@@ -18,6 +18,11 @@ struct vec {
       : store(storage{a})
       , size_(len) {}
 
+  template <usize len>
+  vec(clear_t, T (&a)[len])
+      : store(storage{a})
+      , size_(0) {}
+
   vec(storage<T> s)
       : store(s)
       , size_(s.size) {}
@@ -62,6 +67,11 @@ struct vec {
   void set_capacity(Allocator alloc, usize new_capacity, bool try_grow = true) {
     if (try_grow && alloc.try_resize(store.data, store.size, new_capacity * sizeof(T), "vec::resize")) {
       store.size = new_capacity;
+      return;
+    }
+
+    if (new_capacity == 0) {
+      store = {};
       return;
     }
 

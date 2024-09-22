@@ -31,7 +31,7 @@ struct scope {
 };
 
 void timings_init();
-void reset();
+void timings_reset();
 
 void timings_frame_start(scope_category cat = scope_category::CPU);
 void timings_frame_end();

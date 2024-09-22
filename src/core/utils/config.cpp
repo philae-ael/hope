@@ -35,9 +35,13 @@ union entry {
     usize components;
   } f32xN;
 };
-static core::vec<entry> v;
+entry entries[50]{};
+static core::vec<entry> v{core::clear, entries};
 
 namespace utils {
+EXPORT void config_reset() {
+  v.reset(core::noalloc);
+}
 EXPORT void config_new_frame() {
   if (ImGui::Begin("config")) {
     static ImGuiTextFilter filter;
@@ -69,12 +73,12 @@ EXPORT void config_new_frame() {
     }
   }
   ImGui::End();
-  v.reset(core::get_named_allocator(core::AllocatorName::Frame));
+  v.reset(core::noalloc);
 }
 
 EXPORT void config_bool(const char* label, bool* target, bool read_only) {
   v.push(
-      core::get_named_allocator(core::AllocatorName::Frame),
+      core::noalloc,
       {
           .boolean{
               .label     = label,
@@ -86,7 +90,7 @@ EXPORT void config_bool(const char* label, bool* target, bool read_only) {
 }
 EXPORT void config_u64(const char* label, u64* target, bool read_only) {
   v.push(
-      core::get_named_allocator(core::AllocatorName::Frame),
+      core::noalloc,
       {
           .u64{
               .label     = label,
@@ -98,7 +102,7 @@ EXPORT void config_u64(const char* label, u64* target, bool read_only) {
 }
 EXPORT void config_f32(const char* label, f32* target, bool read_only) {
   v.push(
-      core::get_named_allocator(core::AllocatorName::Frame),
+      core::noalloc,
       {
           .f32{
               .label     = label,
@@ -110,7 +114,7 @@ EXPORT void config_f32(const char* label, f32* target, bool read_only) {
 }
 EXPORT void config_f32xN(const char* label, f32* target, usize components, bool read_only) {
   v.push(
-      core::get_named_allocator(core::AllocatorName::Frame),
+      core::noalloc,
       {
           .f32xN{
               .label      = label,

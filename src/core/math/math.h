@@ -278,6 +278,13 @@ union Mat4x4 {
   Vec4 _cols[4];
   f32 _coeffs[16];
 
+  inline constexpr Mat4x4() {}
+  inline Mat4x4(col_major_t, f32 coeffs[16]) {
+    memcpy(_coeffs, coeffs, sizeof(f32) * 16);
+  }
+  inline Mat4x4(row_major_t, f32 coeffs[16]) {
+    *this = Mat4x4(col_major, coeffs).transpose();
+  }
   inline constexpr Mat4x4(col_major_t, Vec4 r1, Vec4 r2, Vec4 r3, Vec4 r4)
       : _cols{r1, r2, r3, r4} {}
 

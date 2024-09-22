@@ -3,6 +3,7 @@
 
 #include "imgui_renderer.h"
 #include "loader/app_loader.h"
+#include "mesh.h"
 #include "triangle_renderer.h"
 
 #include <core/fs/fs.h>
@@ -10,6 +11,7 @@
 struct MainRenderer {
   ImGuiRenderer imgui_renderer;
   TriangleRenderer triangle_renderer;
+  core::vec<GpuMesh> meshes;
 
   static MainRenderer init(subsystem::video& v);
   void render(AppState* app_state, VkCommandBuffer cmd, vk::image2D& swapchain_image);

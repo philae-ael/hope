@@ -10,7 +10,6 @@
 #include <core/vulkan/subsystem.h>
 #include <vulkan/vulkan_core.h>
 
-#include <cgltf.h>
 #include <vk_mem_alloc.h>
 
 using namespace core::literals;
@@ -18,91 +17,12 @@ using math::Mat4;
 
 core::array deps{
     "assets/shaders/tri.spv"_s,
-    "assets/scenes/triangle.glb"_s,
 };
 
 TriangleRenderer TriangleRenderer::init(subsystem::video& v, VkFormat format) {
   auto scratch = core::scratch_get();
   defer { scratch.retire(); };
   core::Allocator alloc = scratch;
-
-  const char* path      = fs::resolve_path(*scratch, deps[1]).cstring(alloc);
-  cgltf_options options = {
-      .type   = cgltf_file_type_glb,
-      .memory = {
-          .alloc_func =
-              [](void* arena, usize size) {
-                core::Allocator alloc = *(core::Arena*)arena;
-                return alloc.allocate(size);
-              },
-          .free_func =
-              [](void* arena, void* ptr) {
-                core::Allocator alloc = *(core::Arena*)arena;
-                return alloc.deallocate(ptr, 0);
-              },
-          .user_data = scratch.arena_,
-      },
-  };
-
-  cgltf_data* data    = NULL;
-  cgltf_result result = cgltf_parse_file(&options, path, &data);
-  if (result != cgltf_result_success) {
-    core::panic("can't load gltf: %u", result);
-  }
-  result = cgltf_load_buffers(&options, data, path);
-  if (result != cgltf_result_success) {
-    core::panic("can't load gltf: %u", result);
-  }
-
-  ASSERT(data->meshes_count == 1);
-  ASSERT(data->meshes[0].primitives_count == 1);
-  ASSERT(data->meshes[0].primitives[0].type == cgltf_primitive_type_triangles);
-  // ASSERT(data->meshes[0].primitives[0].attributes_count == 1);
-  ASSERT(data->meshes[0].primitives[0].attributes[0].type == cgltf_attribute_type_position);
-  ASSERT(data->meshes[0].primitives[0].attributes[0].data->type == cgltf_type_vec3);
-  ASSERT(data->meshes[0].primitives[0].attributes[0].data->component_type == cgltf_component_type_r_32f);
-  auto vertices = alloc.allocate_array<f32>(
-      data->meshes[0].primitives[0].attributes[0].data->count *
-      cgltf_num_components(data->meshes[0].primitives[0].attributes[0].data->type)
-  );
-  cgltf_accessor_unpack_floats(data->meshes[0].primitives[0].attributes[0].data, vertices.data, vertices.size);
-
-  VkBuffer vertex_buffer;
-  VmaAllocation vertex_buf_alloc;
-  VkBufferCreateInfo vertex_buf_create_info{
-      .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-      .size                  = vertices.into_bytes().size,
-      .usage                 = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-      .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
-      .queueFamilyIndexCount = 1,
-      .pQueueFamilyIndices   = &v.device.omni_queue_family_index
-  };
-  VmaAllocationCreateInfo alloc_create_info{
-      .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-      .usage = VMA_MEMORY_USAGE_AUTO,
-  };
-  vmaCreateBuffer(v.allocator, &vertex_buf_create_info, &alloc_create_info, &vertex_buffer, &vertex_buf_alloc, nullptr);
-  vmaCopyMemoryToAllocation(v.allocator, vertices.data, vertex_buf_alloc, 0, vertices.into_bytes().size);
-
-  ASSERT(data->meshes[0].primitives[0].indices->component_type == cgltf_component_type_r_16u);
-  auto indices = alloc.allocate_array<u16>(data->meshes[0].primitives[0].indices->count);
-
-  ASSERT(cgltf_accessor_unpack_indices(data->meshes[0].primitives[0].indices, indices.data, 2, indices.size));
-
-  VkBuffer index_buffer;
-  VmaAllocation index_buf_alloc;
-  VkBufferCreateInfo index_buf_create_info{
-      .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-      .size                  = indices.into_bytes().size,
-      .usage                 = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-      .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
-      .queueFamilyIndexCount = 1,
-      .pQueueFamilyIndices   = &v.device.omni_queue_family_index
-  };
-  vmaCreateBuffer(v.allocator, &index_buf_create_info, &alloc_create_info, &index_buffer, &index_buf_alloc, nullptr);
-  vmaCopyMemoryToAllocation(v.allocator, indices.data, index_buf_alloc, 0, indices.into_bytes().size);
-  Mesh mesh = {(u32)indices.size};
-  cgltf_free(data);
 
   core::array<VkDescriptorPoolSize, 0> pool_sizes{};
   VkDescriptorPoolCreateInfo descriptor_pool_create_info{
@@ -118,7 +38,7 @@ TriangleRenderer TriangleRenderer::init(subsystem::video& v, VkFormat format) {
       VkPushConstantRange{
           .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
           .offset     = 0,
-          .size       = 2 * 4 * 4 * sizeof(f32), // 1 mat4
+          .size       = 3 * 4 * 4 * sizeof(f32), // 3 mat4
       },
   };
 
@@ -133,7 +53,7 @@ TriangleRenderer TriangleRenderer::init(subsystem::video& v, VkFormat format) {
   VkPipelineLayout pipeline_layout;
   vkCreatePipelineLayout(v.device, &pipeline_layout_create_info, nullptr, &pipeline_layout);
 
-  auto code = fs::read_all(*scratch, deps[0]);
+  auto code = fs::read_all(alloc, deps[0]);
   ASSERT(code.size % sizeof(u32) == 0);
 
   // # Pipeline
@@ -160,16 +80,33 @@ TriangleRenderer TriangleRenderer::init(subsystem::video& v, VkFormat format) {
       },
   };
 
-  core::array vertex_binding_descriptions{VkVertexInputBindingDescription{
-      .binding   = 0,
-      .stride    = sizeof(f32) * 3,
-      .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
-  }};
-  core::array vertex_attribute_descriptions{VkVertexInputAttributeDescription{
-      .binding = 0,
-      .format  = VK_FORMAT_R32G32B32_SFLOAT,
-      .offset  = 0,
-  }};
+  core::array vertex_binding_descriptions{
+      VkVertexInputBindingDescription{
+          .binding   = 0,
+          .stride    = sizeof(f32) * (3 + 3 + 2),
+          .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+      },
+  };
+  core::array vertex_attribute_descriptions{
+      VkVertexInputAttributeDescription{
+          .location = 0,
+          .binding  = 0,
+          .format   = VK_FORMAT_R32G32B32_SFLOAT,
+          .offset   = 0,
+      },
+      VkVertexInputAttributeDescription{
+          .location = 1,
+          .binding  = 0,
+          .format   = VK_FORMAT_R32G32B32_SFLOAT,
+          .offset   = sizeof(f32) * 3,
+      },
+      VkVertexInputAttributeDescription{
+          .location = 2,
+          .binding  = 0,
+          .format   = VK_FORMAT_R32G32_SFLOAT,
+          .offset   = sizeof(f32) * 6,
+      },
+  };
 
   core::array color_blend_attachments{
       vk::pipeline::ColorBlendAttachement::NoBlend.vk(),
@@ -187,16 +124,12 @@ TriangleRenderer TriangleRenderer::init(subsystem::video& v, VkFormat format) {
           .build(v.device, pipeline_layout);
 
   vkDestroyShaderModule(v.device, module, nullptr);
-  return {
-      descriptor_pool, pipeline, pipeline_layout, vertex_buffer, vertex_buf_alloc, index_buffer, index_buf_alloc, mesh,
-  };
+  return {descriptor_pool, pipeline, pipeline_layout};
 }
 
 void TriangleRenderer::uninit(subsystem::video& v) {
   vkDestroyPipeline(v.device, pipeline, nullptr);
   vkDestroyPipelineLayout(v.device, pipeline_layout, nullptr);
-  vmaDestroyBuffer(v.allocator, vertex_buffer, vertex_buf_allocation);
-  vmaDestroyBuffer(v.allocator, index_buffer, index_buf_allocation);
   vkDestroyDescriptorPool(v.device, descriptor_pool, nullptr);
 }
 
@@ -204,7 +137,12 @@ core::storage<core::str8> TriangleRenderer::file_deps() {
   return deps;
 }
 
-void TriangleRenderer::render(AppState* app_state, VkCommandBuffer cmd, vk::image2D target) {
+void TriangleRenderer::render(
+    AppState* app_state,
+    VkCommandBuffer cmd,
+    vk::image2D target,
+    core::storage<GpuMesh> meshes
+) {
   using namespace core::literals;
   auto triangle_scope = utils::scope_start("triangle"_hs);
   defer { utils::scope_end(triangle_scope); };
@@ -228,14 +166,23 @@ void TriangleRenderer::render(AppState* app_state, VkCommandBuffer cmd, vk::imag
   VkViewport viewport{0, (f32)target.extent2.height, (f32)target.extent2.width, -(f32)target.extent2.height, 0, 1};
   vkCmdSetViewport(cmd, 0, 1, &viewport);
 
-  VkDeviceSize offset = 0;
-  vkCmdBindVertexBuffers(cmd, 0, 1, &vertex_buffer, &offset);
+  for (auto& mesh : meshes.iter()) {
+    VkDeviceSize offset = 0;
+    vkCmdBindVertexBuffers(cmd, 0, 1, &mesh.vertex_buffer, &offset);
 
-  f32 aspect_ratio = (f32)target.extent2.width / (f32)target.extent2.height;
-  auto matrices    = app_state->camera.matrices(aspect_ratio);
-  vkCmdPushConstants(cmd, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, 2 * sizeof(Mat4), &matrices);
+    f32 aspect_ratio = (f32)target.extent2.width / (f32)target.extent2.height;
+    struct {
+      CameraMatrices camera_matrices;
+      Mat4 transform_matrix;
+    } matrices = {
+        app_state->camera.matrices(aspect_ratio),
+        mesh.transform,
+    };
+    vkCmdPushConstants(cmd, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(matrices), &matrices);
 
-  vkCmdBindIndexBuffer(cmd, index_buffer, 0, VK_INDEX_TYPE_UINT16);
-  vkCmdDrawIndexed(cmd, mesh.count, 1, 0, 0, 0);
+    vkCmdBindIndexBuffer(cmd, mesh.index_buffer, 0, VK_INDEX_TYPE_UINT16);
+    vkCmdDrawIndexed(cmd, mesh.indices, 1, 0, 0, 0);
+  }
+
   vkCmdEndRendering(cmd);
 }

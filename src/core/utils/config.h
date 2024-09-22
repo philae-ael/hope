@@ -6,6 +6,7 @@
 namespace utils {
 // As soon as possible after imgui::NewFrame
 void config_new_frame();
+void config_reset();
 void config_bool(const char* label, bool* target, bool read_only = false);
 void config_u64(const char* label, u64* target, bool read_only = false);
 void config_f32(const char* label, f32* target, bool read_only = false);

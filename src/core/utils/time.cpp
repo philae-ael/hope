@@ -59,7 +59,7 @@ EXPORT void timings_init() {
   lasts[1].reset();
   curs[1].reset();
 }
-EXPORT void reset() {}
+EXPORT void timings_reset() {}
 
 EXPORT void timings_frame_end() {
   f32 sample = (f32)os::time_monotonic().since(frame_start_t).ns;

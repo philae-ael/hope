@@ -182,11 +182,9 @@ inline constexpr AllocatorVTable MallocVtable{
 enum class AllocatorName {
   General,
   Frame,
-  LastFrame,
 };
 enum class ArenaName {
   Frame,
-  LastFrame,
 };
 
 Allocator get_named_allocator(AllocatorName name);

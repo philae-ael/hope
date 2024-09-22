@@ -69,18 +69,38 @@ struct App {
   subsystem::video* video;
   Renderer* renderer;
   InputState input_state{};
-  AppState* state;
+  AppState* state = nullptr;
 };
 
 struct AppState {
-  u32 reload_count = 0;
+  // WARN: BUMP THIS ON MODIFICATION OF STATE
+  static const usize CUR_VERSION = 7;
+  usize version                  = CUR_VERSION;
   Camera camera{
       .hfov     = DEGREE(60),
       .near     = 0.1f,
-      .far      = 5,
+      .far      = 50,
       .position = 1.5f * math::Vec4::Z,
       .rotation = math::Quat::Id,
   };
+  struct {
+
+    // === DEBUG ===
+
+    bool wait_timing_target      = false;
+    bool print_frame_report      = false;
+    bool print_frame_report_full = true;
+    u64 timing_target_usec       = 5500;
+
+    // === MOVEMENT ===
+
+    math::Vec4 speed{2, 2, 2, 0};
+    struct {
+      f32 pitch = 2;
+      f32 yaw   = 2;
+    } rot_speed;
+
+  } config;
 };
 
 #endif // INCLUDE_APP_APP_H_

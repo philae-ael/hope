@@ -109,6 +109,7 @@ target_sources(app PRIVATE
   src/app/imgui_renderer.cpp
   src/app/triangle_renderer.cpp
   src/app/profiler.cpp
+  src/app/mesh.cpp
 )
 
 target_link_libraries(loader PRIVATE core)
