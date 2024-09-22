@@ -8,7 +8,7 @@ namespace fs {
 using virtualpath = core::str8;
 using realpath    = core::str8;
 
-void init(realpath);
+void init();
 void register_path(virtualpath path, realpath target);
 realpath resolve_path(core::Arena& ar, virtualpath);
 core::storage<u8> read_all(core::Arena& ar, virtualpath);

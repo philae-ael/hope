@@ -28,25 +28,16 @@ log_entry timed_formatter(void* u, Arena& arena, core::log_entry entry) {
 }
 
 int main(int argc, char* argv[]) {
-  auto& ar = arena_alloc();
   setup_crash_handler();
   log_register_global_formatter(log_timed_formatter, nullptr);
   log_set_global_level(core::LogLevel::Trace);
-#if LINUX
-  const char* cwd = realpath(".", nullptr);
-  fs::init(core::str8::from(cstr, cwd));
-  free((void*)cwd);
-#elif WINDOWS
-  const char* cwd = _fullpath(nullptr, "../corelib/", 0);
-  fs::init(core::str8::from(cstr, cwd));
-  free((void*)cwd);
+  utils::init_timing_tracking();
+  fs::init();
 
-#endif
+  auto& ar = arena_alloc();
 #ifdef SHARED
   fs::register_path("lib"_s, fs::resolve_path(ar, "build"_s));
 #endif
-
-  utils::init_timing_tracking();
 
   SDL_Init(SDL_INIT_GAMEPAD);
 

@@ -2,6 +2,7 @@
 #define INCLUDE_OS_OS_H_
 
 // IWYU pragma: begin_exports
+#include "os/fs.h"
 #include "os/memory.h"
 #include "os/time.h"
 // IWYU pragma: end_exports

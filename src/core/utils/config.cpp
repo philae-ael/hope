@@ -27,7 +27,7 @@ union entry {
 static core::Arena* ar;
 static core::vec<entry> v;
 
-namespace debug {
+namespace utils {
 EXPORT void config_new_frame() {
   if (ar == nullptr) {
     ar = &core::arena_alloc();
@@ -89,4 +89,4 @@ EXPORT void config_f32(const char* label, f32* target) {
       }
   );
 }
-} // namespace debug
+} // namespace utils

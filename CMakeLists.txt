@@ -27,8 +27,8 @@ add_library(core
   src/core/core/platform.cpp
   src/core/core/string.cpp
   src/core/core/type_info.cpp
-  src/core/debug/config.cpp
-  src/core/debug/time.cpp
+  src/core/utils/config.cpp
+  src/core/utils/time.cpp
   src/core/fs/fs.cpp
   src/core/math/math.cpp
   src/core/os/memory.cpp
@@ -47,11 +47,13 @@ if (UNIX)
   target_sources(core PRIVATE
     src/core/os/linux/time.cpp
     src/core/os/linux/memory.cpp
+    src/core/os/linux/fs.cpp
   )
 else()
   target_sources(core PRIVATE
     src/core/os/windows/time.cpp
     src/core/os/windows/memory.cpp
+    src/core/os/windows/fs.cpp
   )
 endif()
 

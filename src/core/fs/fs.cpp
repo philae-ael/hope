@@ -1,8 +1,9 @@
+#include "core/os/fs.h"
 #define _CRT_SECURE_NO_WARNINGS
 
-#include "fs.h"
 #include "core/containers/vec.h"
 #include "core/core/fwd.h"
+#include "fs.h"
 #include <cerrno>
 #include <core/containers/pool.h>
 #include <core/core.h>
@@ -56,9 +57,9 @@ struct {
 
 using namespace core::literals;
 
-EXPORT void init(core::str8 path) {
+EXPORT void init() {
   fs.arena = &core::arena_alloc();
-  register_path("/"_s, path);
+  register_path("/"_s, os::getcwd(*fs.arena));
 }
 
 EXPORT void register_path(core::str8 path, core::str8 target) {
@@ -140,10 +141,10 @@ EXPORT core::storage<u8> read_all(core::Arena& arena, core::str8 path) {
   usize sz = (usize)ftell(f);
   fseek(f, 0, SEEK_SET);
 
-  auto storage = arena.allocate_array<u8>(sz);
+  auto storage    = arena.allocate_array<u8>(sz);
   usize data_read = fread(storage.data, 1, sz, f);
   ASSERT(data_read == sz);
-  
+
   fclose(f);
   return storage;
 }
