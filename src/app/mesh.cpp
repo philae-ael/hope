@@ -143,7 +143,7 @@ core::vec<GpuMesh> load_mesh(core::Allocator alloc, subsystem::video& v, core::s
     }
   };
 
-  auto work_on_node = [&](this auto& work_on_node, cgltf_node& node) {
+  auto work_on_node = [&](cgltf_node& node) {
     for (auto& node : core::storage{data->scene->nodes_count, data->scene->nodes}.iter()) {
       if (node->mesh != nullptr) {
         math::Mat4 transform = math::Mat4::Id;

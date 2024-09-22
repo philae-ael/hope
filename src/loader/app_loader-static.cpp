@@ -5,9 +5,9 @@ struct Renderer;
 union SDL_Event;
 
 extern "C" {
-App* init(core::Allocator alloc, App*, AppState*, subsystem ::video*);
+App* init(AppState*, subsystem ::video*);
 AppState* uninit(App&);
-AppEvent frame(core ::Arena&, App&);
+AppEvent frame(App&);
 }
 
 void load_app(AppPFNs& app) {

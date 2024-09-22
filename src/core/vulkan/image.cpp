@@ -59,7 +59,7 @@ EXPORT image2D image2D::create(subsystem::video& v, const Config& config, Sync s
   return image;
 }
 
-EXPORT VkImageMemoryBarrier2 image2D::sync_to(image2D::Sync new_sync, VkImageAspectFlagBits aspect_mask) {
+EXPORT VkImageMemoryBarrier2 image2D::sync_to(image2D::Sync new_sync, VkImageAspectFlags aspect_mask) {
   image2D::Sync old_sync = sync;
   sync                   = new_sync;
 

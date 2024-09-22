@@ -67,8 +67,8 @@ EXPORT subsystem::video subsystem::init_video(core::Allocator alloc) {
   vk::Instance instance = vk::create_default_instance(layers, instance_extensions).expect("can't create instance");
   VkSurfaceKHR surface;
   {
-    SDL_bool surface_created = SDL_Vulkan_CreateSurface(window, instance, nullptr, &surface);
-    ASSERTM(surface_created == SDL_TRUE, "can't create surface: %s", SDL_GetError());
+    bool surface_created = SDL_Vulkan_CreateSurface(window, instance, nullptr, &surface);
+    ASSERTM(surface_created == true, "can't create surface: %s", SDL_GetError());
   }
 
   vk::Device device       = vk::create_default_device(instance, surface, {}).expect("can't create device");
