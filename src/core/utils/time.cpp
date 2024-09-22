@@ -31,10 +31,10 @@ struct string_map {
   }
 };
 
-#define DEBUG_MAX_SCOPES 150
+#define MAX_SCOPES 150
 #define FRAME_COUNT 200
 
-static string_map::Data storagea[2][DEBUG_MAX_SCOPES], storageb[2][DEBUG_MAX_SCOPES];
+static string_map::Data storagea[2][MAX_SCOPES], storageb[2][MAX_SCOPES];
 
 static core::array lasts{
     string_map{storagea[0]},
@@ -51,9 +51,9 @@ static math::windowed_series frame_time_series{frame_time_storage};
 
 static os::time frame_start_t;
 
-namespace debug {
+namespace utils {
 
-EXPORT void init() {
+EXPORT void init_timing_tracking() {
   lasts[0].reset();
   curs[0].reset();
   lasts[1].reset();
@@ -114,4 +114,4 @@ EXPORT timing_infos get_last_frame_timing_infos(core::Arena& ar, scope_category 
 EXPORT os::time get_last_frame_dt() {
   return os::time{(u64)frame_time_series.mean()};
 }
-} // namespace debug
+} // namespace utils

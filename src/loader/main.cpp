@@ -1,14 +1,15 @@
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_events.h>
 
 #include "app_loader.h"
-#include "core/debug/time.h"
-#include "core/fs/fs.h"
-#include "core/os/time.h"
-#include <core/vulkan/subsystem.h>
 
 #include <core/core.h>
+#include <core/fs/fs.h>
 #include <core/os.h>
+#include <core/os/time.h>
+#include <core/utils/time.h>
+#include <core/vulkan/subsystem.h>
+
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_events.h>
 #include <cstdlib>
 
 struct Renderer;
@@ -45,7 +46,7 @@ int main(int argc, char* argv[]) {
   fs::register_path("lib"_s, fs::resolve_path(ar, "build"_s));
 #endif
 
-  debug::init();
+  utils::init_timing_tracking();
 
   SDL_Init(SDL_INIT_GAMEPAD);
 
@@ -60,12 +61,12 @@ int main(int argc, char* argv[]) {
     auto frame_ar = frame_arena.make_temp();
     defer { frame_ar.retire(); };
 
-    debug::frame_start();
-    defer { debug::frame_end(); };
+    utils::frame_start();
+    defer { utils::frame_end(); };
 
-    auto fs_process_scope = debug::scope_start("fs process"_hs);
+    auto fs_process_scope = utils::scope_start("fs process"_hs);
     fs::process_modified_file_callbacks();
-    debug::scope_end(fs_process_scope);
+    utils::scope_end(fs_process_scope);
 
     auto sev = app_pfns.frame(*frame_ar, *app);
     if (any(sev & AppEvent::Exit)) {
@@ -78,7 +79,7 @@ int main(int argc, char* argv[]) {
       auto app_state = app_pfns.uninit(*app);
       reload_app(app_pfns);
       app = app_pfns.init(ar, app, app_state, &video);
-      debug::reset();
+      utils::reset();
     }
   }
 

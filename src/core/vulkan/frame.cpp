@@ -1,6 +1,6 @@
 #include "frame.h"
-#include "core/debug/time.h"
 #include "vulkan.h"
+#include <core/utils/time.h>
 
 #include <core/core.h>
 
@@ -20,10 +20,10 @@ EXPORT Result<Frame> begin_frame(VkDevice device, VkSwapchainKHR swapchain, Fram
 
   u32 swapchain_image_index;
 
-  auto wait_for_fence_scope = debug::scope_start("wait for fence"_hs);
+  auto wait_for_fence_scope = utils::scope_start("wait for fence"_hs);
   VkResult res =
       vkWaitForFences(device, 1, &sync.render_done_fences[frame_id], VK_TRUE, 100'000'000);
-  debug::scope_end(wait_for_fence_scope);
+  utils::scope_end(wait_for_fence_scope);
 
   if (res != VK_SUCCESS) {
     return res;
@@ -47,8 +47,8 @@ EXPORT Result<Frame> begin_frame(VkDevice device, VkSwapchainKHR swapchain, Fram
 
 EXPORT VkResult
 end_frame(VkDevice device, VkQueue present_queue, VkSwapchainKHR swapchain, Frame frame) {
-  auto present = debug::scope_start("present"_hs);
-  defer { debug::scope_end(present); };
+  auto present = utils::scope_start("present"_hs);
+  defer { utils::scope_end(present); };
   VkPresentInfoKHR present_infos{
       .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
       .waitSemaphoreCount = 1,

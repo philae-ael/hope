@@ -1,23 +1,23 @@
 
-#include "app/renderer.h"
-#include "core/vulkan/timings.h"
+#include "renderer.h"
 #include "imgui_renderer.h"
-#include "profiler.h"
 #include "triangle_renderer.h"
 
 #include <core/core.h>
-#include <core/debug/config.h>
-#include <core/debug/time.h>
 #include <core/fs/fs.h>
+#include <core/utils/config.h>
+#include <core/utils/time.h>
 #include <core/vulkan.h>
 #include <core/vulkan/frame.h>
 #include <core/vulkan/image.h>
 #include <core/vulkan/init.h>
 #include <core/vulkan/subsystem.h>
 #include <core/vulkan/sync.h>
-#include <imgui.h>
+#include <core/vulkan/timings.h>
 #include <loader/app_loader.h>
 #include <vulkan/vulkan_core.h>
+
+#include <imgui.h>
 
 using namespace core::enum_helpers;
 using namespace core::literals;
@@ -129,9 +129,9 @@ AppEvent render(AppState* app_state, subsystem::video& v, Renderer& renderer) {
   renderer.main_renderer.render(app_state, renderer.cmd, frame->swapchain_image);
 
   using namespace core::literals;
-  auto render_scope = debug::scope_start("end cmd buffer"_hs);
+  auto render_scope = utils::scope_start("end cmd buffer"_hs);
   vkEndCommandBuffer(renderer.cmd);
-  debug::scope_end(render_scope);
+  utils::scope_end(render_scope);
 
   switch (VkResult res = v.end_frame(*frame, renderer.cmd); res) {
   case VK_ERROR_OUT_OF_DATE_KHR:

@@ -12,9 +12,9 @@
 
 #include <core/core.h>
 #include <core/core/memory.h>
-#include <core/debug/config.h>
-#include <core/debug/time.h>
 #include <core/os/time.h>
+#include <core/utils/config.h>
+#include <core/utils/time.h>
 #include <core/vulkan/frame.h>
 #include <core/vulkan/init.h>
 #include <loader/app_loader.h>
@@ -211,39 +211,23 @@ EXPORT AppState* uninit(App& app) {
 
 using namespace core::literals;
 
-// TIMING BUDGET: 1ms for event handling at least, the rest for rendering
+void update(core::Arena& frame_arena, App& app) {
+  static float speed_x         = 2;
+  static float speed_y         = 2;
+  static float speed_z         = 2;
+  static float rot_speed_pitch = 2;
+  static float rot_speed_yaw   = 2;
 
-EXPORT AppEvent frame(core::Arena& frame_arena, App& app) {
-  AppEvent sev{};
-  SDL_Event ev{};
+  utils::config_f32("input.speed_x", &speed_x);
+  utils::config_f32("input.speed_y", &speed_y);
+  utils::config_f32("input.speed_z", &speed_z);
+  utils::config_f32("input.rot_speed_pitch", &rot_speed_pitch);
+  utils::config_f32("input.rot_speed_yaw", &rot_speed_yaw);
 
-  ImGui_ImplVulkan_NewFrame();
-  ImGui_ImplSDL3_NewFrame();
-  ImGui::NewFrame();
-  defer { ImGui::EndFrame(); };
-  debug::config_new_frame();
-  profiling_window();
-
-handle_events: {
-  auto poll_event_scope = debug::scope_start("poll event start"_hs);
-  defer { debug::scope_end(poll_event_scope); };
-
-  while (SDL_PollEvent(&ev)) {
-    sev |= handle_events(ev, app.input_state);
-  }
-}
-
-  auto dt              = debug::get_last_frame_dt().secs();
-  auto forward         = app.state->camera.rotation.rotate(-Vec4::Z);
-  auto sideway         = app.state->camera.rotation.rotate(Vec4::X);
-  auto upward          = Vec4::Y;
-
-  static float speed_x = 2;
-  static float speed_y = 2;
-  static float speed_z = 2;
-  debug::config_f32("input.speed_x", &speed_x);
-  debug::config_f32("input.speed_y", &speed_y);
-  debug::config_f32("input.speed_z", &speed_z);
+  auto dt      = utils::get_last_frame_dt().secs();
+  auto forward = app.state->camera.rotation.rotate(-Vec4::Z);
+  auto sideway = app.state->camera.rotation.rotate(Vec4::X);
+  auto upward  = Vec4::Y;
 
   // clang-format off
   app.state->camera.position += dt * (+ speed_x * app.input_state.x.value() * sideway 
@@ -251,53 +235,35 @@ handle_events: {
                                       - speed_z * app.input_state.z.value() * forward);
   // clang-format on
 
-  static float rot_speed_pitch = 2;
-  static float rot_speed_yaw   = 2;
-  debug::config_f32("input.rot_speed_pitch", &rot_speed_pitch);
-  debug::config_f32("input.rot_speed_yaw", &rot_speed_yaw);
   app.state->camera.rotation =
       Quat::from_axis_angle(sideway, rot_speed_pitch * dt * app.input_state.pitch.value()) *
       Quat::from_axis_angle(upward, rot_speed_yaw * dt * app.input_state.yaw.value()) *
       app.state->camera.rotation;
+}
 
-  AppEvent renderev = render(app.state, *app.video, *app.renderer);
-  if (any(renderev & AppEvent::SkipRender)) {
-    LOG_TRACE("skip");
-    goto handle_events;
-  }
+void debug_stuff(core::Arena& frame_arena, App& app) {
+  static bool wait_timing_target      = false;
+  static u64 timing_target_usec       = 5500;
+  static bool print_frame_report      = false;
+  static bool print_frame_report_full = true;
 
-  sev |= renderev;
-
-  if (any(sev & AppEvent::RebuildRenderer)) {
-    LOG_INFO("rebuilding renderer");
-    uninit_renderer(*app.video, *app.renderer);
-    app.renderer = init_renderer(*app.arena, *app.video);
-  }
-  if (any(sev & AppEvent::RebuildSwapchain)) {
-    subsystem::video_rebuild_swapchain(*app.video);
-    swapchain_rebuilt(*app.video, *app.renderer);
-  }
-  static bool wait_timing_target = false;
-  static u64 timing_target_usec  = 5500;
-  u64 timing_target              = USEC(timing_target_usec);
-  debug::config_bool("timing.wait_timing_target", &wait_timing_target);
-  debug::config_u64("timing.timing_target_usec", &timing_target_usec);
+  u64 timing_target                   = USEC(timing_target_usec);
+  utils::config_bool("timing.wait_timing_target", &wait_timing_target);
+  utils::config_u64("timing.timing_target_usec", &timing_target_usec);
   if (wait_timing_target) {
-    auto frame_report_scope = debug::scope_start("wait timing target"_hs);
-    defer { debug::scope_end(frame_report_scope); };
+    auto frame_report_scope = utils::scope_start("wait timing target"_hs);
+    defer { utils::scope_end(frame_report_scope); };
     LOG_TRACE("%lu", timing_target);
     os::sleep(timing_target);
   }
 
-  static bool print_frame_report      = false;
-  static bool print_frame_report_full = true;
-  debug::config_bool("debug.frame_report", &print_frame_report);
-  debug::config_bool("debug.frame_report.full", &print_frame_report_full);
+  utils::config_bool("debug.frame_report", &print_frame_report);
+  utils::config_bool("debug.frame_report.full", &print_frame_report_full);
   if (print_frame_report) {
-    auto frame_report_scope = debug::scope_start("frame report"_hs);
-    defer { debug::scope_end(frame_report_scope); };
+    auto frame_report_scope = utils::scope_start("frame report"_hs);
+    defer { utils::scope_end(frame_report_scope); };
 
-    auto timing_infos = debug::get_last_frame_timing_infos(frame_arena);
+    auto timing_infos = utils::get_last_frame_timing_infos(frame_arena);
     if (print_frame_report_full) {
       for (auto [name, t] : timing_infos.timings.iter()) {
         LOG_BUILDER(
@@ -319,6 +285,49 @@ handle_events: {
         push("frame low 99: ").push(timing_infos.stats.low_99, os::TimeFormat::MMM_UUU_NNN)
     );
   }
+}
+
+EXPORT AppEvent frame(core::Arena& frame_arena, App& app) {
+  AppEvent sev{};
+  SDL_Event ev{};
+
+  ImGui_ImplVulkan_NewFrame();
+  ImGui_ImplSDL3_NewFrame();
+  ImGui::NewFrame();
+  defer { ImGui::EndFrame(); };
+  utils::config_new_frame();
+  profiling_window();
+
+handle_events: {
+  auto poll_event_scope = utils::scope_start("poll event start"_hs);
+  defer { utils::scope_end(poll_event_scope); };
+
+  while (SDL_PollEvent(&ev)) {
+    sev |= handle_events(ev, app.input_state);
+  }
+}
+
+  update(frame_arena, app);
+
+  AppEvent renderev = render(app.state, *app.video, *app.renderer);
+  if (any(renderev & AppEvent::SkipRender)) {
+    LOG_TRACE("rendering skiped");
+    goto handle_events;
+  }
+
+  sev |= renderev;
+
+  if (any(sev & AppEvent::RebuildRenderer)) {
+    LOG_INFO("rebuilding renderer");
+    uninit_renderer(*app.video, *app.renderer);
+    app.renderer = init_renderer(*app.arena, *app.video);
+  }
+  if (any(sev & AppEvent::RebuildSwapchain)) {
+    subsystem::video_rebuild_swapchain(*app.video);
+    swapchain_rebuilt(*app.video, *app.renderer);
+  }
+
+  debug_stuff(frame_arena, app);
 
   return sev;
 }

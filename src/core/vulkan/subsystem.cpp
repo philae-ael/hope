@@ -1,6 +1,3 @@
-#include "core/debug/time.h"
-#include "core/vulkan/timings.h"
-#include <core/vulkan/subsystem.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_error.h>
@@ -10,8 +7,11 @@
 
 #include <core/containers/vec.h>
 #include <core/core.h>
+#include <core/utils/time.h>
 #include <core/vulkan/frame.h>
 #include <core/vulkan/init.h>
+#include <core/vulkan/subsystem.h>
+#include <core/vulkan/timings.h>
 #include <core/vulkan/vulkan.h>
 
 #include <vk_mem_alloc.h>
@@ -145,7 +145,7 @@ EXPORT vk::Result<VideoFrame> video::begin_frame() {
 
 using namespace core::literals;
 EXPORT VkResult video::end_frame(VideoFrame vframe, VkCommandBuffer cmd) {
-  auto submit = debug::scope_start("submit"_hs);
+  auto submit = utils::scope_start("submit"_hs);
   VkSemaphoreSubmitInfo wait_semaphore_submit_info{
       .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
       .semaphore = vframe.frame.acquire_semaphore,
@@ -170,7 +170,7 @@ EXPORT VkResult video::end_frame(VideoFrame vframe, VkCommandBuffer cmd) {
       .pSignalSemaphoreInfos    = &signal_semaphore_submit_info
   };
   vkQueueSubmit2(device.omni_queue, 1, &submit_info, vframe.frame.render_done_fence);
-  debug::scope_end(submit);
+  utils::scope_end(submit);
 
   swapchain_images[vframe.frame.swapchain_image_index] = vframe.swapchain_image;
   return vk::end_frame(device, device.omni_queue, swapchain, vframe.frame);

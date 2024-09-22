@@ -1,8 +1,7 @@
-
 #include <core/core.h>
-#include <core/debug/time.h>
 #include <core/math.h>
 #include <core/os/time.h>
+#include <core/utils/time.h>
 
 #include <imgui.h>
 
@@ -177,13 +176,13 @@ static core::array color_map{
 };
 
 void profiling_window() {
-  auto frame_report_scope = debug::scope_start("frame report"_hs);
-  defer { debug::scope_end(frame_report_scope); };
+  auto frame_report_scope = utils::scope_start("frame report"_hs);
+  defer { utils::scope_end(frame_report_scope); };
 
   auto scratch = core::scratch_get();
   defer { scratch.retire(); };
   auto frame_timing_infos =
-      debug::get_last_frame_timing_infos(*scratch, debug::scope_category::CPU);
+      utils::get_last_frame_timing_infos(*scratch, utils::scope_category::CPU);
 
   if (!freeze) {
     cur_frame_idx = (cur_frame_idx + 1) % PROFILER_MAX_FRAME;
@@ -205,7 +204,7 @@ void profiling_window() {
 
     {
       auto frame_timing_infos =
-          debug::get_last_frame_timing_infos(*scratch, debug::scope_category::GPU);
+          utils::get_last_frame_timing_infos(*scratch, utils::scope_category::GPU);
       os::time sum{};
       for (auto [entry_idx, timing_info] : core::enumerate{frame_timing_infos.timings.iter()}) {
         gpu_frame_data_entries[cur_frame_idx][entry_idx] = {

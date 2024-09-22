@@ -2,9 +2,9 @@
 #include "app.h"
 
 #include <core/core.h>
-#include <core/debug/time.h>
 #include <core/fs/fs.h>
 #include <core/math.h>
+#include <core/utils/time.h>
 #include <core/vulkan/image.h>
 #include <core/vulkan/pipeline.h>
 #include <core/vulkan/subsystem.h>
@@ -215,8 +215,8 @@ core::storage<core::str8> TriangleRenderer::file_deps() {
 
 void TriangleRenderer::render(AppState* app_state, VkCommandBuffer cmd, vk::image2D target) {
   using namespace core::literals;
-  auto triangle_scope = debug::scope_start("triangle"_hs);
-  defer { debug::scope_end(triangle_scope); };
+  auto triangle_scope = utils::scope_start("triangle"_hs);
+  defer { utils::scope_end(triangle_scope); };
   core::array color_attachments{target.as_attachment(
       vk::image2D::AttachmentLoadOp::Clear{{.color = {.float32 = {0.0, 0.0, 0.0, 0.0}}}},
       vk::image2D::AttachmentStoreOp::Store

@@ -5,7 +5,7 @@
 #include <core/core.h>
 #include <core/os/time.h>
 
-namespace debug {
+namespace utils {
 
 struct timing_info {
   core::hstr8 name;
@@ -30,7 +30,7 @@ struct scope {
   os::time t;
 };
 
-void init();
+void init_timing_tracking();
 void reset();
 
 void frame_start(scope_category cat = scope_category::CPU);
@@ -51,6 +51,6 @@ void scope_import(scope_category cat, core::hstr8 name, os::time t);
 
 timing_infos get_last_frame_timing_infos(core::Arena& ar, scope_category cat = scope_category::CPU);
 os::time get_last_frame_dt();
-} // namespace debug
+} // namespace utils
 
 #endif // INCLUDE_DEBUG_TIME_H_

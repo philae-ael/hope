@@ -1,9 +1,10 @@
-#include "core/vulkan/timings.h"
-#include "core/containers/vec.h"
-#include "core/core/string.h"
-#include "core/debug/time.h"
 #include "vulkan.h"
+
+#include <core/containers/vec.h>
 #include <core/core.h>
+#include <core/utils/time.h>
+#include <core/vulkan/timings.h>
+
 #include <vulkan/vulkan_core.h>
 
 #define MAX_TIMESTAMPS 128
@@ -58,9 +59,9 @@ EXPORT void timestamp_frame_start(VkDevice device) {
     for (auto& scope : scopes.iter()) {
       auto t = f32(timestamps_storage[2 * scope.end] - timestamps_storage[2 * scope.start]) *
                timestamp_period;
-      debug::scope_import(debug::scope_category::GPU, scope.name, {u64(t)});
+      utils::scope_import(utils::scope_category::GPU, scope.name, {u64(t)});
     }
-    debug::frame_start(debug::scope_category::GPU);
+    utils::frame_start(utils::scope_category::GPU);
     timestamp_index = 0;
     scopes.set_size(0);
     vkResetQueryPool(device, query_pool_timestamps, 0, MAX_TIMESTAMPS);

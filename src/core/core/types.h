@@ -177,14 +177,12 @@ struct TaggedPtr {
       : TaggedPtr(p, 0) {}
 };
 
-/// \cond internal
 namespace detail_ {
 template <class T, class underlying>
 struct handle_impl {
   enum class handle_t : underlying {};
 };
 } // namespace detail_
-/// \endcond
 
 template <class T, class underlying = usize>
 using handle_t = detail_::handle_impl<T, underlying>::handle_t;
