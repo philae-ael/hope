@@ -2,9 +2,9 @@
 #include "app.h"
 
 #include <core/core.h>
-#include <core/core/math.h>
 #include <core/debug/time.h>
 #include <core/fs/fs.h>
+#include <core/math.h>
 #include <core/vulkan/image.h>
 #include <core/vulkan/pipeline.h>
 #include <core/vulkan/subsystem.h>
@@ -14,6 +14,7 @@
 #include <vk_mem_alloc.h>
 
 using namespace core::literals;
+using math::Mat4;
 
 core::array deps{
     "assets/shaders/tri.spv"_s,
@@ -244,7 +245,7 @@ void TriangleRenderer::render(AppState* app_state, VkCommandBuffer cmd, vk::imag
   f32 aspect_ratio = (f32)target.extent2.width / (f32)target.extent2.height;
   auto matrices    = app_state->camera.matrices(aspect_ratio);
   vkCmdPushConstants(
-      cmd, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, 2 * sizeof(core::Mat4), &matrices
+      cmd, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, 2 * sizeof(Mat4), &matrices
   );
 
   vkCmdBindIndexBuffer(cmd, index_buffer, 0, VK_INDEX_TYPE_UINT16);

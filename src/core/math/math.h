@@ -3,12 +3,12 @@
 
 #include <cmath>
 
-#include "fwd.h"
+#include <core/core/fwd.h>
 
 #include <immintrin.h>
 #include <xmmintrin.h>
 
-namespace core {
+namespace math {
 
 using f32x4 = __m128;
 using u32x4 = __m128i;
@@ -29,7 +29,7 @@ constexpr f32 FRAC_1_SQRT3 = 0.7071067811865475f;
 constexpr f32 LN2          = 0.693147180559945f;
 } // namespace consts
 
-#define DEGREE(x) ((x) * ::core::consts::DEG_TO_RAD)
+#define DEGREE(x) ((x) * ::math::consts::DEG_TO_RAD)
 
 /// VECTORS
 /// ======
@@ -261,11 +261,11 @@ constexpr VectorFormat VectorFormatMultiline{
 constexpr VectorFormat VectorFormatPretty{
     .width     = 6,
     .precision = 2,
-    .flags     = enum_helpers::enum_or(VectorFormatFlags::Multiline, VectorFormatFlags::Alt),
+    .flags     = core::enum_helpers::enum_or(VectorFormatFlags::Multiline, VectorFormatFlags::Alt),
 };
 
-str8 to_str8(Arena& arena, Vec4 v, VectorFormat format = {});
-str8 to_str8(Arena& arena, Vec2 v, VectorFormat format = {});
+core::str8 to_str8(core::Arena& arena, Vec4 v, VectorFormat format = {});
+core::str8 to_str8(core::Arena& arena, Vec2 v, VectorFormat format = {});
 
 /// MATRICES
 /// ======
@@ -339,7 +339,7 @@ union Mat4x4 {
     return col(0) * v[0] + col(1) * v[1] + col(2) * v[2] + col(3) * v[3];
   }
 
-  constexpr inline friend Mat4x4 operator+(core::Mat4x4 lhs, core::Mat4x4 rhs) {
+  constexpr inline friend Mat4x4 operator+(math::Mat4x4 lhs, math::Mat4x4 rhs) {
     return {
         col_major,
         lhs.col(0) + rhs.col(0),
@@ -348,7 +348,7 @@ union Mat4x4 {
         lhs.col(3) + rhs.col(3),
     };
   }
-  constexpr inline friend Mat4x4 operator*(f32 l, core::Mat4x4 rhs) {
+  constexpr inline friend Mat4x4 operator*(f32 l, math::Mat4x4 rhs) {
     return {col_major, l * rhs.col(0), l * rhs.col(1), l * rhs.col(2), l * rhs.col(3)};
   }
   static const Mat4x4 Zero;
@@ -473,7 +473,7 @@ union Quat {
         {     2*s*(x*y - z*w), 1 - 2*s*(x*x + z*z),     2*s*(y*z + x*w), 0},
         {     2*s*(x*z + y*w),     2*s*(y*z - x*w), 1 - 2*s*(x*x + y*y), 0},
         // clang-format on
-        core::Vec4::W,
+        math::Vec4::W,
     };
   }
   static const Quat Id;
@@ -622,5 +622,5 @@ struct windowed_series {
 constexpr bool f32_close_enough(f32 a, f32 b, f32 epsilon = 1e-5f) {
   return fabs(b - a) <= epsilon;
 }
-} // namespace core
+} // namespace math
 #endif // INCLUDE_CORE_MATH_H_

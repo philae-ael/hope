@@ -20,26 +20,26 @@ find_package(Vulkan REQUIRED)
 add_subdirectory(vendor SYSTEM)
 
 add_library(core
+  src/core/containers/sync.cpp
   src/core/core/debug.cpp
   src/core/core/log.cpp
-  src/core/core/math.cpp
   src/core/core/memory.cpp
   src/core/core/platform.cpp
   src/core/core/string.cpp
   src/core/core/type_info.cpp
-  src/core/containers/sync.cpp
-  src/core/os/time.cpp
-  src/core/os/memory.cpp
-  src/core/vulkan/init.cpp
-  src/core/vulkan/vulkan.cpp
-  src/core/vulkan/frame.cpp
-  src/core/vulkan/vma.cpp
-  src/core/vulkan/subsystem.cpp
-  src/core/vulkan/image.cpp
-  src/core/vulkan/timings.cpp
-  src/core/fs/fs.cpp
-  src/core/debug/time.cpp
   src/core/debug/config.cpp
+  src/core/debug/time.cpp
+  src/core/fs/fs.cpp
+  src/core/math/math.cpp
+  src/core/os/memory.cpp
+  src/core/os/time.cpp
+  src/core/vulkan/frame.cpp
+  src/core/vulkan/image.cpp
+  src/core/vulkan/init.cpp
+  src/core/vulkan/subsystem.cpp
+  src/core/vulkan/timings.cpp
+  src/core/vulkan/vma.cpp
+  src/core/vulkan/vulkan.cpp
 )
 target_include_directories(core PUBLIC src)
 

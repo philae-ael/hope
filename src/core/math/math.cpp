@@ -1,5 +1,6 @@
 #include "math.h"
-#include "string.h"
+
+#include <core/core.h>
 
 namespace core {
 struct Arena;
@@ -21,9 +22,9 @@ const char* VEC4_FMT_FLAGS[]{
     "{\n  %-*.*f,\n  %-*.*f,\n  %-*.*f,\n  %-*.*f,\n}",
 };
 
-namespace core {
-EXPORT str8 to_str8(Arena& arena, Vec2 v, VectorFormat format) {
-  string_builder sb{};
+namespace math {
+EXPORT core::str8 to_str8(core::Arena& arena, Vec2 v, VectorFormat format) {
+  core::string_builder sb{};
   // clang-format off
     sb.pushf(arena, VEC2_FMT_FLAGS[(usize)format.flags & 0b111],
              format.width, format.precision , v.x, 
@@ -33,8 +34,8 @@ EXPORT str8 to_str8(Arena& arena, Vec2 v, VectorFormat format) {
   return sb.commit(arena);
 }
 
-EXPORT str8 to_str8(Arena& arena, Vec4 v, VectorFormat format) {
-  string_builder sb{};
+EXPORT core::str8 to_str8(core::Arena& arena, Vec4 v, VectorFormat format) {
+  core::string_builder sb{};
   // clang-format off
     sb.pushf(arena, VEC4_FMT_FLAGS[(usize)format.flags & 0b111],
              format.width, format.precision , v.x, 
@@ -46,4 +47,4 @@ EXPORT str8 to_str8(Arena& arena, Vec4 v, VectorFormat format) {
   return sb.commit(arena);
 }
 
-} // namespace core
+} // namespace math

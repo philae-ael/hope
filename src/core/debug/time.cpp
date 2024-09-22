@@ -1,6 +1,6 @@
 #include "time.h"
 #include <core/core.h>
-#include <core/core/math.h>
+#include <core/math.h>
 #include <core/os/time.h>
 
 struct string_map {
@@ -47,7 +47,7 @@ static core::array curs{
 };
 
 static f32 frame_time_storage[FRAME_COUNT];
-static core::windowed_series frame_time_series{frame_time_storage};
+static math::windowed_series frame_time_series{frame_time_storage};
 
 static os::time frame_start_t;
 

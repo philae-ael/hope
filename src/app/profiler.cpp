@@ -1,10 +1,13 @@
 
-#include "core/core.h"
-#include "core/core/math.h"
-#include "core/debug/time.h"
-#include "core/os/time.h"
+#include <core/core.h>
+#include <core/debug/time.h>
+#include <core/math.h>
+#include <core/os/time.h>
+
 #include <imgui.h>
+
 using namespace core::literals;
+using math::Vec2;
 
 struct Color {
   u8 r, g, b;
@@ -35,7 +38,7 @@ struct render_profiling_config {
   f32 max_decay                 = 3.f;
 };
 
-ImVec2 to_ImVec2(core::Vec2 v) {
+ImVec2 to_ImVec2(Vec2 v) {
   return ImVec2(v.x, v.y);
 }
 
@@ -52,24 +55,24 @@ void render_profiling_graph(
 
   ImDrawList* drawList = ImGui::GetWindowDrawList();
   auto p               = ImGui::GetCursorScreenPos();
-  const core::Vec2 graph_pos{p.x, p.y};
-  const core::Vec2 graph_size{config.graph_width, config.height};
+  const Vec2 graph_pos{p.x, p.y};
+  const Vec2 graph_size{config.graph_width, config.height};
 
-  const core::Vec2 frame_width              = config.frame_width * core::Vec2::X;
-  const core::Vec2 frame_padding_horizontal = config.frame_padding_horizontal * core::Vec2::X;
+  const Vec2 frame_width              = config.frame_width * Vec2::X;
+  const Vec2 frame_padding_horizontal = config.frame_padding_horizontal * Vec2::X;
 
-  const usize max_frame_drawn = u32((graph_size.x - 2 * config.frame_margin_horizontal) /
-                                    (frame_width + frame_padding_horizontal).x) -
+  const usize max_frame_drawn         = u32((graph_size.x - 2 * config.frame_margin_horizontal) /
+                                            (frame_width + frame_padding_horizontal).x) -
                                 1;
-  const core::Vec2 graph_horizontal_margins{
+  const Vec2 graph_horizontal_margins{
       ((graph_size.x - 2 * config.frame_margin_horizontal) -
        f32(max_frame_drawn) * (frame_width + frame_padding_horizontal).x) /
           2,
       0,
   };
 
-  const core::Vec2 graph_right_for_frame = graph_pos + graph_size - graph_horizontal_margins -
-                                           config.frame_margin_horizontal * core::Vec2::X;
+  const Vec2 graph_right_for_frame =
+      graph_pos + graph_size - graph_horizontal_margins - config.frame_margin_horizontal * Vec2::X;
 
   f32 max_s = {};
   {
@@ -97,7 +100,7 @@ void render_profiling_graph(
   for (usize idx = 0; idx < max_frame_drawn; idx++) {
     const usize frame_idx   = (2 * frame_data.size - idx + offset) % frame_data.size;
     const auto& frame_datum = frame_data[frame_idx];
-    const core::Vec2 frame_left =
+    const Vec2 frame_left =
         graph_right_for_frame - f32(idx) * (frame_width + frame_padding_horizontal) - frame_width;
 
     f32 cur_height = config.margin_vertical;
@@ -105,8 +108,8 @@ void render_profiling_graph(
       const f32 height = ((f32)t.t.ns * 1e-9f / max_s) * config.height;
       if (height > config.min_draw_height) {
         drawList->AddRectFilled(
-            to_ImVec2(frame_left - (height + cur_height) * core::Vec2::Y),
-            to_ImVec2(frame_left + core::Vec2{config.frame_width, -cur_height}), t.color
+            to_ImVec2(frame_left - (height + cur_height) * Vec2::Y),
+            to_ImVec2(frame_left + Vec2{config.frame_width, -cur_height}), t.color
         );
       }
       cur_height += height + config.frame_padding_vertical;
@@ -115,16 +118,14 @@ void render_profiling_graph(
 
   // Draw Legend
   {
-    const core::Vec2 legend_pos =
-        graph_pos + graph_size + config.legend_horizontal_margin * core::Vec2::X;
+    const Vec2 legend_pos   = graph_pos + graph_size + config.legend_horizontal_margin * Vec2::X;
 
     const usize frame_idx   = (2 * frame_data.size + offset) % frame_data.size;
     const auto& frame_datum = frame_data[frame_idx];
     const f32 textHeight    = config.height / (f32)frame_datum.as.size;
-    const core::Vec2 textSizeY{0, ImGui::CalcTextSize("Text").y};
+    const Vec2 textSizeY{0, ImGui::CalcTextSize("Text").y};
 
-    core::Vec2 textPos =
-        legend_pos + core::Vec2{30, -textHeight / 2 - config.frame_padding_vertical};
+    Vec2 textPos   = legend_pos + Vec2{30, -textHeight / 2 - config.frame_padding_vertical};
     f32 cur_height = config.margin_vertical;
 
     for (auto& t : frame_datum.as.iter()) {
@@ -132,8 +133,8 @@ void render_profiling_graph(
       if (height > config.min_draw_height) {
         // Legend
         core::array points{
-            to_ImVec2(legend_pos - (height + cur_height) * core::Vec2::Y),
-            to_ImVec2(legend_pos - cur_height * core::Vec2::Y),
+            to_ImVec2(legend_pos - (height + cur_height) * Vec2::Y),
+            to_ImVec2(legend_pos - cur_height * Vec2::Y),
             to_ImVec2(textPos + (1.0f - 0.2f) * textSizeY),
             to_ImVec2(textPos + 0.4f * textSizeY),
         };
@@ -144,7 +145,7 @@ void render_profiling_graph(
         sb.pushf(*ar, "%3d.%03d ms", duration.msec, duration.usec);
         auto txt = sb.commit(*ar);
         drawList->AddText(
-            to_ImVec2(textPos + config.legend_text_margin_margin * core::Vec2::X), t.color,
+            to_ImVec2(textPos + config.legend_text_margin_margin * Vec2::X), t.color,
             (const char*)txt.data, (const char*)(txt.data + txt.len)
         );
         textPos.y -= textHeight;

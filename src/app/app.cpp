@@ -20,6 +20,8 @@
 #include <loader/app_loader.h>
 
 using namespace core::enum_helpers;
+using math::Quat;
+using math::Vec4;
 
 SDL_Gamepad* find_gamepad() {
   int joystick_count;
@@ -189,8 +191,8 @@ EXPORT App* init(core::Arena& arena, App* app, AppState* app_state, subsystem::v
   ImGui_ImplSDL3_InitForOther(video->window);
   app->renderer              = init_renderer(*app->arena, *app->video);
 
-  app_state->camera.position = 1.5f * core::Vec4::Z;
-  app_state->camera.rotation = core::Quat::Id;
+  app_state->camera.position = 1.5f * Vec4::Z;
+  app_state->camera.rotation = Quat::Id;
   app->input_state.gamepad   = find_gamepad();
 
   return app;
@@ -232,9 +234,9 @@ handle_events: {
 }
 
   auto dt              = debug::get_last_frame_dt().secs();
-  auto forward         = app.state->camera.rotation.rotate(-core::Vec4::Z);
-  auto sideway         = app.state->camera.rotation.rotate(core::Vec4::X);
-  auto upward          = core::Vec4::Y;
+  auto forward         = app.state->camera.rotation.rotate(-Vec4::Z);
+  auto sideway         = app.state->camera.rotation.rotate(Vec4::X);
+  auto upward          = Vec4::Y;
 
   static float speed_x = 2;
   static float speed_y = 2;
@@ -254,8 +256,8 @@ handle_events: {
   debug::config_f32("input.rot_speed_pitch", &rot_speed_pitch);
   debug::config_f32("input.rot_speed_yaw", &rot_speed_yaw);
   app.state->camera.rotation =
-      core::Quat::from_axis_angle(sideway, rot_speed_pitch * dt * app.input_state.pitch.value()) *
-      core::Quat::from_axis_angle(upward, rot_speed_yaw * dt * app.input_state.yaw.value()) *
+      Quat::from_axis_angle(sideway, rot_speed_pitch * dt * app.input_state.pitch.value()) *
+      Quat::from_axis_angle(upward, rot_speed_yaw * dt * app.input_state.yaw.value()) *
       app.state->camera.rotation;
 
   AppEvent renderev = render(app.state, *app.video, *app.renderer);
