@@ -64,9 +64,7 @@ EXPORT void init() {
 
 EXPORT void register_path(core::str8 path, core::str8 target) {
   auto parts = core::split{path, '/'};
-  LOG_BUILDER(
-      core::LogLevel::Trace, push("registering path ").push(path).push(" to ").push(target)
-  );
+  LOG_BUILDER(core::LogLevel::Trace, push("registering path ").push(path).push(" to ").push(target));
 
   auto* t = &fs.root;
   for (auto part : parts) {
@@ -123,7 +121,7 @@ EXPORT core::str8 resolve_path(core::Arena& arena, core::str8 path) {
   return sb.commit(arena, core::str8::from("/"));
 }
 
-EXPORT core::storage<u8> read_all(core::Arena& arena, core::str8 path) {
+EXPORT core::storage<u8> read_all(core::Allocator alloc, core::str8 path) {
   auto scratch = core::scratch_get();
   defer { scratch.retire(); };
 
@@ -131,17 +129,14 @@ EXPORT core::storage<u8> read_all(core::Arena& arena, core::str8 path) {
 
   FILE* f       = fopen(realpath, "rb");
   if (f == nullptr) {
-    LOG_BUILDER(
-        core::LogLevel::Error,
-        with_stacktrace().panic().pushf("can't open file: %s", strerror(errno))
-    );
+    LOG_BUILDER(core::LogLevel::Error, with_stacktrace().panic().pushf("can't open file: %s", strerror(errno)));
   }
 
   fseek(f, 0L, SEEK_END);
   usize sz = (usize)ftell(f);
   fseek(f, 0, SEEK_SET);
 
-  auto storage    = arena.allocate_array<u8>(sz);
+  auto storage    = alloc.allocate_array<u8>(sz);
   usize data_read = fread(storage.data, 1, sz, f);
   ASSERT(data_read == sz);
 

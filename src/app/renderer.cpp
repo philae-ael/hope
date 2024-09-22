@@ -32,13 +32,11 @@ MainRenderer MainRenderer::init(subsystem::video& v) {
 void MainRenderer::render(AppState* app_state, VkCommandBuffer cmd, vk::image2D& swapchain_image) {
   vk::pipeline_barrier(cmd, swapchain_image.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}));
 
-  auto triangle_scope =
-      vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "triangle"_hs);
+  auto triangle_scope = vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "triangle"_hs);
   triangle_renderer.render(app_state, cmd, swapchain_image);
   vk::timestamp_scope_end(cmd, VK_PIPELINE_STAGE_2_NONE, triangle_scope);
 
-  auto imgui_scope =
-      vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "imgui"_hs);
+  auto imgui_scope = vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "imgui"_hs);
   imgui_renderer.render(cmd, swapchain_image);
   vk::timestamp_scope_end(cmd, VK_PIPELINE_STAGE_2_NONE, imgui_scope);
 
@@ -66,8 +64,8 @@ void on_dep_file_modified(void* userdata) {
   renderer.need_rebuild = true;
 }
 
-Renderer* init_renderer(core::Arena& arena, subsystem::video& v) {
-  Renderer& rdata    = *new (arena.allocate<Renderer>()) Renderer{};
+Renderer* init_renderer(core::Allocator alloc, subsystem::video& v) {
+  Renderer& rdata    = *new (alloc.allocate<Renderer>()) Renderer{};
   rdata.need_rebuild = false;
 
   VkCommandPoolCreateInfo command_pool_create_info{
@@ -90,7 +88,7 @@ Renderer* init_renderer(core::Arena& arena, subsystem::video& v) {
     auto deps    = rdata.main_renderer.file_deps(*scratch);
     for (auto f : deps.iter()) {
       auto handle = fs::register_modified_file_callback(f, on_dep_file_modified, &rdata);
-      rdata.on_file_modified_handles.push(arena, handle);
+      rdata.on_file_modified_handles.push(alloc, handle);
     }
     scratch.retire();
   }

@@ -11,12 +11,8 @@ namespace core {
 
 /* FORMATTERS */
 
-log_entry default_log_formatter(void*, Arena& arena, log_entry entry) {
-  entry.builder = string_builder{}
-                      .push(arena, entry.level)
-                      .push(arena, ": ")
-                      .append(entry.builder)
-                      .push(arena, "\n");
+log_entry default_log_formatter(void*, Allocator alloc, log_entry entry) {
+  entry.builder = string_builder{}.push(alloc, entry.level).push(alloc, ": ").append(entry.builder).push(alloc, "\n");
   return entry;
 }
 
@@ -31,20 +27,29 @@ static core::str8 LEVEL_COLOR[]{
 
 static core::str8 COLOR_RESET = ESCAPE "[0m"_s;
 
-EXPORT log_entry log_fancy_formatter(void*, core::Arena& arena, core::log_entry entry) {
+EXPORT log_entry log_fancy_formatter(void*, Allocator alloc, core::log_entry entry) {
   auto old_builder = entry.builder;
   entry.builder    = core::string_builder{};
 
-  entry.builder.push(arena, LEVEL_COLOR[(usize)entry.level])
-      .push(arena, entry.level)
-      .push(arena, COLOR_RESET)
-      .push(arena, " ");
+  entry.builder.push(alloc, LEVEL_COLOR[(usize)entry.level])
+      .push(alloc, entry.level)
+      .push(alloc, COLOR_RESET)
+      .push(alloc, " ");
 
-  entry.builder.push(arena, entry.loc.func);
+  entry.builder.push(alloc, entry.loc.func);
   if (entry.loc.line != u32(-1)) {
-    entry.builder.pushf(arena, ":%u", entry.loc.line);
+    entry.builder.pushf(alloc, ":%u", entry.loc.line);
   }
-  entry.builder.push(arena, ": ").append(old_builder).push(arena, "\n");
+  entry.builder.push(alloc, ": ").append(old_builder).push(alloc, "\n");
+  return entry;
+}
+
+EXPORT log_entry log_timed_formatter(void* u, Allocator alloc, core::log_entry entry) {
+  entry         = log_fancy_formatter(nullptr, alloc, entry);
+  entry.builder = string_builder{}
+                      .push(alloc, os::time_monotonic(), os::TimeFormat::MM_SS_MMM)
+                      .push(alloc, " ")
+                      .append(entry.builder);
   return entry;
 }
 
@@ -77,8 +82,7 @@ EXPORT bool log_filter(LogLevel level) {
 }
 
 EXPORT void log_emit(Arena& arena, log_entry& entry) {
-  str8 msg =
-      global_log_formatter(global_log_formatter_userdata, arena, entry).builder.commit(arena);
+  str8 msg = global_log_formatter(global_log_formatter_userdata, arena, entry).builder.commit(arena);
   global_log_writer(global_log_writer_userdata, msg);
 }
 
@@ -153,14 +157,4 @@ EXPORT log_builder& log_builder::panic() {
   flags = flags | flags_t::panic;
   return *this;
 }
-
-EXPORT log_entry log_timed_formatter(void* u, Arena& arena, core::log_entry entry) {
-  entry         = log_fancy_formatter(nullptr, arena, entry);
-  entry.builder = string_builder{}
-                      .push(arena, os::time_monotonic(), os::TimeFormat::MM_SS_MMM)
-                      .push(arena, " ")
-                      .append(entry.builder);
-  return entry;
-}
-
 } // namespace core

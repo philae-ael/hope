@@ -58,12 +58,8 @@ enum class TimeFormat {
   MMM_UUU_NNN,
 };
 
-core::str8 to_str8(
-    core::Arena& arena,
-    duration_info duration_info,
-    TimeFormat format = TimeFormat::HH_MM_SS_MMM
-);
-core::str8 to_str8(core::Arena& arena, time t, TimeFormat format = TimeFormat::MM_SS_MMM_UUU);
+core::str8 to_str8(core::Allocator alloc, duration_info duration_info, TimeFormat format = TimeFormat::HH_MM_SS_MMM);
+core::str8 to_str8(core::Allocator alloc, time t, TimeFormat format = TimeFormat::MM_SS_MMM_UUU);
 
 void sleep(u64 ns);
 } // namespace os

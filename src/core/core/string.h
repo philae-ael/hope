@@ -7,11 +7,10 @@
 
 #include "base.h"
 #include "fwd.h"
+#include "memory.h"
 #include "types.h"
 
 namespace core {
-struct Arena;
-
 // For ADL purpose!
 inline str8 to_str8(str8 s) {
   return s;
@@ -41,8 +40,8 @@ concept Str8ifiable = requires(T x) {
 };
 
 template <class T, class... Args>
-concept Str8ifiableDyn = requires(Arena& arena, T x, Args... args) {
-  { to_str8(arena, x, args...) };
+concept Str8ifiableDyn = requires(Allocator alloc, T x, Args... args) {
+  { to_str8(alloc, x, args...) };
 } && !Str8ifiable<T>;
 
 struct string_builder {
@@ -54,21 +53,21 @@ struct string_builder {
   string_builder& append(string_builder& sb);
   string_builder& push_node(string_node* node);
   string_builder& push_str8(string_node* node, str8 str);
-  string_builder& push_str8(Arena& arena, str8 str);
+  string_builder& push_str8(Allocator alloc, str8 str);
   template <Str8ifiable T, class... Args>
-  string_builder& push(Arena& arena, T&& t, Args&&... args) {
-    return push_str8(arena, to_str8(FWD(t), FWD(args)...));
+  string_builder& push(Allocator alloc, T&& t, Args&&... args) {
+    return push_str8(alloc, to_str8(FWD(t), FWD(args)...));
   }
   template <class T, class... Args>
-  string_builder& push(Arena& arena, T&& t, Args&&... args)
+  string_builder& push(Allocator alloc, T&& t, Args&&... args)
     requires Str8ifiableDyn<T, Args...>
   {
-    return push_str8(arena, to_str8(arena, FWD(t), FWD(args)...));
+    return push_str8(alloc, to_str8(alloc, FWD(t), FWD(args)...));
   }
 
-  PRINTF_ATTRIBUTE(3, 4) string_builder& pushf(Arena& arena, const char* fmt, ...);
-  string_builder& vpushf(Arena& arena, const char* fmt, va_list ap);
-  str8 commit(Arena& arena, str8 join = {}) const;
+  PRINTF_ATTRIBUTE(3, 4) string_builder& pushf(Allocator alloc, const char* fmt, ...);
+  string_builder& vpushf(Allocator alloc, const char* fmt, va_list ap);
+  str8 commit(Allocator alloc, str8 join = {}) const;
 };
 
 namespace literals {
@@ -85,16 +84,12 @@ constexpr inline u64 operator""_h(const char* s, std::size_t len) {
 } // namespace literals
 
 template <class T>
-str8 to_str8(Arena& arena, Maybe<T> m)
+str8 to_str8(Allocator alloc, Maybe<T> m)
   requires Str8ifiable<T> || Str8ifiableDyn<T>
 {
   using namespace literals;
   if (m.is_some()) {
-    return string_builder{}
-        .push(arena, "Some(")
-        .push(arena, m.value())
-        .push(arena, ")")
-        .commit(arena);
+    return string_builder{}.push(alloc, "Some(").push(alloc, m.value()).push(alloc, ")").commit(alloc);
   } else {
     return "None"_s;
   }

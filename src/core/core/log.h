@@ -28,7 +28,7 @@ struct log_entry {
   source_location loc;
 };
 
-using log_formatter = log_entry (*)(void*, Arena&, log_entry);
+using log_formatter = log_entry (*)(void*, Allocator, log_entry);
 void log_register_global_formatter(log_formatter, void* user);
 
 using log_writer = void (*)(void*, str8);
@@ -39,7 +39,7 @@ bool log_filter(LogLevel level);
 void log_set_global_level(LogLevel level);
 
 struct log_builder {
-  scratch arena;
+  Scratch arena;
   log_entry entry;
 
   enum class flags_t {
@@ -49,7 +49,7 @@ struct log_builder {
 
   template <class T, class... Args>
   log_builder& push(T&& t, Args&&... args) {
-    entry.builder.push(*arena, FWD(t), FWD(args)...);
+    entry.builder.push(arena, FWD(t), FWD(args)...);
     return *this;
   }
 
@@ -65,8 +65,8 @@ struct log_builder {
   log_builder(LogLevel level, source_location loc);
 };
 
-log_entry log_fancy_formatter(void*, core::Arena& arena, core::log_entry entry);
-log_entry log_timed_formatter(void* u, Arena& arena, core::log_entry entry);
+log_entry log_fancy_formatter(void*, Allocator alloc, core::log_entry entry);
+log_entry log_timed_formatter(void*, Allocator alloc, core::log_entry entry);
 
 #define LOG_BUILDER(level, instr) \
   (log_filter(level) ? core::log_builder(level, CURRENT_SOURCE_LOCATION).instr.emit() : (void)0)

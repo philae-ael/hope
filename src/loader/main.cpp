@@ -20,11 +20,11 @@ using namespace core;
 using namespace core::literals;
 using namespace core::enum_helpers;
 
-log_entry timed_formatter(void* u, Arena& arena, core::log_entry entry) {
-  entry         = log_fancy_formatter(nullptr, arena, entry);
+log_entry timed_formatter(void* u, Allocator alloc, core::log_entry entry) {
+  entry         = log_fancy_formatter(nullptr, alloc, entry);
   entry.builder = string_builder{}
-                      .push(arena, os::time_monotonic(), os::TimeFormat::MM_SS_MMM)
-                      .push(arena, " ")
+                      .push(alloc, os::time_monotonic(), os::TimeFormat::MM_SS_MMM)
+                      .push(alloc, " ")
                       .append(entry.builder);
   return entry;
 }

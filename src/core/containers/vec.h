@@ -4,7 +4,6 @@
 #include "../core/debug.h"
 #include "../core/fwd.h"
 #include "../core/memory.h"
-#include "../core/type_info.h"
 #include <cstring>
 
 namespace core {
@@ -33,10 +32,10 @@ struct vec {
     return t;
   }
 
-  constexpr T pop(Arena& ar) {
+  constexpr T pop(Allocator alloc) {
     T t = pop(noalloc);
     if (capacity() > 8 && capacity() > 2 * size()) {
-      set_capacity(ar, size_);
+      set_capacity(alloc, size_);
     }
     return t;
   }
@@ -48,9 +47,9 @@ struct vec {
     size_        += 1;
   }
 
-  constexpr void push(Arena& ar, const T& t) {
+  constexpr void push(Allocator alloc, const T& t) {
     if (size() >= capacity()) {
-      set_capacity(ar, MAX(4, capacity() * 2));
+      set_capacity(alloc, MAX(4, capacity() * 2));
     }
 
     push(noalloc, t);
@@ -60,14 +59,13 @@ struct vec {
     ASSERT(new_size <= capacity());
     size_ = new_size;
   }
-  void set_capacity(Arena& ar, usize new_capacity, bool try_grow = true) {
-    if (try_grow &&
-        ar.try_resize(store.data, store.size, new_capacity * sizeof(T), "vec::resize")) {
+  void set_capacity(Allocator alloc, usize new_capacity, bool try_grow = true) {
+    if (try_grow && alloc.try_resize(store.data, store.size, new_capacity * sizeof(T), "vec::resize")) {
       store.size = new_capacity;
       return;
     }
 
-    auto new_store = ar.allocate_array<T>(new_capacity, "vec::resize");
+    auto new_store = alloc.allocate_array<T>(new_capacity, "vec::resize");
     memcpy(new_store.data, store.data, size() * sizeof(T));
     store = new_store;
   }
@@ -75,13 +73,13 @@ struct vec {
   void reset(noalloc_t) {
     set_size(0);
   }
-  void reset(Arena& ar) {
+  void reset(Allocator alloc) {
     reset(noalloc);
-    set_capacity(ar, 0);
+    set_capacity(alloc, 0);
   }
-  vec clone(Arena& ar) {
+  vec clone(Allocator alloc) {
     vec copy = *this;
-    copy.set_capacity(ar, capacity(), false);
+    copy.set_capacity(alloc, capacity(), false);
     return copy;
   }
 

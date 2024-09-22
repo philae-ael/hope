@@ -1,3 +1,4 @@
+#include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <version>
@@ -50,8 +51,8 @@ void dump_backtrace_fallback(usize skip) {
       int status;
       demangled = abi::__cxa_demangle(info.dli_sname, NULL, 0, &status);
       fprintf(
-          stderr, "%3zu %s %s + %ld\n", i - skip, info.dli_fname,
-          status == 0 ? demangled : info.dli_sname, (char*)callstack[i] - (char*)info.dli_saddr
+          stderr, "%3zu %s %s + %ld\n", i - skip, info.dli_fname, status == 0 ? demangled : info.dli_sname,
+          (char*)callstack[i] - (char*)info.dli_saddr
       );
       free(demangled);
     } else {
@@ -81,6 +82,19 @@ EXPORT void dump_backtrace(usize skip) {
 }
 
 void crash_handler(int sig) {
+  const char* signal_name = "unknown";
+  switch (sig) {
+  case SIGSEGV:
+    signal_name = "SIGSEGV";
+    break;
+  case SIGABRT:
+    signal_name = "SIGABRT";
+    break;
+  case SIGFPE:
+    signal_name = "SIGFPE";
+    break;
+  }
+  fprintf(stderr, "CAUGHT SIGNAL: %s\n", signal_name);
   dump_backtrace(2);
 
   exit(1);
@@ -89,5 +103,6 @@ void crash_handler(int sig) {
 EXPORT void setup_crash_handler() {
   ::signal(SIGSEGV, crash_handler);
   ::signal(SIGABRT, crash_handler);
+  ::signal(SIGFPE, crash_handler);
 }
 } // namespace core

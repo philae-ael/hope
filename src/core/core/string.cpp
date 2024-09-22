@@ -9,22 +9,22 @@
 
 namespace core {
 
-EXPORT string_builder& string_builder::pushf(Arena& arena, const char* fmt, ...) {
+EXPORT string_builder& string_builder::pushf(Allocator alloc, const char* fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
-  vpushf(arena, fmt, ap);
+  vpushf(alloc, fmt, ap);
   va_end(ap);
   return *this;
 }
 
-EXPORT string_builder& string_builder::vpushf(Arena& arena, const char* fmt, va_list ap) {
+EXPORT string_builder& string_builder::vpushf(Allocator alloc, const char* fmt, va_list ap) {
   va_list ap_copy;
 
   va_copy(ap_copy, ap);
   usize len = (usize)vsnprintf(nullptr, 0, fmt, ap_copy);
   va_end(ap_copy);
 
-  string_node* n = (string_node*)arena.allocate(
+  string_node* n = (string_node*)alloc.allocate(
       sizeof(string_node) + len + 1, alignof(string_node),
       "string_buffer::vpushf"
   ); // vsnprintf writes a \0 at the end!
@@ -38,22 +38,22 @@ EXPORT string_builder& string_builder::vpushf(Arena& arena, const char* fmt, va_
   return *this;
 }
 
-EXPORT str8 string_builder::commit(Arena& arena, str8 join) const {
-  if (first != nullptr && first->next == nullptr && arena.owns((void*)first->str.data)) {
+EXPORT str8 string_builder::commit(Allocator alloc, str8 join) const {
+  if (first != nullptr && first->next == nullptr && alloc.owns((void*)first->str.data)) {
     return first->str;
   }
   DEBUG_ASSERT(node_count >= 1);
 
   const usize expected_len = total_len + (node_count - 1) * join.len;
   const string_node* node  = first;
-  u8* data                 = (u8*)arena.allocate(expected_len);
+  auto storage             = alloc.allocate_array<u8>(expected_len);
   usize offset             = 0;
   usize count              = 0;
   while (node != nullptr) {
-    memcpy(data + offset, node->str.data, node->str.len);
+    memcpy(storage.data + offset, node->str.data, node->str.len);
     offset += node->str.len;
     if (node->next != nullptr) {
-      memcpy(data + offset, join.data, join.len);
+      memcpy(storage.data + offset, join.data, join.len);
       offset += join.len;
     }
     node = node->next;
@@ -63,11 +63,11 @@ EXPORT str8 string_builder::commit(Arena& arena, str8 join) const {
   ASSERT(offset == expected_len);
   ASSERT(count == node_count);
 
-  return str8{expected_len, data};
+  return str8{storage.size, storage.data};
 }
 
-EXPORT string_builder& string_builder::push_str8(Arena& arena, str8 str) {
-  return push_str8(arena.allocate<string_node>(), str);
+EXPORT string_builder& string_builder::push_str8(Allocator alloc, str8 str) {
+  return push_str8(alloc.allocate<string_node>(), str);
 }
 
 string_builder& string_builder::push_str8(string_node* uninit_node, str8 str) {
@@ -110,21 +110,21 @@ EXPORT string_builder& string_builder::append(string_builder& sb) {
   return *this;
 }
 
-EXPORT str8 str8::clone(Arena& arena) {
-  auto storage = arena.allocate_array<u8>(len);
+EXPORT str8 str8::clone(Allocator alloc) {
+  auto storage = alloc.allocate_array<u8>(len);
   memcpy(storage.data, data, len);
   return {len, storage.data};
 }
 
-EXPORT hstr8 hstr8::clone(Arena& arena) {
-  auto s = to_str8(*this).clone(arena);
+EXPORT hstr8 hstr8::clone(Allocator alloc) {
+  auto s = to_str8(*this).clone(alloc);
   return {hash, s.len, s.data};
 }
 
-EXPORT const char* str8::cstring(Arena& arena) {
+EXPORT const char* str8::cstring(Allocator alloc) {
   u8* cstr = (u8*)data;
-  if (!arena.try_resize((void*)data, len, len + 1)) {
-    cstr = (u8*)arena.allocate(len + 1, alignof(char));
+  if (!alloc.try_resize((void*)data, len, len + 1)) {
+    cstr = (u8*)alloc.allocate(len + 1, alignof(char));
     memcpy(cstr, data, len);
   }
 
@@ -163,7 +163,7 @@ EXPORT hstr8 unintern(u64 hash) {
   return it->second;
 }
 
-const char* hstr8::cstring(Arena& arena) {
-  return to_str8(*this).cstring(arena);
+const char* hstr8::cstring(Allocator alloc) {
+  return to_str8(*this).cstring(alloc);
 }
 } // namespace core

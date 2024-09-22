@@ -24,15 +24,23 @@ core::array deps{
 TriangleRenderer TriangleRenderer::init(subsystem::video& v, VkFormat format) {
   auto scratch = core::scratch_get();
   defer { scratch.retire(); };
+  core::Allocator alloc = scratch;
 
-  const char* path      = fs::resolve_path(*scratch, deps[1]).cstring(*scratch);
+  const char* path      = fs::resolve_path(*scratch, deps[1]).cstring(alloc);
   cgltf_options options = {
       .type   = cgltf_file_type_glb,
       .memory = {
-          .alloc_func = [](void* arena,
-                           usize size) { return ((core::Arena*)arena)->allocate(size); },
-          .free_func  = [](void* arena, void* ptr) {},
-          .user_data  = scratch.arena_,
+          .alloc_func =
+              [](void* arena, usize size) {
+                core::Allocator alloc = *(core::Arena*)arena;
+                return alloc.allocate(size);
+              },
+          .free_func =
+              [](void* arena, void* ptr) {
+                core::Allocator alloc = *(core::Arena*)arena;
+                return alloc.deallocate(ptr, 0);
+              },
+          .user_data = scratch.arena_,
       },
   };
 
@@ -52,16 +60,12 @@ TriangleRenderer TriangleRenderer::init(subsystem::video& v, VkFormat format) {
   // ASSERT(data->meshes[0].primitives[0].attributes_count == 1);
   ASSERT(data->meshes[0].primitives[0].attributes[0].type == cgltf_attribute_type_position);
   ASSERT(data->meshes[0].primitives[0].attributes[0].data->type == cgltf_type_vec3);
-  ASSERT(
-      data->meshes[0].primitives[0].attributes[0].data->component_type == cgltf_component_type_r_32f
-  );
-  auto vertices = scratch->allocate_array<f32>(
+  ASSERT(data->meshes[0].primitives[0].attributes[0].data->component_type == cgltf_component_type_r_32f);
+  auto vertices = alloc.allocate_array<f32>(
       data->meshes[0].primitives[0].attributes[0].data->count *
       cgltf_num_components(data->meshes[0].primitives[0].attributes[0].data->type)
   );
-  cgltf_accessor_unpack_floats(
-      data->meshes[0].primitives[0].attributes[0].data, vertices.data, vertices.size
-  );
+  cgltf_accessor_unpack_floats(data->meshes[0].primitives[0].attributes[0].data, vertices.data, vertices.size);
 
   VkBuffer vertex_buffer;
   VmaAllocation vertex_buf_alloc;
@@ -77,20 +81,13 @@ TriangleRenderer TriangleRenderer::init(subsystem::video& v, VkFormat format) {
       .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
       .usage = VMA_MEMORY_USAGE_AUTO,
   };
-  vmaCreateBuffer(
-      v.allocator, &vertex_buf_create_info, &alloc_create_info, &vertex_buffer, &vertex_buf_alloc,
-      nullptr
-  );
-  vmaCopyMemoryToAllocation(
-      v.allocator, vertices.data, vertex_buf_alloc, 0, vertices.into_bytes().size
-  );
+  vmaCreateBuffer(v.allocator, &vertex_buf_create_info, &alloc_create_info, &vertex_buffer, &vertex_buf_alloc, nullptr);
+  vmaCopyMemoryToAllocation(v.allocator, vertices.data, vertex_buf_alloc, 0, vertices.into_bytes().size);
 
   ASSERT(data->meshes[0].primitives[0].indices->component_type == cgltf_component_type_r_16u);
-  auto indices = scratch->allocate_array<u16>(data->meshes[0].primitives[0].indices->count);
+  auto indices = alloc.allocate_array<u16>(data->meshes[0].primitives[0].indices->count);
 
-  ASSERT(cgltf_accessor_unpack_indices(
-      data->meshes[0].primitives[0].indices, indices.data, 2, indices.size
-  ));
+  ASSERT(cgltf_accessor_unpack_indices(data->meshes[0].primitives[0].indices, indices.data, 2, indices.size));
 
   VkBuffer index_buffer;
   VmaAllocation index_buf_alloc;
@@ -102,13 +99,8 @@ TriangleRenderer TriangleRenderer::init(subsystem::video& v, VkFormat format) {
       .queueFamilyIndexCount = 1,
       .pQueueFamilyIndices   = &v.device.omni_queue_family_index
   };
-  vmaCreateBuffer(
-      v.allocator, &index_buf_create_info, &alloc_create_info, &index_buffer, &index_buf_alloc,
-      nullptr
-  );
-  vmaCopyMemoryToAllocation(
-      v.allocator, indices.data, index_buf_alloc, 0, indices.into_bytes().size
-  );
+  vmaCreateBuffer(v.allocator, &index_buf_create_info, &alloc_create_info, &index_buffer, &index_buf_alloc, nullptr);
+  vmaCopyMemoryToAllocation(v.allocator, indices.data, index_buf_alloc, 0, indices.into_bytes().size);
   Mesh mesh = {(u32)indices.size};
   cgltf_free(data);
 
@@ -196,8 +188,7 @@ TriangleRenderer TriangleRenderer::init(subsystem::video& v, VkFormat format) {
 
   vkDestroyShaderModule(v.device, module, nullptr);
   return {
-      descriptor_pool,  pipeline,     pipeline_layout, vertex_buffer,
-      vertex_buf_alloc, index_buffer, index_buf_alloc, mesh,
+      descriptor_pool, pipeline, pipeline_layout, vertex_buffer, vertex_buf_alloc, index_buffer, index_buf_alloc, mesh,
   };
 }
 
@@ -234,9 +225,7 @@ void TriangleRenderer::render(AppState* app_state, VkCommandBuffer cmd, vk::imag
   VkRect2D scissor{{}, target.extent2};
   vkCmdSetScissor(cmd, 0, 1, &scissor);
 
-  VkViewport viewport{
-      0, (f32)target.extent2.height, (f32)target.extent2.width, -(f32)target.extent2.height, 0, 1
-  };
+  VkViewport viewport{0, (f32)target.extent2.height, (f32)target.extent2.width, -(f32)target.extent2.height, 0, 1};
   vkCmdSetViewport(cmd, 0, 1, &viewport);
 
   VkDeviceSize offset = 0;
@@ -244,9 +233,7 @@ void TriangleRenderer::render(AppState* app_state, VkCommandBuffer cmd, vk::imag
 
   f32 aspect_ratio = (f32)target.extent2.width / (f32)target.extent2.height;
   auto matrices    = app_state->camera.matrices(aspect_ratio);
-  vkCmdPushConstants(
-      cmd, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, 2 * sizeof(Mat4), &matrices
-  );
+  vkCmdPushConstants(cmd, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, 2 * sizeof(Mat4), &matrices);
 
   vkCmdBindIndexBuffer(cmd, index_buffer, 0, VK_INDEX_TYPE_UINT16);
   vkCmdDrawIndexed(cmd, mesh.count, 1, 0, 0, 0);

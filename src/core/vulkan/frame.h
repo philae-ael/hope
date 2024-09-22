@@ -4,10 +4,6 @@
 #include "vulkan.h"
 #include <core/core/fwd.h>
 
-namespace core {
-struct Arena;
-} // namespace core
-
 namespace vk {
 struct FrameSynchro {
   u32 inflight;
@@ -17,7 +13,7 @@ struct FrameSynchro {
   VkFence* render_done_fences;
 };
 
-FrameSynchro create_frame_synchro(core::Arena& ar, VkDevice device, u32 inflight);
+FrameSynchro create_frame_synchro(core::Allocator alloc, VkDevice device, u32 inflight);
 
 void destroy_frame_synchro(VkDevice device, FrameSynchro& frame_synchro);
 

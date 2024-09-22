@@ -6,20 +6,17 @@
 #include <unistd.h>
 
 namespace os {
-EXPORT core::str8 getcwd(core::Arena& ar) {
-  auto buf             = ar.allocate_array<u8>(1024, "getcwd");
+EXPORT core::str8 getcwd(core::Allocator alloc) {
+  auto buf             = alloc.allocate_array<u8>(1024, "getcwd");
 
   const usize max_size = KB(16);
 
   while (::getcwd((char*)buf.data, buf.size) == NULL) {
     switch (errno) {
     case ERANGE: {
+      ASSERTM(2 * buf.size < max_size, "cwd seems to be too big, max length is set to %lu KB", max_size / 1024 / 1024);
       ASSERTM(
-          2 * buf.size < max_size, "cwd seems to be too big, max length is set to %lu KB",
-          max_size / 1024 / 1024
-      );
-      ASSERTM(
-          ar.try_resize(buf.data, buf.size, 2 * buf.size, "getcwd"),
+          alloc.try_resize(buf.data, buf.size, 2 * buf.size, "getcwd"),
           "can't grow buffer, i could allocated another one but i don't wanna"
       );
       buf.size = 2 * buf.size;
@@ -31,7 +28,7 @@ EXPORT core::str8 getcwd(core::Arena& ar) {
   }
 
   auto len = strlen((const char*)buf.data);
-  ar.try_resize(buf.data, buf.size, len);
+  alloc.try_resize(buf.data, buf.size, len);
   return {len, buf.data};
 }
 } // namespace os

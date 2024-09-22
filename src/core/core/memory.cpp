@@ -57,10 +57,9 @@ EXPORT bool Arena::try_resize(void* ptr, usize cur_size, usize new_size, const c
 }
 
 EXPORT void* Arena::allocate(usize size, usize alignement, const char* src) {
-  ARENA_DEBUG_STMT(printf(
-      "Arena: trying to allocate %zu from %s, %zu available\n", size, src,
-      capacity - (usize)(mem - base)
-  ));
+  ARENA_DEBUG_STMT(
+      printf("Arena: trying to allocate %zu from %s, %zu available\n", size, src, capacity - (usize)(mem - base))
+  );
   DEBUG_ASSERT(std::popcount(alignement) == 1);
 
   if (size == 0) {
@@ -68,15 +67,13 @@ EXPORT void* Arena::allocate(usize size, usize alignement, const char* src) {
   }
 
   u8* aligned = ALIGN_UP(mem, alignement);
-  ARENA_DEBUG_STMT(printf(
-      "Arena: padding for %zu byte for alignement, alignement is %zu\n", (usize)(aligned - mem),
-      alignement
-  ));
+  ARENA_DEBUG_STMT(
+      printf("Arena: padding for %zu byte for alignement, alignement is %zu\n", (usize)(aligned - mem), alignement)
+  );
 
   ASSERTM(
-      base + capacity >= aligned + size,
-      "Arena: out of memory! please implement the commit stuff of ask for more "
-      "memory"
+      base + capacity >= aligned + size, "Arena: out of memory! please implement the commit stuff of ask for more "
+                                         "memory"
   );
 
   mem = aligned + size;
@@ -92,9 +89,7 @@ EXPORT void* Arena::allocate(usize size, usize alignement, const char* src) {
     ARENA_DEBUG_STMT(printf("Arena: commited region [%p, %p)\n", committed, committed + size));
     committed += size;
   } else {
-    ARENA_DEBUG_STMT(
-        printf("Arena: no need to commit region already committed until %p\n", committed)
-    );
+    ARENA_DEBUG_STMT(printf("Arena: no need to commit region already committed until %p\n", committed));
   }
 
   ASAN_UNPOISON_MEMORY_REGION(aligned, size);
@@ -107,7 +102,7 @@ EXPORT void Arena::deallocate(usize size) {
     return;
   }
 
-  ASSERT((usize)(mem - base) >= size);
+  ASSERT(pos() >= size);
   mem -= size;
   ASAN_POISON_MEMORY_REGION(mem, capacity - usize(mem - base));
 
@@ -125,18 +120,18 @@ EXPORT Arena& arena_alloc(usize capacity) {
   usize page_size        = arena_page_size();
   const usize alloc_size = ALIGN_UP(sizeof(Arena) + capacity, page_size);
 
-  u8* memory = (u8*)os::mem_allocate(nullptr, alloc_size, os::MemAllocationFlags::Reserve);
+  u8* memory             = (u8*)os::mem_allocate(nullptr, alloc_size, os::MemAllocationFlags::Reserve);
   ARENA_DEBUG_STMT(printf("Arena: got range [%p, %p)\n", memory, memory + alloc_size));
   ASSERT(memory != nullptr);
 
   os::mem_allocate(memory, page_size, os::MemAllocationFlags::Commit);
 
-  capacity         = alloc_size - sizeof(Arena);
+  capacity      = alloc_size - sizeof(Arena);
 
-  Arena* arena_    = (Arena*)memory;
-  arena_->capacity = capacity;
+  Arena* arena_ = (Arena*)memory;
   arena_->mem = arena_->base = memory + sizeof(Arena);
-  arena_->committed          = memory + page_size;
+  arena_->committed          = memory;
+  arena_->capacity           = capacity;
 
   ASAN_POISON_MEMORY_REGION(arena_->mem, arena_->capacity);
   return *arena_;
@@ -149,12 +144,13 @@ EXPORT void arena_dealloc(Arena& arena_) {
   os::mem_deallocate(&arena_, alloc_size, os::MemDeallocationFlags::Release);
 }
 
-EXPORT void Arena::pop_pos(u64 pos) {
-  ASSERT(mem >= (u8*)pos);
-  deallocate(usize(mem - (u8*)pos));
+EXPORT void Arena::pop_pos(u64 old_pos) {
+  auto cur_pos = pos();
+  ASSERT(cur_pos >= old_pos);
+  deallocate(cur_pos - old_pos);
 }
 EXPORT u64 Arena::pos() {
-  return (u64)mem;
+  return (u64)(mem - base);
 }
 EXPORT void ArenaTemp::retire() {
   arena_->pop_pos(old_pos);
@@ -187,15 +183,13 @@ thread_local auto clear_arena_ = defer_builder + [] {
   SCRATCH_DEBUG_STMT(printf("Scratch: cleaning storage for thread %zu\n", sync::thread_id()));
   for (usize i = 0; i < SCRATCH_ARENA_AMOUNT; i++) {
     if (scratch_storage[i] != nullptr) {
-      SCRATCH_DEBUG_STMT(
-          printf("Scratch: thread %zu is releasing scratch %zu\n", sync::thread_id(), i)
-      );
+      SCRATCH_DEBUG_STMT(printf("Scratch: thread %zu is releasing scratch %zu\n", sync::thread_id(), i));
       arena_dealloc(*scratch_storage[i]);
     }
   }
 };
 
-EXPORT scratch scratch_get() {
+EXPORT Scratch scratch_get() {
   if (!scratch_init) {
     scratch_init = true;
     SCRATCH_DEBUG_STMT(printf("Scratch: initialize storage for thread %zu\n", sync::thread_id()));
@@ -211,17 +205,15 @@ EXPORT scratch scratch_get() {
     SWAP(scratch_storage[j], arena);
 
     if (arena != nullptr) {
-      SCRATCH_DEBUG_STMT(
-          printf("Scratch: thread %zu, got scratch %zu at %p\n", sync::thread_id(), j, arena->base)
-      );
+      SCRATCH_DEBUG_STMT(printf("Scratch: thread %zu, got scratch %zu at %p\n", sync::thread_id(), j, arena->base));
 
-      return scratch{.arena_ = arena, .old_pos = arena->pos()};
+      return {ArenaTemp{.arena_ = arena, .old_pos = arena->pos()}};
     }
   }
   panic("no scratch arena available");
 }
 
-EXPORT void scratch_retire(scratch& scr) {
+EXPORT void scratch_retire(Scratch& scr) {
   scr->pop_pos(scr.old_pos);
   Arena* arena_ = scr.arena_;
   scr.arena_    = nullptr;
@@ -231,9 +223,7 @@ EXPORT void scratch_retire(scratch& scr) {
       continue;
     }
 
-    SCRATCH_DEBUG_STMT(printf(
-        "Scratch: thread %zu, retire scratch %zu at %p\n", sync::thread_id(), i, arena_->base
-    ));
+    SCRATCH_DEBUG_STMT(printf("Scratch: thread %zu, retire scratch %zu at %p\n", sync::thread_id(), i, arena_->base));
     SWAP(scratch_storage[i], arena_);
 
     return;
@@ -241,5 +231,15 @@ EXPORT void scratch_retire(scratch& scr) {
 
   arena_dealloc(*arena_);
 }
+
+EXPORT const AllocatorVTable Arena::vtable{
+    .allocate   = [](void* userdata, usize size, usize alignement, const char* src
+                ) { return static_cast<Arena*>(userdata)->allocate(size, alignement, src); },
+    .deallocate = [](void* userdata, void* alloc_base_ptr, usize size, const char* src
+                  ) { return static_cast<Arena*>(userdata)->deallocate(alloc_base_ptr, size, src); },
+    .try_resize = [](void* userdata, void* ptr, usize cur_size, usize new_size, const char* src
+                  ) { return static_cast<Arena*>(userdata)->try_resize(ptr, cur_size, new_size, src); },
+    .owns       = [](void* userdata, void* ptr) { return static_cast<Arena*>(userdata)->owns(ptr); },
+};
 
 } // namespace core

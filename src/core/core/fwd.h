@@ -9,7 +9,8 @@
 
 namespace core {
 struct Arena;
-struct scratch;
+struct Allocator;
+struct Scratch;
 
 struct str8;
 struct hstr8;

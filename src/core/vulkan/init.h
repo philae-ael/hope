@@ -21,19 +21,13 @@ struct Instance {
     return instance;
   }
 };
-Result<Instance> create_default_instance(
-    core::vec<const char*> layers,
-    core::vec<const char*> extensions
-);
+Result<Instance> create_default_instance(core::vec<const char*> layers, core::vec<const char*> extensions);
 void destroy_instance(Instance& inst);
 
 core::vec<VkLayerProperties> enumerate_instance_layer_properties(core::Arena& ar);
 core::vec<VkExtensionProperties> enumerate_instance_extension_properties(core::Arena& ar);
 
-Result<VkInstance> create_instance(
-    core::storage<const char*> layers,
-    core::storage<const char*> extensions
-);
+Result<VkInstance> create_instance(core::storage<const char*> layers, core::storage<const char*> extensions);
 void load_extensions(VkInstance instance);
 Result<VkDebugUtilsMessengerEXT> setup_debug_messenger(VkInstance instance);
 
@@ -73,7 +67,7 @@ struct physical_device_features {
   bool timestamps;
 
   bool check_features(const VkPhysicalDeviceProperties2& physical_device_properties2) const;
-  VkPhysicalDeviceFeatures2 into_vk_physical_device_features2(core::Arena& ar) const;
+  VkPhysicalDeviceFeatures2 into_vk_physical_device_features2(core::Allocator alloc) const;
 };
 
 struct physical_device {
@@ -86,11 +80,7 @@ core::Maybe<physical_device> find_physical_device(
     const physical_device_features& features
 );
 
-Result<Device> create_default_device(
-    VkInstance instance,
-    VkSurfaceKHR surface,
-    core::vec<const char*> extensions
-);
+Result<Device> create_default_device(VkInstance instance, VkSurfaceKHR surface, core::vec<const char*> extensions);
 
 struct SwapchainConfig {
   u32 min_image_count;
@@ -136,17 +126,9 @@ Result<VkSwapchainKHR> create_swapchain(
 );
 
 SwapchainConfig create_default_swapchain_config(const Device& device, VkSurfaceKHR surface);
-Result<Swapchain> create_default_swapchain(
-    core::Arena& ar,
-    const Device& device,
-    VkSurfaceKHR surface
-);
+Result<Swapchain> create_default_swapchain(core::Arena& ar, const Device& device, VkSurfaceKHR surface);
 
-Result<core::unit_t> rebuild_default_swapchain(
-    const Device& device,
-    VkSurfaceKHR surface,
-    Swapchain& swapchain
-);
+Result<core::unit_t> rebuild_default_swapchain(const Device& device, VkSurfaceKHR surface, Swapchain& swapchain);
 
 void destroy_swapchain(VkDevice device, Swapchain& swapchain);
 } // namespace vk

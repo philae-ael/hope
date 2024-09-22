@@ -19,49 +19,45 @@ EXPORT duration_info duration_info::from_time(time t) {
   };
 }
 
-EXPORT core::str8 to_str8(core::Arena& arena, duration_info duration_info, TimeFormat format) {
+EXPORT core::str8 to_str8(core::Allocator alloc, duration_info duration_info, TimeFormat format) {
   core::string_builder sb{};
   switch (format) {
   case TimeFormat::HH_MM_SS_MMM_UUU:
     sb.pushf(
-        arena, "%02d:%02d:%02d:%03d.%03d", duration_info.hour, duration_info.min, duration_info.sec,
-        duration_info.msec, duration_info.usec
+        alloc, "%02d:%02d:%02d:%03d.%03d", duration_info.hour, duration_info.min, duration_info.sec, duration_info.msec,
+        duration_info.usec
     );
     break;
   case TimeFormat::HH_MM_SS_MMM:
     sb.pushf(
-        arena, "%02d:%02d:%02d:%03d", duration_info.hour, duration_info.min, duration_info.sec,
-        duration_info.usec
+        alloc, "%02d:%02d:%02d:%03d", duration_info.hour, duration_info.min, duration_info.sec, duration_info.usec
     );
     break;
 
   case TimeFormat::MM_SS_MMM_UUU_NNN:
     sb.pushf(
-        arena, "%02d:%02d:%03d.%03d.%03d", duration_info.min, duration_info.sec, duration_info.msec,
-        duration_info.usec, duration_info.nsec
+        alloc, "%02d:%02d:%03d.%03d.%03d", duration_info.min, duration_info.sec, duration_info.msec, duration_info.usec,
+        duration_info.nsec
     );
     break;
   case TimeFormat::MM_SS_MMM_UUU:
     sb.pushf(
-        arena, "%02d:%02d:%03d.%03d", duration_info.min, duration_info.sec, duration_info.msec,
-        duration_info.usec
+        alloc, "%02d:%02d:%03d.%03d", duration_info.min, duration_info.sec, duration_info.msec, duration_info.usec
     );
     break;
   case TimeFormat::MM_SS_MMM:
-    sb.pushf(arena, "%02d:%02d:%03d", duration_info.min, duration_info.sec, duration_info.msec);
+    sb.pushf(alloc, "%02d:%02d:%03d", duration_info.min, duration_info.sec, duration_info.msec);
     break;
   case TimeFormat::MMM_UUU_NNN:
-    sb.pushf(
-        arena, "%03dms %03dus %03dns", duration_info.msec, duration_info.usec, duration_info.nsec
-    );
+    sb.pushf(alloc, "%03dms %03dus %03dns", duration_info.msec, duration_info.usec, duration_info.nsec);
     break;
   }
 
-  return sb.commit(arena);
+  return sb.commit(alloc);
 }
 
-EXPORT core::str8 to_str8(core::Arena& arena, time t, TimeFormat format) {
-  return to_str8(arena, duration_info::from_time(t), format);
+EXPORT core::str8 to_str8(core::Allocator alloc, time t, TimeFormat format) {
+  return to_str8(alloc, duration_info::from_time(t), format);
 }
 
 } // namespace os

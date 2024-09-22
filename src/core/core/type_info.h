@@ -4,14 +4,13 @@
 #include <typeinfo>
 
 #include "base.h"
+#include "fwd.h"
 
 #if LINUX
   #include <cxxabi.h>
 #endif
 
 namespace core {
-struct Arena;
-
 template <class T>
 const char* type_name() {
   static const char* n = nullptr;
@@ -42,32 +41,12 @@ struct LayoutInfo {
   }
 };
 
-str8 to_str8(Arena& ar, LayoutInfo);
+str8 to_str8(Allocator alloc, LayoutInfo);
 
 template <class T>
-constexpr LayoutInfo default_layout_of() {
+inline consteval LayoutInfo default_layout_of() {
   return {sizeof(T), alignof(T)};
 }
-
-struct type_info_t {
-  LayoutInfo layout;
-  u64 type_id;
-};
-
-template <class T>
-constexpr type_info_t type_info();
-
-#define TYPE_INFO(T, id)                 \
-  template <>                            \
-  constexpr type_info_t type_info<T>() { \
-    return {default_layout_of<T>(), id}; \
-  }
-
-TYPE_INFO(u8, 0);
-TYPE_INFO(u16, 1);
-TYPE_INFO(u32, 2);
-TYPE_INFO(u64, 3);
-TYPE_INFO(type_info_t, 1);
 
 } // namespace core
 

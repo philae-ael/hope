@@ -1231,7 +1231,7 @@ EXPORT core::str8 to_str8(VkFormat format) {
 }
 
 namespace vk {
-EXPORT core::str8 to_str8(core::Arena& ar, queue_flags_t, VkQueueFlags flags) {
+EXPORT core::str8 to_str8(core::Allocator alloc, queue_flags_t, VkQueueFlags flags) {
   core::string_builder sb{};
 
   FLAG_STR(sb, flags, VK_QUEUE_GRAPHICS_BIT)
@@ -1243,6 +1243,6 @@ EXPORT core::str8 to_str8(core::Arena& ar, queue_flags_t, VkQueueFlags flags) {
   FLAG_STR(sb, flags, VK_QUEUE_VIDEO_ENCODE_BIT_KHR)
   FLAG_STR(sb, flags, VK_QUEUE_OPTICAL_FLOW_BIT_NV)
 
-  return sb.commit(ar, " | "_s);
+  return sb.commit(alloc, " | "_s);
 }
 } // namespace vk

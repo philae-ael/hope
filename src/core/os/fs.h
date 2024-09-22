@@ -4,7 +4,7 @@
 #include <core/core.h>
 
 namespace os {
-core::str8 getcwd(core::Arena& arena);
+core::str8 getcwd(core::Allocator alloc);
 }
 
 #endif // INCLUDE_OS_FS_H_

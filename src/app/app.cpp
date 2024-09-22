@@ -99,8 +99,7 @@ AppEvent handle_events(SDL_Event& ev, InputState& input_state) {
     }
     break;
   case SDL_EVENT_GAMEPAD_REMOVED:
-    if (input_state.gamepad &&
-        ev.gdevice.which == SDL_GetJoystickID(SDL_GetGamepadJoystick(input_state.gamepad))) {
+    if (input_state.gamepad && ev.gdevice.which == SDL_GetJoystickID(SDL_GetGamepadJoystick(input_state.gamepad))) {
       LOG_INFO("disconnecting gamepad %s", SDL_GetGamepadName(input_state.gamepad));
       SDL_CloseGamepad(input_state.gamepad);
       input_state.gamepad = nullptr;
@@ -164,17 +163,17 @@ AppEvent handle_events(SDL_Event& ev, InputState& input_state) {
 }
 
 extern "C" {
-EXPORT App* init(core::Arena& arena, App* app, AppState* app_state, subsystem::video* video) {
+EXPORT App* init(core::Allocator alloc, App* app, AppState* app_state, subsystem::video* video) {
   LOG_DEBUG("Init app");
   if (app == nullptr) {
-    app = new (arena.allocate<App>()) App{};
+    app = new (alloc.allocate<App>()) App{};
   }
   app->arena = &core::arena_alloc();
   app->video = video;
 
   if (app_state == nullptr) {
     LOG_DEBUG("No app state, creating app state");
-    app_state  = arena.allocate<AppState>();
+    app_state  = alloc.allocate<AppState>();
     app->state = new (app_state) AppState{};
   } else {
     app->state                = app_state;
@@ -211,10 +210,10 @@ void update(core::Arena& frame_arena, App& app) {
   utils::config_f32("input.rot_speed_pitch", &rot_speed_pitch);
   utils::config_f32("input.rot_speed_yaw", &rot_speed_yaw);
 
-  auto dt      = utils::get_last_frame_dt().secs();
-  auto forward = app.state->camera.rotation.rotate(-Vec4::Z);
-  auto sideway = app.state->camera.rotation.rotate(Vec4::X);
-  auto upward  = Vec4::Y;
+  auto dt                    = utils::get_last_frame_dt().secs();
+  auto forward               = app.state->camera.rotation.rotate(-Vec4::Z);
+  auto sideway               = app.state->camera.rotation.rotate(Vec4::X);
+  auto upward                = Vec4::Y;
 
   // clang-format off
   app.state->camera.position += dt * (+ speed_x * app.input_state.x.value() * sideway 
@@ -222,10 +221,9 @@ void update(core::Arena& frame_arena, App& app) {
                                       - speed_z * app.input_state.z.value() * forward);
   // clang-format on
 
-  app.state->camera.rotation =
-      Quat::from_axis_angle(sideway, rot_speed_pitch * dt * app.input_state.pitch.value()) *
-      Quat::from_axis_angle(upward, rot_speed_yaw * dt * app.input_state.yaw.value()) *
-      app.state->camera.rotation;
+  app.state->camera.rotation = Quat::from_axis_angle(sideway, rot_speed_pitch * dt * app.input_state.pitch.value()) *
+                               Quat::from_axis_angle(upward, rot_speed_yaw * dt * app.input_state.yaw.value()) *
+                               app.state->camera.rotation;
 }
 
 void debug_stuff(core::Arena& frame_arena, App& app) {
@@ -252,9 +250,7 @@ void debug_stuff(core::Arena& frame_arena, App& app) {
     auto timing_infos = utils::get_last_frame_timing_infos(frame_arena);
     if (print_frame_report_full) {
       for (auto [name, t] : timing_infos.timings.iter()) {
-        LOG_BUILDER(
-            core::LogLevel::Debug, push(name).push(" at ").push(t, os::TimeFormat::MMM_UUU_NNN)
-        );
+        LOG_BUILDER(core::LogLevel::Debug, push(name).push(" at ").push(t, os::TimeFormat::MMM_UUU_NNN));
       }
     }
 
@@ -263,12 +259,10 @@ void debug_stuff(core::Arena& frame_arena, App& app) {
         push("frame mean: ").push(timing_infos.stats.mean_frame_time, os::TimeFormat::MMM_UUU_NNN)
     );
     LOG_BUILDER(
-        core::LogLevel::Debug,
-        push("frame low 95: ").push(timing_infos.stats.low_95, os::TimeFormat::MMM_UUU_NNN)
+        core::LogLevel::Debug, push("frame low 95: ").push(timing_infos.stats.low_95, os::TimeFormat::MMM_UUU_NNN)
     );
     LOG_BUILDER(
-        core::LogLevel::Debug,
-        push("frame low 99: ").push(timing_infos.stats.low_99, os::TimeFormat::MMM_UUU_NNN)
+        core::LogLevel::Debug, push("frame low 99: ").push(timing_infos.stats.low_99, os::TimeFormat::MMM_UUU_NNN)
     );
   }
 }

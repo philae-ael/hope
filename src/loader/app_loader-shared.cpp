@@ -9,7 +9,7 @@ AppPFNs init_app_stub() {
   LOG_INFO("stub");
   return AppPFNs{
       .handle = nullptr,
-      .init = [](core ::Arena&, App*, AppState*, subsystem ::video*) -> App* { return (App*)(0); },
+      .init   = [](core::Allocator alloc, App*, AppState*, subsystem ::video*) -> App* { return (App*)(0); },
       .uninit = [](App&) -> AppState* { return (AppState*)(0); },
       .frame  = [](core ::Arena&, App&) -> AppEvent {
         using namespace core::enum_helpers;

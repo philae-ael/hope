@@ -21,16 +21,14 @@ EXPORT Result<Frame> begin_frame(VkDevice device, VkSwapchainKHR swapchain, Fram
   u32 swapchain_image_index;
 
   auto wait_for_fence_scope = utils::scope_start("wait for fence"_hs);
-  VkResult res =
-      vkWaitForFences(device, 1, &sync.render_done_fences[frame_id], VK_TRUE, 100'000'000);
+  VkResult res              = vkWaitForFences(device, 1, &sync.render_done_fences[frame_id], VK_TRUE, 100'000'000);
   utils::scope_end(wait_for_fence_scope);
 
   if (res != VK_SUCCESS) {
     return res;
   }
   res = vkAcquireNextImageKHR(
-      device, swapchain, 0, sync.acquire_semaphores[frame_id], VK_NULL_HANDLE,
-      &swapchain_image_index
+      device, swapchain, 0, sync.acquire_semaphores[frame_id], VK_NULL_HANDLE, &swapchain_image_index
   );
   if (res != VK_SUCCESS) {
     return res;
@@ -45,8 +43,7 @@ EXPORT Result<Frame> begin_frame(VkDevice device, VkSwapchainKHR swapchain, Fram
   }};
 }
 
-EXPORT VkResult
-end_frame(VkDevice device, VkQueue present_queue, VkSwapchainKHR swapchain, Frame frame) {
+EXPORT VkResult end_frame(VkDevice device, VkQueue present_queue, VkSwapchainKHR swapchain, Frame frame) {
   auto present = utils::scope_start("present"_hs);
   defer { utils::scope_end(present); };
   VkPresentInfoKHR present_infos{
@@ -59,31 +56,25 @@ end_frame(VkDevice device, VkQueue present_queue, VkSwapchainKHR swapchain, Fram
   };
   return vkQueuePresentKHR(present_queue, &present_infos);
 }
-EXPORT FrameSynchro create_frame_synchro(core::Arena& ar, VkDevice device, u32 inflight) {
+EXPORT FrameSynchro create_frame_synchro(core::Allocator alloc, VkDevice device, u32 inflight) {
   FrameSynchro frame_synchro{
       inflight,
       0,
-      ar.allocate_array<VkSemaphore>(inflight).data,
-      ar.allocate_array<VkSemaphore>(inflight).data,
-      ar.allocate_array<VkFence>(inflight).data,
+      alloc.allocate_array<VkSemaphore>(inflight).data,
+      alloc.allocate_array<VkSemaphore>(inflight).data,
+      alloc.allocate_array<VkFence>(inflight).data,
 
   };
   for (usize idx : core::range<u32>{0, inflight}.iter()) {
     VkSemaphoreCreateInfo sem_create_info{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
-    VK_ASSERT(
-        vkCreateSemaphore(device, &sem_create_info, nullptr, &frame_synchro.acquire_semaphores[idx])
-    );
-    VK_ASSERT(
-        vkCreateSemaphore(device, &sem_create_info, nullptr, &frame_synchro.render_semaphores[idx])
-    );
+    VK_ASSERT(vkCreateSemaphore(device, &sem_create_info, nullptr, &frame_synchro.acquire_semaphores[idx]));
+    VK_ASSERT(vkCreateSemaphore(device, &sem_create_info, nullptr, &frame_synchro.render_semaphores[idx]));
 
     VkFenceCreateInfo fence_create_info{
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
         .flags = VK_FENCE_CREATE_SIGNALED_BIT,
     };
-    VK_ASSERT(
-        vkCreateFence(device, &fence_create_info, nullptr, &frame_synchro.render_done_fences[idx])
-    );
+    VK_ASSERT(vkCreateFence(device, &fence_create_info, nullptr, &frame_synchro.render_done_fences[idx]));
   }
   return frame_synchro;
 }

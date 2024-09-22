@@ -56,13 +56,10 @@ VkBool32 debug_utils_messenger_callback(
   }
 
   if (log_filter(level)) {
-    core::log_builder(
-        level,
-        core::source_location{core::str8::from("VULKAN"), core::str8::from("VULKAN"), (u32)-1}
-    )
+    core::log_builder(level, core::source_location{core::str8::from("VULKAN"), core::str8::from("VULKAN"), (u32)-1})
         .pushf(
-            "vulkan  %s [%s:%d]: %s", message_type, pCallbackData->pMessageIdName,
-            pCallbackData->messageIdNumber, pCallbackData->pMessage
+            "vulkan  %s [%s:%d]: %s", message_type, pCallbackData->pMessageIdName, pCallbackData->messageIdNumber,
+            pCallbackData->pMessage
         )
         .emit();
   }
@@ -94,22 +91,19 @@ EXPORT void load_extensions(VkInstance instance) {
 
 EXPORT Result<VkDebugUtilsMessengerEXT> setup_debug_messenger(VkInstance instance) {
   VkDebugUtilsMessengerCreateInfoEXT debug_create_info{
-      .sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-      .pNext           = nullptr,
-      .flags           = 0,
-      .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-                         VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
-                         VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                         VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-      .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                     VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+      .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+      .pNext = nullptr,
+      .flags = 0,
+      .messageSeverity =
+          VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+          VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+      .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
                      VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
       .pfnUserCallback = debug_utils_messenger_callback,
       .pUserData       = nullptr,
   };
   VkDebugUtilsMessengerEXT debug_messenger;
-  VkResult err =
-      vkCreateDebugUtilsMessengerEXT(instance, &debug_create_info, nullptr, &debug_messenger);
+  VkResult err = vkCreateDebugUtilsMessengerEXT(instance, &debug_create_info, nullptr, &debug_messenger);
 
   if (err != VK_SUCCESS) {
     return err;
@@ -117,10 +111,7 @@ EXPORT Result<VkDebugUtilsMessengerEXT> setup_debug_messenger(VkInstance instanc
   return debug_messenger;
 }
 
-Result<VkInstance> create_instance(
-    core::storage<const char*> layers,
-    core::storage<const char*> extensions
-) {
+Result<VkInstance> create_instance(core::storage<const char*> layers, core::storage<const char*> extensions) {
   VkInstance inst;
   VkApplicationInfo app_info{
       .sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -142,15 +133,13 @@ Result<VkInstance> create_instance(
       .ppEnabledExtensionNames = extensions.data,
   };
   VkDebugUtilsMessengerCreateInfoEXT debug_create_info{
-      .sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-      .pNext           = nullptr,
-      .flags           = 0,
-      .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-                         VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
-                         VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                         VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-      .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                     VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+      .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+      .pNext = nullptr,
+      .flags = 0,
+      .messageSeverity =
+          VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+          VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+      .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
                      VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
       .pfnUserCallback = debug_utils_messenger_callback,
       .pUserData       = nullptr,
@@ -187,10 +176,7 @@ EXPORT core::vec<VkExtensionProperties> enumerate_instance_extension_properties(
   return v;
 }
 
-EXPORT Result<Instance> create_default_instance(
-    core::vec<const char*> layers,
-    core::vec<const char*> extensions
-) {
+EXPORT Result<Instance> create_default_instance(core::vec<const char*> layers, core::vec<const char*> extensions) {
   auto ar = core::scratch_get();
   defer { ar.retire(); };
 
@@ -269,10 +255,7 @@ EXPORT void destroy_instance(Instance& inst) {
   vkDestroyInstance(inst.instance, nullptr);
 }
 
-EXPORT core::vec<VkPhysicalDevice> enumerate_physical_devices(
-    core::Arena& ar,
-    VkInstance instance
-) {
+EXPORT core::vec<VkPhysicalDevice> enumerate_physical_devices(core::Arena& ar, VkInstance instance) {
   core::vec<VkPhysicalDevice> v;
   u32 physical_device_count;
 
@@ -290,13 +273,9 @@ EXPORT core::vec<VkQueueFamilyProperties> enumerate_physical_device_queue_family
 ) {
   core::vec<VkQueueFamilyProperties> v;
   u32 queue_family_properties_count;
-  vkGetPhysicalDeviceQueueFamilyProperties(
-      physical_device, &queue_family_properties_count, nullptr
-  );
+  vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_properties_count, nullptr);
   v.set_capacity(ar, queue_family_properties_count);
-  vkGetPhysicalDeviceQueueFamilyProperties(
-      physical_device, &queue_family_properties_count, v.data()
-  );
+  vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_properties_count, v.data());
   v.set_size(queue_family_properties_count);
   return v;
 }
@@ -306,20 +285,16 @@ EXPORT core::Maybe<core::vec<queue_creation_info>> find_physical_device_queue_al
     VkPhysicalDevice physical_device,
     const physical_device_features& required_features
 ) {
-  auto queue_family_properties =
-      enumerate_physical_device_queue_family_properties(ar, physical_device);
+  auto queue_family_properties = enumerate_physical_device_queue_family_properties(ar, physical_device);
 
-  auto queue_requests = core::vec{required_features.queues}.clone(ar);
+  auto queue_requests          = core::vec{required_features.queues}.clone(ar);
   core::vec<queue_creation_info> queues;
-  for (auto [family_index, queue_family_property] :
-       core::enumerate{queue_family_properties.iter()}) {
+  for (auto [family_index, queue_family_property] : core::enumerate{queue_family_properties.iter()}) {
 
     LOG_BUILDER(
-        core::LogLevel::Debug, pushf(
-                                   "queue family %zu with count %u and flags ", family_index,
-                                   queue_family_property->queueCount
-                               )
-                                   .push(queue_flags, queue_family_property->queueFlags)
+        core::LogLevel::Debug,
+        pushf("queue family %zu with count %u and flags ", family_index, queue_family_property->queueCount)
+            .push(queue_flags, queue_family_property->queueFlags)
     );
 
     for (auto [request_index, queue_request] : core::enumerate{queue_requests.iter()}) {
@@ -337,16 +312,13 @@ EXPORT core::Maybe<core::vec<queue_creation_info>> find_physical_device_queue_al
         );
         ASSERT(res == VK_SUCCESS);
         if (supported != VK_TRUE) {
-          LOG_DEBUG(
-              "presentation requested but not available in queue family with index %zu",
-              family_index
-          );
+          LOG_DEBUG("presentation requested but not available in queue family with index %zu", family_index);
           continue;
         }
       }
 
       if ((queue_request->flags & queue_family_property->queueFlags) != 0) {
-        u32 queue_count = MIN(queue_family_property->queueCount, queue_request->count);
+        u32 queue_count                    = MIN(queue_family_property->queueCount, queue_request->count);
         queue_family_property->queueCount -= queue_count;
         queue_request->count              -= queue_count;
         queues.push(
@@ -385,8 +357,7 @@ EXPORT core::Maybe<physical_device> find_physical_device(
       LOG_DEBUG("physical device rejected: required features not satisfied");
       continue;
     }
-    auto queue_creation_infos =
-        find_physical_device_queue_allocation(ar, physical_device, required_features);
+    auto queue_creation_infos = find_physical_device_queue_allocation(ar, physical_device, required_features);
     if (queue_creation_infos.is_none()) {
       LOG_DEBUG("physical device rejected: can't allocate requested queues");
       continue;
@@ -425,10 +396,11 @@ EXPORT Result<VkDevice> create_device(
 ) {
   core::ArenaTemp ar = ar_.make_temp();
   defer { ar.retire(); };
+  core::Allocator alloc = *ar;
 
   core::vec<VkDeviceQueueCreateInfo> queue_device_create_infos;
   for (auto queue_creation_info : queue_create_infos.iter()) {
-    auto priorities = ar->allocate_array<f32>(queue_creation_info.count);
+    auto priorities = alloc.allocate_array<f32>(queue_creation_info.count);
     for (auto i : core::range{0zu, (usize)queue_creation_info.count}.iter()) {
       priorities[i] = 1.0;
     }
@@ -470,8 +442,8 @@ EXPORT Result<Device> create_default_device(
 
   queue_request queues[]{
       {
-          .flags = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT,
-          .count = 1,
+          .flags              = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT,
+          .count              = 1,
           .surface_to_support = surface,
       },
   };
@@ -502,9 +474,7 @@ EXPORT Result<Device> create_default_device(
     ASSERTM(found, "device extension required but not found: %s", extension);
     LOG_INFO("device extension found: %s", extension);
   }
-  auto device = create_device(
-      *ar, physical_device, requested_features, device_extensions, queues_creation_infos
-  );
+  auto device = create_device(*ar, physical_device, requested_features, device_extensions, queues_creation_infos);
   if (device.is_err()) {
     return device.err();
   }
@@ -521,51 +491,45 @@ EXPORT Result<Device> create_default_device(
   };
 }
 
-EXPORT VkPhysicalDeviceFeatures2
-physical_device_features::into_vk_physical_device_features2(core::Arena& ar) const {
+EXPORT VkPhysicalDeviceFeatures2 physical_device_features::into_vk_physical_device_features2(core::Allocator alloc
+) const {
   VkPhysicalDeviceFeatures2 physical_device_features2{
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
   };
   if (synchronization2) {
-    auto physical_device_synchronization2_features =
-        ar.allocate<VkPhysicalDeviceSynchronization2Features>();
-    *physical_device_synchronization2_features = {
-        .sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES,
-        .synchronization2 = VK_TRUE,
+    auto physical_device_synchronization2_features = alloc.allocate<VkPhysicalDeviceSynchronization2Features>();
+    *physical_device_synchronization2_features     = {
+            .sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES,
+            .synchronization2 = VK_TRUE,
     };
     VK_PUSH_NEXT(&physical_device_features2, physical_device_synchronization2_features);
   }
   if (dynamic_rendering) {
-    auto physical_device_dynamic_rendering_features =
-        ar.allocate<VkPhysicalDeviceDynamicRenderingFeatures>();
-    *physical_device_dynamic_rendering_features = {
-        .sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES,
-        .dynamicRendering = true,
+    auto physical_device_dynamic_rendering_features = alloc.allocate<VkPhysicalDeviceDynamicRenderingFeatures>();
+    *physical_device_dynamic_rendering_features     = {
+            .sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES,
+            .dynamicRendering = true,
     };
     VK_PUSH_NEXT(&physical_device_features2, physical_device_dynamic_rendering_features);
   }
 
   if (timestamps) {
-    auto physical_device_host_query_reset_features =
-        ar.allocate<VkPhysicalDeviceHostQueryResetFeaturesEXT>();
-    *physical_device_host_query_reset_features = {
-        .sType          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT,
-        .hostQueryReset = VK_TRUE,
+    auto physical_device_host_query_reset_features = alloc.allocate<VkPhysicalDeviceHostQueryResetFeaturesEXT>();
+    *physical_device_host_query_reset_features     = {
+            .sType          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT,
+            .hostQueryReset = VK_TRUE,
     };
     VK_PUSH_NEXT(&physical_device_features2, physical_device_host_query_reset_features);
   }
   return physical_device_features2;
 }
-EXPORT bool physical_device_features::check_features(
-    const VkPhysicalDeviceProperties2& physical_device_properties2
+EXPORT bool physical_device_features::check_features(const VkPhysicalDeviceProperties2& physical_device_properties2
 ) const {
   auto s = (const VkBaseInStructure*)physical_device_properties2.pNext;
   while (s != nullptr) {
     switch (s->sType) {
     default:
-      LOG_BUILDER(
-          core::LogLevel::Error, pushf("Feature not supported in check_features").push(s->sType)
-      );
+      LOG_BUILDER(core::LogLevel::Error, pushf("Feature not supported in check_features").push(s->sType));
     }
     s = s->pNext;
   }
@@ -584,9 +548,7 @@ EXPORT core::vec<VkPresentModeKHR> enumerate_physical_device_surface_present_mod
   u32 present_mode_count;
   vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, nullptr);
   v.set_capacity(ar, present_mode_count);
-  vkGetPhysicalDeviceSurfacePresentModesKHR(
-      physical_device, surface, &present_mode_count, v.data()
-  );
+  vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, v.data());
   v.set_size(present_mode_count);
 
   return v;
@@ -607,11 +569,7 @@ EXPORT core::vec<VkSurfaceFormatKHR> enumerate_physical_device_surface_formats(
   return v;
 }
 
-EXPORT core::vec<VkImage> get_swapchain_images(
-    core::Arena& ar,
-    VkDevice device,
-    VkSwapchainKHR swapchain
-) {
+EXPORT core::vec<VkImage> get_swapchain_images(core::Arena& ar, VkDevice device, VkSwapchainKHR swapchain) {
   core::vec<VkImage> v;
   u32 swapchain_image_count;
   vkGetSwapchainImagesKHR(device, swapchain, &swapchain_image_count, nullptr);
@@ -663,9 +621,7 @@ EXPORT SwapchainConfig create_default_swapchain_config(const Device& device, VkS
   auto ar = core::scratch_get();
   defer { ar.retire(); };
   VkSurfaceCapabilitiesKHR surface_capabilities;
-  VK_ASSERT(
-      vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device.physical, surface, &surface_capabilities)
-  );
+  VK_ASSERT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device.physical, surface, &surface_capabilities));
 
   SwapchainConfig swapchain_config{};
   swapchain_config.extent2       = surface_capabilities.currentExtent.width == 0xFFFFFFFF
@@ -677,8 +633,7 @@ EXPORT SwapchainConfig create_default_swapchain_config(const Device& device, VkS
           surface_capabilities.maxImageCount == 0 ? 3 : MIN(3, surface_capabilities.maxImageCount));
 
   {
-    auto present_modes =
-        enumerate_physical_device_surface_present_modes(*ar, device.physical, surface);
+    auto present_modes = enumerate_physical_device_surface_present_modes(*ar, device.physical, surface);
     ASSERT(present_modes.size() > 0);
     VkPresentModeKHR best_present_mode;
     int best_score = -1;
@@ -734,10 +689,7 @@ EXPORT SwapchainConfig create_default_swapchain_config(const Device& device, VkS
       }
     }
     swapchain_config.surface_format = best_format;
-    LOG_BUILDER(
-        core::LogLevel::Info,
-        push("Format ").push(best_format.format).pushf(" has been chosen for surface")
-    );
+    LOG_BUILDER(core::LogLevel::Info, push("Format ").push(best_format.format).pushf(" has been chosen for surface"));
   }
   VkFormatProperties surface_format_properties{};
   vkGetPhysicalDeviceFormatProperties(
@@ -760,16 +712,11 @@ EXPORT SwapchainConfig create_default_swapchain_config(const Device& device, VkS
   if (surface_format_properties.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT) {
     format_supported_usage_flags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
   }
-  swapchain_config.image_usage_flags =
-      surface_capabilities.supportedUsageFlags & format_supported_usage_flags;
+  swapchain_config.image_usage_flags = surface_capabilities.supportedUsageFlags & format_supported_usage_flags;
   ASSERT((swapchain_config.image_usage_flags & VK_IMAGE_USAGE_TRANSFER_DST_BIT) != 0);
   return swapchain_config;
 }
-EXPORT Result<Swapchain> create_default_swapchain(
-    core::Arena& ar,
-    const Device& device,
-    VkSurfaceKHR surface
-) {
+EXPORT Result<Swapchain> create_default_swapchain(core::Arena& ar, const Device& device, VkSurfaceKHR surface) {
   auto swapchain_config = create_default_swapchain_config(device, surface);
   u32 queue_families[]{device.omni_queue_family_index};
   auto swapchain = create_swapchain(device, queue_families, surface, swapchain_config);
@@ -785,13 +732,9 @@ EXPORT Result<core::unit_t> rebuild_default_swapchain(
     Swapchain& swapchain
 ) {
   auto new_swapchain_config = create_default_swapchain_config(device, surface);
-  ASSERTM(
-      new_swapchain_config.min_image_count == swapchain.config.min_image_count,
-      "min image count has changed..."
-  );
+  ASSERTM(new_swapchain_config.min_image_count == swapchain.config.min_image_count, "min image count has changed...");
   u32 queue_families[]{device.omni_queue_family_index};
-  auto new_swapchain =
-      create_swapchain(device, queue_families, surface, new_swapchain_config, swapchain);
+  auto new_swapchain = create_swapchain(device, queue_families, surface, new_swapchain_config, swapchain);
   if (new_swapchain.is_err()) {
     return new_swapchain.err();
   }
@@ -799,9 +742,7 @@ EXPORT Result<core::unit_t> rebuild_default_swapchain(
   vkDestroySwapchainKHR(device, swapchain.swapchain, nullptr);
   swapchain.swapchain = new_swapchain.value();
   swapchain.config    = new_swapchain_config;
-  vkGetSwapchainImagesKHR(
-      device, swapchain, &swapchain.config.min_image_count, swapchain.images.data
-  );
+  vkGetSwapchainImagesKHR(device, swapchain, &swapchain.config.min_image_count, swapchain.images.data);
   return core::unit;
 }
 } // namespace vk

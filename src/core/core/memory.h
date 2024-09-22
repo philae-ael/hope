@@ -15,8 +15,8 @@
   #define DEFAULT_ARENA_CAPACITY GB(1) // it's virtual memory, we have plenty
 #endif
 
-#ifndef ARENA_BLOCK_ALIGNEMENT
-  #define ARENA_BLOCK_ALIGNEMENT max_align_v
+#ifndef ALLOC_DEFAULT_ALIGNEMENT
+  #define ALLOC_DEFAULT_ALIGNEMENT max_align
 #endif
 
 // 0 for system value
@@ -37,35 +37,37 @@
 #endif
 
 namespace core {
-struct LayoutInfo;
-struct ArenaTemp;
 
-struct Arena {
-  u8* base;
-  u8* mem;
-  u8* committed;
-  usize capacity;
+struct AllocatorVTable {
+  using allocate_pfn   = void* (*)(void*, usize size, usize alignement, const char* src);
 
-  void* allocate(
-      usize size,
-      usize alignement = ARENA_BLOCK_ALIGNEMENT,
-      const char* src  = "<unknown>"
-  );
-  void* allocate(LayoutInfo layout, const char* src = "<unknown>") {
-    return allocate(layout.size, layout.alignement, src);
+  // if size == 0, it should be best effort
+  using deallocate_pfn = void (*)(void*, void* alloc_base_ptr, usize size, const char* src);
+  using try_resize_pfn = bool (*)(void*, void* alloc_base_ptr, usize cur_size, usize new_size, const char* src);
+  using owns_pfn       = bool (*)(void*, void* alloc_base_ptr);
+
+  allocate_pfn allocate;
+  deallocate_pfn deallocate;
+  try_resize_pfn try_resize;
+  owns_pfn owns;
+};
+
+struct Allocator {
+  void* userdata;
+  const AllocatorVTable* vtable;
+
+  inline void* allocate(usize size, usize alignement = ALLOC_DEFAULT_ALIGNEMENT, const char* src = "<unknown>") {
+    return vtable->allocate(userdata, size, alignement, src);
   }
-  bool try_resize(void* ptr, usize cur_size, usize new_size, const char* src = "<unknown>");
+  inline void* allocate(LayoutInfo layout, const char* src = "<unknown>") {
+    return vtable->allocate(userdata, layout.size, layout.alignement, src);
+  }
 
   template <class T>
-  T* allocate() {
+  inline T* allocate() {
     return static_cast<T*>(allocate(default_layout_of<T>(), type_name<T>()));
   }
-
-  storage<u8> allocate_array(
-      LayoutInfo layout,
-      usize element_count,
-      const char* src = "<unknown>"
-  ) {
+  storage<u8> allocate_array(LayoutInfo layout, usize element_count, const char* src = "<unknown>") {
     auto arr_layout = layout.array(element_count);
     return {
         arr_layout.size,
@@ -81,17 +83,46 @@ struct Arena {
     };
   }
 
-  u64 pos();
-  void pop_pos(u64 pos);
+  inline void deallocate(void* alloc_base_ptr, usize size, const char* src = "<unknown>") {
+    return vtable->deallocate(userdata, alloc_base_ptr, size, src);
+  }
+
+  inline bool try_resize(void* alloc_base_ptr, usize cur_size, usize new_size, const char* src = "<unknown>") {
+    return vtable->try_resize(userdata, alloc_base_ptr, cur_size, new_size, src);
+  }
+  inline bool owns(void* alloc_base_ptr) {
+    return vtable->owns(userdata, alloc_base_ptr);
+  }
+};
+
+struct ArenaTemp;
+struct Arena {
+  u8* base;
+  u8* mem;
+  u8* committed;
+  usize capacity;
+
+  void* allocate(usize size, usize alignement, const char* src);
+  bool try_resize(void* ptr, usize cur_size, usize new_size, const char* src = "<unknown>");
+  void deallocate(void* ptr, usize size, const char* src = "<unknown>") {
+    try_resize(ptr, size, 0, src);
+  }
   bool owns(void* ptr);
 
   ArenaTemp make_temp();
-
   void reset() {
-    deallocate(usize(mem - base));
+    pop_pos(0);
   }
 
-private:
+  operator Allocator() {
+    return {this, &vtable};
+  }
+
+  static const AllocatorVTable vtable;
+
+  // INTERNAL
+  u64 pos();
+  void pop_pos(u64 pos);
   void deallocate(usize size);
 };
 
@@ -104,6 +135,9 @@ struct ArenaTemp {
 
   void retire();
 
+  operator Allocator() {
+    return *arena_;
+  }
   Arena* operator->() {
     check();
     return arena_;
@@ -112,36 +146,20 @@ struct ArenaTemp {
     check();
     return *arena_;
   }
-  void check() {
-    ASSERT(arena_ != nullptr);
+  inline void check() {
+    DEBUG_ASSERT(arena_ != nullptr);
   }
 };
 
-struct scratch;
+struct Scratch;
+Scratch scratch_get();
+void scratch_retire(Scratch&);
 
-scratch scratch_get();
-void scratch_retire(scratch&);
-
-struct scratch {
-  Arena* arena_;
-  u64 old_pos;
-
+struct Scratch : ArenaTemp {
   void retire() {
-    check();
     scratch_retire(*this);
   }
-  Arena* operator->() {
-    check();
-    return arena_;
-  }
-  Arena& operator*() {
-    check();
-    return *arena_;
-  }
-
-  void check() {
-    ASSERTM(arena_ != nullptr, "scratch has already been already retired");
-  }
 };
+
 } // namespace core
 #endif // INCLUDE_CORE_MEMORY_H_

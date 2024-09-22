@@ -8,10 +8,6 @@
 #include <vulkan/vulkan_core.h>
 // IWYU pragma: end_exports
 
-namespace core {
-struct Arena;
-} // namespace core
-
 #define EXTENSIONS                      \
   LOAD(vkSetDebugUtilsObjectNameEXT)    \
   LOAD(vkSetDebugUtilsObjectTagEXT)     \
@@ -81,9 +77,7 @@ struct Result {
 
   T expect(const char* msg) {
     if (is_err()) {
-      LOG_BUILDER(
-          core::LogLevel::Error, pushf("Result expected to be %s, got ", msg).push(res).panic()
-      );
+      LOG_BUILDER(core::LogLevel::Error, pushf("Result expected to be %s, got ", msg).push(res).panic());
     }
     return t;
   }
@@ -98,7 +92,7 @@ struct wrapper {
 
 struct queue_flags_t {};
 constexpr queue_flags_t queue_flags{};
-core::str8 to_str8(core::Arena& ar, queue_flags_t, VkQueueFlags struct_type);
+core::str8 to_str8(core::Allocator alloc, queue_flags_t, VkQueueFlags struct_type);
 } // namespace vk
 
 #define VK_PUSH_NEXT(parent, child)           \
@@ -107,16 +101,13 @@ core::str8 to_str8(core::Arena& ar, queue_flags_t, VkQueueFlags struct_type);
     (parent)->pNext = (child);                \
   } while (0)
 
-#define VK_ASSERT(x)                                                                \
-  do {                                                                              \
-    VkResult res_assert_ = (x);                                                     \
-    if (res_assert_ != VK_SUCCESS) {                                                \
-      LOG_BUILDER(                                                                  \
-          ::core::LogLevel::Error,                                                  \
-          push("expected VK_SUCCESS, " STRINGIFY(x) " returned ").push(res_assert_) \
-      );                                                                            \
-      ::core::panic("VK_ASSERT failed");                                            \
-    }                                                                               \
+#define VK_ASSERT(x)                                                                                                   \
+  do {                                                                                                                 \
+    VkResult res_assert_ = (x);                                                                                        \
+    if (res_assert_ != VK_SUCCESS) {                                                                                   \
+      LOG_BUILDER(::core::LogLevel::Error, push("expected VK_SUCCESS, " STRINGIFY(x) " returned ").push(res_assert_)); \
+      ::core::panic("VK_ASSERT failed");                                                                               \
+    }                                                                                                                  \
   } while (0)
 
 core::str8 to_str8(VkResult res);

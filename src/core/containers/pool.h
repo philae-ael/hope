@@ -19,13 +19,13 @@ struct pool {
   node tail{};
   node* head = &tail;
 
-  T& allocate(core::Arena& arena) {
+  T& allocate(core::Allocator alloc) {
     if (tail.next != nullptr) {
       node* n   = tail.next;
       tail.next = n->next;
       return (T*)n;
     }
-    return *arena.allocate<T>();
+    return alloc.allocate<T>();
   }
   void deallocate(core::Arena& arena, T& t) {
     if (arena.try_resize(t, size, 0, "pool")) {

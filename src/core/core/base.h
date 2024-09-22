@@ -72,11 +72,11 @@ static_assert(sizeof(f32) == 4);
 using f64 = double;
 static_assert(sizeof(f64) == 8);
 
-constexpr usize max_align_v = alignof(std::max_align_t);
+constexpr usize max_align = alignof(std::max_align_t);
 
 namespace core {
 
-struct Arena;
+struct Allocator;
 struct hstr8 {
   u64 hash;
   usize len;
@@ -87,8 +87,8 @@ struct hstr8 {
   bool operator==(const hstr8& other) const {
     return other.hash == hash;
   }
-  hstr8 clone(Arena& arena);
-  const char* cstring(Arena& arena);
+  hstr8 clone(Allocator alloc);
+  const char* cstring(Allocator alloc);
 };
 
 constexpr u64 hash(const u8* data, size_t len) {
@@ -145,8 +145,8 @@ struct str8 {
     return data[idx];
   }
 
-  str8 clone(Arena& arena);
-  const char* cstring(Arena& arena);
+  str8 clone(Allocator alloc);
+  const char* cstring(Allocator alloc);
 };
 
 } // namespace core

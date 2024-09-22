@@ -23,28 +23,28 @@ const char* VEC4_FMT_FLAGS[]{
 };
 
 namespace math {
-EXPORT core::str8 to_str8(core::Arena& arena, Vec2 v, VectorFormat format) {
+EXPORT core::str8 to_str8(core::Allocator alloc, Vec2 v, VectorFormat format) {
   core::string_builder sb{};
   // clang-format off
-    sb.pushf(arena, VEC2_FMT_FLAGS[(usize)format.flags & 0b111],
+    sb.pushf(alloc, VEC2_FMT_FLAGS[(usize)format.flags & 0b111],
              format.width, format.precision , v.x, 
              format.width, format.precision , v.y
              );
   // clang-format on
-  return sb.commit(arena);
+  return sb.commit(alloc);
 }
 
-EXPORT core::str8 to_str8(core::Arena& arena, Vec4 v, VectorFormat format) {
+EXPORT core::str8 to_str8(core::Allocator alloc, Vec4 v, VectorFormat format) {
   core::string_builder sb{};
   // clang-format off
-    sb.pushf(arena, VEC4_FMT_FLAGS[(usize)format.flags & 0b111],
+    sb.pushf(alloc, VEC4_FMT_FLAGS[(usize)format.flags & 0b111],
              format.width, format.precision , v.x, 
              format.width, format.precision , v.y, 
              format.width, format.precision , v.z, 
              format.width, format.precision , v.w
              );
   // clang-format on
-  return sb.commit(arena);
+  return sb.commit(alloc);
 }
 
 } // namespace math

@@ -264,8 +264,8 @@ constexpr VectorFormat VectorFormatPretty{
     .flags     = core::enum_helpers::enum_or(VectorFormatFlags::Multiline, VectorFormatFlags::Alt),
 };
 
-core::str8 to_str8(core::Arena& arena, Vec4 v, VectorFormat format = {});
-core::str8 to_str8(core::Arena& arena, Vec2 v, VectorFormat format = {});
+core::str8 to_str8(core::Allocator alloc, Vec4 v, VectorFormat format = {});
+core::str8 to_str8(core::Allocator alloc, Vec2 v, VectorFormat format = {});
 
 /// MATRICES
 /// ======
@@ -341,11 +341,7 @@ union Mat4x4 {
 
   constexpr inline friend Mat4x4 operator+(math::Mat4x4 lhs, math::Mat4x4 rhs) {
     return {
-        col_major,
-        lhs.col(0) + rhs.col(0),
-        lhs.col(1) + rhs.col(1),
-        lhs.col(2) + rhs.col(2),
-        lhs.col(3) + rhs.col(3),
+        col_major, lhs.col(0) + rhs.col(0), lhs.col(1) + rhs.col(1), lhs.col(2) + rhs.col(2), lhs.col(3) + rhs.col(3),
     };
   }
   constexpr inline friend Mat4x4 operator*(f32 l, math::Mat4x4 rhs) {
@@ -355,11 +351,9 @@ union Mat4x4 {
   static const Mat4x4 Id;
 };
 
-inline constexpr Mat4x4
-    Mat4x4::Zero{col_major, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}};
+inline constexpr Mat4x4 Mat4x4::Zero{col_major, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}};
 
-inline constexpr Mat4x4
-    Mat4x4::Id{col_major, {1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+inline constexpr Mat4x4 Mat4x4::Id{col_major, {1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
 
 using Mat4 = Mat4x4;
 
@@ -387,16 +381,12 @@ inline constexpr Mat4x4 projection_matrix_from_far_plane_size(
 // Note: aspect ratio = width / height
 inline constexpr Mat4x4 projection_matrix_from_hfov(f32 near, f32 far, f32 hfov, f32 aspect_ratio) {
   auto half_far_plane_width = near * std::tan(hfov / 2);
-  return projection_matrix_from_far_plane_size(
-      near, far, half_far_plane_width, half_far_plane_width / aspect_ratio
-  );
+  return projection_matrix_from_far_plane_size(near, far, half_far_plane_width, half_far_plane_width / aspect_ratio);
 }
 
 inline constexpr Mat4x4 projection_matrix_from_vfov(f32 near, f32 far, f32 vfov, f32 aspect_ratio) {
   auto half_far_plane_height = near * std::tan(vfov / 2);
-  return projection_matrix_from_far_plane_size(
-      near, far, half_far_plane_height * aspect_ratio, half_far_plane_height
-  );
+  return projection_matrix_from_far_plane_size(near, far, half_far_plane_height * aspect_ratio, half_far_plane_height);
 }
 
 inline constexpr Mat4x4 translation_matrix(Vec4 translation) {
