@@ -23,3 +23,4 @@ add_library(misc STATIC
 )
 target_compile_options(misc PRIVATE)
 target_include_directories(misc PUBLIC misc)
+set_property(TARGET misc PROPERTY POSITION_INDEPENDENT_CODE ON)

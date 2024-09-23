@@ -14,6 +14,9 @@ struct TriangleRenderer {
   VkDescriptorPool descriptor_pool;
   VkPipeline pipeline;
   VkPipelineLayout pipeline_layout;
+  VkDescriptorSetLayout descriptor_set_layout;
+  VkDescriptorSet descriptor_set;
+  VkSampler sampler;
 
   static TriangleRenderer init(subsystem::video& v, VkFormat format);
 
@@ -21,6 +24,7 @@ struct TriangleRenderer {
 
   void render(
       AppState* app_state,
+    VkDevice device,
       VkCommandBuffer cmd,
       vk::image2D color,
       vk::image2D depth,

@@ -65,6 +65,7 @@ struct physical_device_features {
   bool synchronization2;
   bool dynamic_rendering;
   bool timestamps;
+  bool descriptor_indexing;
 
   bool check_features(const VkPhysicalDeviceProperties2& physical_device_properties2) const;
   VkPhysicalDeviceFeatures2 into_vk_physical_device_features2(core::Allocator alloc) const;

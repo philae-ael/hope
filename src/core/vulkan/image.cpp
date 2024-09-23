@@ -30,6 +30,7 @@ EXPORT image2D image2D::create(subsystem::video& v, const Config& config, Sync s
       .mipLevels             = 1,
       .arrayLayers           = 1,
       .samples               = VK_SAMPLE_COUNT_1_BIT,
+      .tiling                = config.tiling,
       .usage                 = config.usage,
       .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
       .queueFamilyIndexCount = 1,
@@ -37,7 +38,8 @@ EXPORT image2D image2D::create(subsystem::video& v, const Config& config, Sync s
       .initialLayout         = sync.layout,
   };
   VmaAllocationCreateInfo alloc_create_info{
-      .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+      .flags = config.alloc_flags,
+      .usage = VMA_MEMORY_USAGE_AUTO,
   };
   VK_ASSERT(
       vmaCreateImage(v.allocator, &image_create_info, &alloc_create_info, &image.image, &image.allocation, nullptr)

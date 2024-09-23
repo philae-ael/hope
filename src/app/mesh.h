@@ -14,6 +14,8 @@ struct GpuMesh {
   VmaAllocation vertex_buf_allocation;
   VmaAllocation index_buf_allocation;
 
+  vk::image2D base_color;
+
   math::Mat4 transform = math::Mat4::Id;
   u32 indices;
 };

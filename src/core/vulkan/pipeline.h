@@ -98,16 +98,25 @@ inline const DepthStencil DepthStencil::WriteAndCompareDepth{
 };
 
 struct ColorBlendAttachement {
+  bool blend_enable;
   inline VkPipelineColorBlendAttachmentState vk() const {
     return {
-        .blendEnable = false,
+        .blendEnable         = blend_enable,
+        .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+        .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+        .colorBlendOp        = VK_BLEND_OP_ADD,
+        .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+        .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+        .alphaBlendOp        = VK_BLEND_OP_ADD,
         .colorWriteMask =
-            VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
+            VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
     };
   }
   static const ColorBlendAttachement NoBlend;
+  static const ColorBlendAttachement AlphaBlend;
 };
-inline const ColorBlendAttachement ColorBlendAttachement::NoBlend{};
+inline const ColorBlendAttachement ColorBlendAttachement::NoBlend{.blend_enable = false};
+inline const ColorBlendAttachement ColorBlendAttachement::AlphaBlend{.blend_enable = true};
 
 struct ColorBlend {
   core::storage<VkPipelineColorBlendAttachmentState> color_blend_attachements;

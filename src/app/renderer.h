@@ -16,7 +16,7 @@ struct MainRenderer {
   core::vec<GpuMesh> meshes;
 
   static MainRenderer init(subsystem::video& v);
-  void render(AppState* app_state, VkCommandBuffer cmd, vk::image2D& swapchain_image);
+  void render(AppState* app_state, VkDevice device, VkCommandBuffer cmd, vk::image2D& swapchain_image);
   void uninit(subsystem::video& v);
 
   core::vec<core::str8> file_deps(core::Arena& arena);

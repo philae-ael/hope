@@ -448,10 +448,11 @@ EXPORT Result<Device> create_default_device(
       },
   };
   physical_device_features requested_features{
-      .queues            = queues,
-      .synchronization2  = true,
-      .dynamic_rendering = true,
-      .timestamps        = true,
+      .queues              = queues,
+      .synchronization2    = true,
+      .dynamic_rendering   = true,
+      .timestamps          = true,
+      .descriptor_indexing = true,
   };
   auto [physical_device, queues_creation_infos] = [&] {
     auto physical_device = find_physical_device(*ar, instance, requested_features);
@@ -520,6 +521,15 @@ EXPORT VkPhysicalDeviceFeatures2 physical_device_features::into_vk_physical_devi
             .hostQueryReset = VK_TRUE,
     };
     VK_PUSH_NEXT(&physical_device_features2, physical_device_host_query_reset_features);
+  }
+  if (descriptor_indexing) {
+    auto physical_device_descriptor_indexing_features = alloc.allocate<VkPhysicalDeviceDescriptorIndexingFeatures>();
+    *physical_device_descriptor_indexing_features     = {
+            .sType                                     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES,
+            .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
+            .runtimeDescriptorArray                    = VK_TRUE,
+    };
+    VK_PUSH_NEXT(&physical_device_features2, physical_device_descriptor_indexing_features);
   }
   return physical_device_features2;
 }

@@ -48,7 +48,7 @@ MainRenderer MainRenderer::init(subsystem::video& v) {
   return self;
 }
 
-void MainRenderer::render(AppState* app_state, VkCommandBuffer cmd, vk::image2D& swapchain_image) {
+void MainRenderer::render(AppState* app_state, VkDevice device, VkCommandBuffer cmd, vk::image2D& swapchain_image) {
   vk::pipeline_barrier(
       cmd, swapchain_image.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}),
       depth.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}, VK_IMAGE_ASPECT_DEPTH_BIT)
@@ -56,7 +56,7 @@ void MainRenderer::render(AppState* app_state, VkCommandBuffer cmd, vk::image2D&
 
   auto triangle_scope = vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "triangle"_hs);
 
-  triangle_renderer.render(app_state, cmd, swapchain_image, depth, meshes);
+  triangle_renderer.render(app_state, device, cmd, swapchain_image, depth, meshes);
 
   vk::timestamp_scope_end(cmd, VK_PIPELINE_STAGE_2_NONE, triangle_scope);
 
@@ -154,7 +154,7 @@ AppEvent render(AppState* app_state, subsystem::video& v, Renderer& renderer) {
       .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
   };
   vkBeginCommandBuffer(renderer.cmd, &command_buffer_begin_info);
-  renderer.main_renderer.render(app_state, renderer.cmd, frame->swapchain_image);
+  renderer.main_renderer.render(app_state, v.device, renderer.cmd, frame->swapchain_image);
 
   using namespace core::literals;
   auto render_scope = utils::scope_start("end cmd buffer"_hs);

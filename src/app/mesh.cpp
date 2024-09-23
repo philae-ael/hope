@@ -1,11 +1,15 @@
 #include "mesh.h"
+#include "core/vulkan/image.h"
+#include "core/vulkan/vulkan.h"
 
 #include <core/containers/vec.h>
 #include <core/core.h>
 #include <core/fs/fs.h>
 
 #include <cgltf.h>
+#include <stb_image.h>
 #include <vk_mem_alloc.h>
+#include <vulkan/vulkan_core.h>
 
 core::vec<GpuMesh> load_mesh(core::Allocator alloc, subsystem::video& v, core::str8 src) {
   core::vec<GpuMesh> meshes{};
@@ -52,7 +56,7 @@ core::vec<GpuMesh> load_mesh(core::Allocator alloc, subsystem::video& v, core::s
 
       GpuMesh gpu_mesh{.transform = transform};
 
-      // === INDICES ===
+      // === Index buffer ===
 
       ASSERT(primitive.indices->component_type == cgltf_component_type_r_16u);
       {
@@ -81,28 +85,27 @@ core::vec<GpuMesh> load_mesh(core::Allocator alloc, subsystem::video& v, core::s
         gpu_mesh.indices = (u32)indices.size;
       }
 
-      // === The other attributes ===
-
+      // === Vertex buffer ===
       // pos: 3
       // normal: 3
       // texcoord: 2
+
       auto vertices = scratch_alloc.allocate_array<f32>(primitive.attributes[0].data->count * (4 + 4 + 2));
 
       usize offset = 0;
       for (auto i : core::range{0zu, primitive.attributes[0].data->count}.iter()) {
-
         for (auto& attribute : core::storage{primitive.attributes_count, primitive.attributes}.iter()) {
           ASSERT(primitive.attributes[0].data->count == attribute.data->count);
 
           switch (attribute.type) {
-          case cgltf_attribute_type_position: {
-            ASSERT(cgltf_accessor_read_float(attribute.data, i, vertices.data + offset, 3));
+          case cgltf_attribute_type_position:
+            ASSERT(cgltf_accessor_read_float(attribute.data, i, vertices.data + offset + 0, 3));
             break;
-          }
           case cgltf_attribute_type_normal:
             ASSERT(cgltf_accessor_read_float(attribute.data, i, vertices.data + offset + 3, 3));
             break;
           case cgltf_attribute_type_texcoord:
+            ASSERT(attribute.index == 0);
             ASSERT(cgltf_accessor_read_float(attribute.data, i, vertices.data + offset + 6, 2));
             break;
           case cgltf_attribute_type_tangent:
@@ -139,6 +142,37 @@ core::vec<GpuMesh> load_mesh(core::Allocator alloc, subsystem::video& v, core::s
           v.allocator, vertices.data, gpu_mesh.vertex_buf_allocation, 0, vertices.into_bytes().size
       );
 
+      // === Materials ===
+      if (primitive.material != nullptr) {
+        auto& material = *primitive.material;
+        ASSERT(material.has_pbr_metallic_roughness);
+
+        auto buf_view = material.pbr_metallic_roughness.base_color_texture.texture->image->buffer_view;
+        int x, y, channels;
+        u8* mem{};
+
+        mem = stbi_load_from_memory(
+            (const stbi_uc*)buf_view->buffer->data + buf_view->offset, (int)buf_view->size, &x, &y, &channels, 4
+        );
+        ASSERTM(mem != 0, "can't load texture: %s", stbi_failure_reason());
+
+        gpu_mesh.base_color = vk::image2D::create(
+            v,
+            vk::image2D::Config{
+                .format      = VK_FORMAT_R8G8B8A8_UNORM,
+                .extent      = {.constant{.width = (u32)x, .height = (u32)y}},
+                .tiling      = VK_IMAGE_TILING_LINEAR, // TODO: use a staging buffer
+                .usage       = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                .alloc_flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
+            },
+            {}
+        );
+        VK_ASSERT(
+            vmaCopyMemoryToAllocation(v.allocator, mem, gpu_mesh.base_color.allocation, 0, VkDeviceSize(4 * x * y))
+        );
+        stbi_image_free(mem);
+      }
+
       meshes.push(alloc, gpu_mesh);
     }
   };
@@ -164,4 +198,5 @@ core::vec<GpuMesh> load_mesh(core::Allocator alloc, subsystem::video& v, core::s
 void unload_mesh(subsystem::video& v, GpuMesh mesh) {
   vmaDestroyBuffer(v.allocator, mesh.vertex_buffer, mesh.vertex_buf_allocation);
   vmaDestroyBuffer(v.allocator, mesh.index_buffer, mesh.index_buf_allocation);
+  mesh.base_color.destroy(v);
 }

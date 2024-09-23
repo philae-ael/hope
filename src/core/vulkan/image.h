@@ -46,9 +46,11 @@ struct image2D {
       struct {
         tag_t tag = tag_t::Swapchain;
       } swapchain;
-    } extent = {.constant = {.width = 64, .height = 64}};
+    } extent             = {.constant = {.width = 64, .height = 64}};
+    VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
     VkImageUsageFlags usage;
     VkImageAspectFlags image_view_aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+    VmaAllocationCreateFlags alloc_flags{};
   };
 
   static image2D create(subsystem::video& v, const image2D::Config& config, Sync sync);
