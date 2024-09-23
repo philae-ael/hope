@@ -115,9 +115,14 @@ TriangleRenderer TriangleRenderer::init(subsystem::video& v, VkFormat format) {
 
   VkPipeline pipeline =
       vk::pipeline::Pipeline{
-          .rendering     = {.color_attachment_formats = {1, &format}},
+          .rendering =
+              {
+                  .color_attachment_formats = {1, &format},
+                  .depth_attachment_format  = VK_FORMAT_D16_UNORM,
+              },
           .shader_stages = shader_stage_create_infos,
           .vertex_input  = {vertex_binding_descriptions, vertex_attribute_descriptions},
+          .depth_stencil = vk::pipeline::DepthStencil::WriteAndCompareDepth,
           .color_blend   = {color_blend_attachments},
           .dynamic_state = {dynamic_states},
       }
@@ -140,37 +145,44 @@ core::storage<core::str8> TriangleRenderer::file_deps() {
 void TriangleRenderer::render(
     AppState* app_state,
     VkCommandBuffer cmd,
-    vk::image2D target,
+    vk::image2D color,
+    vk::image2D depth,
     core::storage<GpuMesh> meshes
 ) {
   using namespace core::literals;
   auto triangle_scope = utils::scope_start("triangle"_hs);
   defer { utils::scope_end(triangle_scope); };
-  core::array color_attachments{target.as_attachment(
-      vk::image2D::AttachmentLoadOp::Clear{{.color = {.float32 = {0.0, 0.0, 0.0, 0.0}}}},
-      vk::image2D::AttachmentStoreOp::Store
-  )};
+  core::array color_attachments{
+      color.as_attachment(
+          vk::image2D::AttachmentLoadOp::Clear{{.color = {.float32 = {0.0, 0.0, 0.0, 0.0}}}},
+          vk::image2D::AttachmentStoreOp::Store
+      ),
+  };
+  const auto depth_attachment = depth.as_attachment(
+      vk::image2D::AttachmentLoadOp::Clear{{.depthStencil = {1.0, 0}}}, vk::image2D::AttachmentStoreOp::Store
+  );
   VkRenderingInfo rendering_info{
       .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO,
-      .renderArea           = {{}, target.extent2},
+      .renderArea           = {{}, color.extent2},
       .layerCount           = 1,
       .colorAttachmentCount = (u32)color_attachments.size(),
-      .pColorAttachments    = color_attachments.data
+      .pColorAttachments    = color_attachments.data,
+      .pDepthAttachment     = &depth_attachment,
   };
 
   vkCmdBeginRendering(cmd, &rendering_info);
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-  VkRect2D scissor{{}, target.extent2};
+  VkRect2D scissor{{}, color.extent2};
   vkCmdSetScissor(cmd, 0, 1, &scissor);
 
-  VkViewport viewport{0, (f32)target.extent2.height, (f32)target.extent2.width, -(f32)target.extent2.height, 0, 1};
+  VkViewport viewport{0, (f32)color.extent2.height, (f32)color.extent2.width, -(f32)color.extent2.height, 0, 1};
   vkCmdSetViewport(cmd, 0, 1, &viewport);
 
   for (auto& mesh : meshes.iter()) {
     VkDeviceSize offset = 0;
     vkCmdBindVertexBuffers(cmd, 0, 1, &mesh.vertex_buffer, &offset);
 
-    f32 aspect_ratio = (f32)target.extent2.width / (f32)target.extent2.height;
+    f32 aspect_ratio = (f32)color.extent2.width / (f32)color.extent2.height;
     struct {
       CameraMatrices camera_matrices;
       Mat4 transform_matrix;

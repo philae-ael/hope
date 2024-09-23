@@ -32,6 +32,16 @@ MainRenderer MainRenderer::init(subsystem::video& v) {
   MainRenderer self;
   self.triangle_renderer = TriangleRenderer::init(v, v.swapchain.config.surface_format.format);
   self.imgui_renderer    = ImGuiRenderer::init(v);
+  self.depth             = vk::image2D::create(
+      v,
+      vk::image2D::Config{
+                      .format            = VK_FORMAT_D16_UNORM,
+                      .extent            = {.swapchain{}},
+                      .usage             = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                      .image_view_aspect = VK_IMAGE_ASPECT_DEPTH_BIT,
+      },
+      {}
+  );
 
   self.meshes = load_mesh(core::get_named_allocator(core::AllocatorName::General), v, deps[0]);
 
@@ -39,11 +49,14 @@ MainRenderer MainRenderer::init(subsystem::video& v) {
 }
 
 void MainRenderer::render(AppState* app_state, VkCommandBuffer cmd, vk::image2D& swapchain_image) {
-  vk::pipeline_barrier(cmd, swapchain_image.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}));
+  vk::pipeline_barrier(
+      cmd, swapchain_image.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}),
+      depth.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}, VK_IMAGE_ASPECT_DEPTH_BIT)
+  );
 
   auto triangle_scope = vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "triangle"_hs);
 
-  triangle_renderer.render(app_state, cmd, swapchain_image, meshes);
+  triangle_renderer.render(app_state, cmd, swapchain_image, depth, meshes);
 
   vk::timestamp_scope_end(cmd, VK_PIPELINE_STAGE_2_NONE, triangle_scope);
 
@@ -66,6 +79,7 @@ void MainRenderer::uninit(subsystem::video& v) {
 
   triangle_renderer.uninit(v);
   imgui_renderer.uninit(v);
+  depth.destroy(v);
 
   return;
 }

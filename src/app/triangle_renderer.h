@@ -19,7 +19,13 @@ struct TriangleRenderer {
 
   static core::storage<core::str8> file_deps();
 
-  void render(AppState* app_state, VkCommandBuffer cmd, vk::image2D target, core::storage<GpuMesh> meshes);
+  void render(
+      AppState* app_state,
+      VkCommandBuffer cmd,
+      vk::image2D color,
+      vk::image2D depth,
+      core::storage<GpuMesh> meshes
+  );
   void uninit(subsystem::video& v);
 };
 

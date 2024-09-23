@@ -75,15 +75,26 @@ struct Multisample {
 };
 
 struct DepthStencil {
+  VkCompareOp depth_compare_op = VK_COMPARE_OP_LESS;
+  bool depth_test              = false;
+  bool depth_write             = false;
+
   inline VkPipelineDepthStencilStateCreateInfo vk() const {
     return {
         .sType                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-        .depthTestEnable       = false,
-        .depthWriteEnable      = false,
+        .depthTestEnable       = depth_test,
+        .depthWriteEnable      = depth_write,
+        .depthCompareOp        = depth_compare_op,
         .depthBoundsTestEnable = false,
         .stencilTestEnable     = false,
     };
   }
+  static const DepthStencil WriteAndCompareDepth;
+};
+inline const DepthStencil DepthStencil::WriteAndCompareDepth{
+    .depth_compare_op = VK_COMPARE_OP_LESS,
+    .depth_test       = true,
+    .depth_write      = true,
 };
 
 struct ColorBlendAttachement {

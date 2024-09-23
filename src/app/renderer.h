@@ -1,6 +1,7 @@
 #ifndef INCLUDE_APP_RENDERER_H_
 #define INCLUDE_APP_RENDERER_H_
 
+#include "core/vulkan/image.h"
 #include "imgui_renderer.h"
 #include "loader/app_loader.h"
 #include "mesh.h"
@@ -11,6 +12,7 @@
 struct MainRenderer {
   ImGuiRenderer imgui_renderer;
   TriangleRenderer triangle_renderer;
+  vk::image2D depth;
   core::vec<GpuMesh> meshes;
 
   static MainRenderer init(subsystem::video& v);

@@ -1,8 +1,10 @@
 #include "image.h"
 
 #include "subsystem.h"
+#include <vulkan/vulkan_core.h>
 
 namespace vk {
+
 EXPORT image2D image2D::create(subsystem::video& v, const Config& config, Sync sync) {
   image2D image{
       .source = Source::Created,
@@ -28,7 +30,7 @@ EXPORT image2D image2D::create(subsystem::video& v, const Config& config, Sync s
       .mipLevels             = 1,
       .arrayLayers           = 1,
       .samples               = VK_SAMPLE_COUNT_1_BIT,
-      .usage                 = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+      .usage                 = config.usage,
       .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
       .queueFamilyIndexCount = 1,
       .pQueueFamilyIndices   = &v.device.omni_queue_family_index,
@@ -48,7 +50,7 @@ EXPORT image2D image2D::create(subsystem::video& v, const Config& config, Sync s
       .components = {},
       .subresourceRange =
           {
-              .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+              .aspectMask = config.image_view_aspect,
               .levelCount = 1,
               .layerCount = 1,
           },
@@ -57,7 +59,7 @@ EXPORT image2D image2D::create(subsystem::video& v, const Config& config, Sync s
   return image;
 }
 
-EXPORT VkImageMemoryBarrier2 image2D::sync_to(image2D::Sync new_sync) {
+EXPORT VkImageMemoryBarrier2 image2D::sync_to(image2D::Sync new_sync, VkImageAspectFlagBits aspect_mask) {
   image2D::Sync old_sync = sync;
   sync                   = new_sync;
 
@@ -70,7 +72,7 @@ EXPORT VkImageMemoryBarrier2 image2D::sync_to(image2D::Sync new_sync) {
       .oldLayout        = old_sync.layout,
       .newLayout        = new_sync.layout,
       .image            = image,
-      .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1},
+      .subresourceRange = {.aspectMask = aspect_mask, .levelCount = 1, .layerCount = 1},
   };
 }
 

@@ -48,10 +48,11 @@ struct image2D {
       } swapchain;
     } extent = {.constant = {.width = 64, .height = 64}};
     VkImageUsageFlags usage;
+    VkImageAspectFlagBits image_view_aspect = VK_IMAGE_ASPECT_COLOR_BIT;
   };
 
   static image2D create(subsystem::video& v, const image2D::Config& config, Sync sync);
-  VkImageMemoryBarrier2 sync_to(image2D::Sync new_sync);
+  VkImageMemoryBarrier2 sync_to(image2D::Sync new_sync, VkImageAspectFlagBits aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT);
 
   struct AttachmentLoadOp {
     VkAttachmentLoadOp load_op;
