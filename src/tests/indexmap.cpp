@@ -3,12 +3,12 @@
 #include <core/containers/indexmap.h>
 
 TEST(indexmap compiles) {
-  core::index_map<int> im{};
+  core::index_map im{};
   (void)im;
 }
 
 TEST(indexmap insert) {
-  core::index_map<int> im{};
+  core::index_map im{};
   auto scratch = core::scratch_get();
   defer { scratch.retire(); };
   core::Allocator alloc = scratch;
@@ -32,7 +32,7 @@ TEST(indexmap insert) {
 }
 
 TEST(indexmap free with known last) {
-  core::index_map<int> im{};
+  core::index_map im{};
   auto scratch = core::scratch_get();
   defer { scratch.retire(); };
   core::Allocator alloc = scratch;

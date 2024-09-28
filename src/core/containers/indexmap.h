@@ -13,7 +13,7 @@ namespace core {
 //
 // Map handles into contiguous indices
 // Allow for lookup while keeping data iterable and defragmented
-template <class T, class handle_type = core::handle_t<T, u32>>
+template <class handle_type = core::handle_t<void, u32>>
 class index_map {
 public:
   using handle = handle_type;
@@ -140,14 +140,15 @@ private:
 
 template <class T>
 struct linear_growable_pool_with_generational_handles {
-  using imt    = core::index_map<T>;
-  using handle = imt::handle;
+  using handle    = core::handle_t<T, u32>;
+  using index_map = core::index_map<handle>;
+
+  core::vec<T> data;
 
   // There are 2 vec! Be careful with arenas
   // It allows for O(1) delete in exchange for O(N) additional storage added
   core::vec<handle> handles;
-  core::vec<T> data;
-  core::index_map<T> im;
+  index_map im;
 
   handle insert(core::Allocator alloc, T&& t) {
     auto handle = im.new_handle(alloc);
@@ -178,14 +179,14 @@ struct linear_growable_pool_with_generational_handles {
   void destroy(handle h) {
     auto command = im.free_handle(h, handles.last().copied());
     switch (command.tag) {
-    case imt::Command::Tag::SwapDeleteLast:
+    case index_map::Command::Tag::SwapDeleteLast:
       SWAP(data[command.swap_delete_last.idx], data[data.size() - 1]);
       [[fallthrough]];
-    case imt::Command::Tag::DeleteLast:
+    case index_map::Command::Tag::DeleteLast:
       data.pop(noalloc);
       handles.pop(noalloc);
       break;
-    case imt::Command::Tag::Nop:
+    case index_map::Command::Tag::Nop:
       break;
     }
   }

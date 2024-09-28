@@ -57,7 +57,7 @@ else()
   target_compile_options(core PUBLIC -msse  -msse2  -msse3)
 
   target_compile_options(core PUBLIC -Wall -Wextra -Wconversion)
-  target_compile_options(core PUBLIC -Wno-unused-parameter -Wno-missing-field-initializers)
+  target_compile_options(core PUBLIC -Wno-unused-parameter -Wno-missing-field-initializers -Wno-missing-braces)
   target_link_options(core PUBLIC -rdynamic)
   target_compile_link_options(core PUBLIC -fno-omit-frame-pointer)
   # target_compile_link_options(core PUBLIC -fsanitize=address )
@@ -124,6 +124,7 @@ add_executable(testcore
   src/tests/tests.cpp
   src/tests/math.cpp
   src/tests/indexmap.cpp
+  src/tests/tuple.cpp
 )
 target_link_libraries(testcore PRIVATE core engine)
 target_compile_options(testcore PRIVATE -Wno-format-zero-length -Wno-format-security)
