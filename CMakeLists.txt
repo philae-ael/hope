@@ -123,6 +123,7 @@ target_link_libraries(loader PRIVATE core engine)
 add_executable(testcore
   src/tests/tests.cpp
   src/tests/math.cpp
+  src/tests/indexmap.cpp
 )
 target_link_libraries(testcore PRIVATE core engine)
 target_compile_options(testcore PRIVATE -Wno-format-zero-length -Wno-format-security)

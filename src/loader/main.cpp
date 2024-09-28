@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
   /// === Env setup and globals initializations  ===
   setup_crash_handler();
   log_register_global_formatter(log_timed_formatter, nullptr);
-  log_set_global_level(core::LogLevel::Trace);
+  log_set_global_level(core::LogLevel::Debug);
   utils::timings_init();
   fs::init();
 

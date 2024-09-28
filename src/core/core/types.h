@@ -4,6 +4,7 @@
 #define INCLUDE_CORE_TYPE_H_
 
 #include <bit>
+#include <concepts>
 #include <stddef.h>
 #include <type_traits>
 
@@ -85,6 +86,17 @@ struct Maybe {
     typename detail_::maybe_traits<T>::type t;
   };
 
+  inline constexpr auto operator==(const Maybe& other) const
+    requires std::equality_comparable<T>
+  {
+    return d == other.d && (d == Discriminant::None || t == other.t);
+  }
+  inline constexpr auto operator!=(const Maybe& other) const
+    requires std::equality_comparable<T>
+  {
+    return !(*this == other);
+  }
+
   Maybe(T t)
       : d(Discriminant::Some)
       , t(t) {}
@@ -124,6 +136,12 @@ struct Maybe {
       panic("Maybe is unexpectidly empty: %s", msg);
     }
     return t;
+  }
+  Maybe<std::remove_cvref_t<T>> copied() {
+    if (d == Discriminant::None) {
+      return {};
+    }
+    return *t;
   }
 };
 

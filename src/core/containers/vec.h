@@ -133,6 +133,13 @@ struct vec {
   auto iter() const {
     return storage<const T>{*this}.iter();
   }
+
+  Maybe<T&> last() {
+    return size() > 0 ? (*this)[size() - 1] : Maybe<T&>{};
+  }
+  Maybe<const T&> last() const {
+    return size() > 0 ? (*this)[size() - 1] : Maybe<T&>{};
+  }
 };
 
 } // namespace core
