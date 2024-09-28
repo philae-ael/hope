@@ -107,7 +107,7 @@ target_sources(app PRIVATE
   src/app/app.cpp
   src/app/renderer.cpp
   src/app/imgui_renderer.cpp
-  src/app/triangle_renderer.cpp
+  src/app/basic_renderer.cpp
   src/app/profiler.cpp
   src/app/mesh.cpp
 )

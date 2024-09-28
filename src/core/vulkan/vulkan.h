@@ -113,5 +113,6 @@ core::str8 to_str8(core::Allocator alloc, queue_flags_t, VkQueueFlags struct_typ
 core::str8 to_str8(VkResult res);
 core::str8 to_str8(VkStructureType struct_type);
 core::str8 to_str8(VkFormat format);
+core::str8 to_str8(VkPresentModeKHR present_mode);
 
 #endif // INCLUDE_VULKAN_VULKAN_H_

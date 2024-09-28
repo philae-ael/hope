@@ -1,7 +1,6 @@
-#include "triangle_renderer.h"
+#include "basic_renderer.h"
 #include "app.h"
 #include "core/core/memory.h"
-#include "core/vulkan/sync.h"
 
 #include <core/core.h>
 #include <core/fs/fs.h>
@@ -21,47 +20,14 @@ core::array deps{
     "assets/shaders/tri.spv"_s,
 };
 
-TriangleRenderer TriangleRenderer::init(subsystem::video& v, VkFormat format) {
+BasicRenderer BasicRenderer::init(
+    subsystem::video& v,
+    VkFormat format,
+    VkDescriptorSetLayout gpu_texture_descriptor_layout
+) {
   auto scratch = core::scratch_get();
   defer { scratch.retire(); };
   core::Allocator alloc = scratch;
-
-  core::array<VkDescriptorPoolSize, 1> pool_sizes{
-      VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = 50},
-  };
-  VkDescriptorPoolCreateInfo descriptor_pool_create_info{
-      .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-      .maxSets       = 1,
-      .poolSizeCount = (u32)pool_sizes.size(),
-      .pPoolSizes    = pool_sizes.data,
-  };
-  VkDescriptorPool descriptor_pool;
-  vkCreateDescriptorPool(v.device, &descriptor_pool_create_info, nullptr, &descriptor_pool);
-
-  core::array descriptor_set_layout_bindings{
-      VkDescriptorSetLayoutBinding{
-          .binding         = 0,
-          .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-          .descriptorCount = 50,
-          .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT,
-      },
-  };
-  VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info{
-      .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-      .bindingCount = (u32)descriptor_set_layout_bindings.size(),
-      .pBindings    = descriptor_set_layout_bindings.data,
-  };
-  VkDescriptorSetLayout descriptor_set_layout;
-  vkCreateDescriptorSetLayout(v.device, &descriptor_set_layout_create_info, nullptr, &descriptor_set_layout);
-
-  VkDescriptorSetAllocateInfo descriptor_set_alloc_infos{
-      .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool     = descriptor_pool,
-      .descriptorSetCount = 1,
-      .pSetLayouts        = &descriptor_set_layout,
-  };
-  VkDescriptorSet descriptor_set;
-  vkAllocateDescriptorSets(v.device, &descriptor_set_alloc_infos, &descriptor_set);
 
   core::array push_constants{
       VkPushConstantRange{
@@ -75,12 +41,11 @@ TriangleRenderer TriangleRenderer::init(subsystem::video& v, VkFormat format) {
           .size       = 4,
       },
   };
-
   // # Layout
   VkPipelineLayoutCreateInfo pipeline_layout_create_info{
       .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
       .setLayoutCount         = 1,
-      .pSetLayouts            = &descriptor_set_layout,
+      .pSetLayouts            = &gpu_texture_descriptor_layout,
       .pushConstantRangeCount = (u32)push_constants.size(),
       .pPushConstantRanges    = push_constants.data,
   };
@@ -163,95 +128,48 @@ TriangleRenderer TriangleRenderer::init(subsystem::video& v, VkFormat format) {
           .build(v.device, pipeline_layout);
 
   vkDestroyShaderModule(v.device, module, nullptr);
-  VkSamplerCreateInfo sampler_create_info{
-      .sType            = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-      .magFilter        = VK_FILTER_LINEAR,
-      .minFilter        = VK_FILTER_LINEAR,
-      .mipmapMode       = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-      .addressModeU     = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-      .addressModeV     = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-      .addressModeW     = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-      .mipLodBias       = 0.0,
-      .anisotropyEnable = false,
-      .maxAnisotropy    = 1.0,
-      .compareEnable    = false,
-      .borderColor      = VK_BORDER_COLOR_INT_OPAQUE_WHITE,
+  return {
+      pipeline,
+      pipeline_layout,
   };
-  VkSampler sampler;
-  vkCreateSampler(v.device, &sampler_create_info, nullptr, &sampler);
-  return {descriptor_pool, pipeline, pipeline_layout, descriptor_set_layout, descriptor_set, sampler};
 }
 
-void TriangleRenderer::uninit(subsystem::video& v) {
-  vkDestroySampler(v.device, sampler, nullptr);
+void BasicRenderer::uninit(subsystem::video& v) {
   vkDestroyPipeline(v.device, pipeline, nullptr);
   vkDestroyPipelineLayout(v.device, pipeline_layout, nullptr);
-
-  vkDestroyDescriptorSetLayout(v.device, descriptor_set_layout, nullptr);
-  vkDestroyDescriptorPool(v.device, descriptor_pool, nullptr);
 }
 
-core::storage<core::str8> TriangleRenderer::file_deps() {
+core::storage<core::str8> BasicRenderer::file_deps() {
   return deps;
 }
 
-void TriangleRenderer::render(
+void BasicRenderer::render(
     AppState* app_state,
     VkDevice device,
     VkCommandBuffer cmd,
-    vk::image2D color,
-    vk::image2D depth,
+    vk::image2D color_target,
+    vk::image2D depth_target,
+    VkDescriptorSet gpu_texture_descriptor_set,
     core::storage<GpuMesh> meshes
 ) {
   using namespace core::literals;
   auto triangle_scope = utils::scope_start("triangle"_hs);
   defer { utils::scope_end(triangle_scope); };
 
-  auto scratch = core::scratch_get();
-  defer { scratch.retire(); };
-  core::Allocator alloc = scratch;
-
-  defer { utils::scope_end(triangle_scope); };
-  core::vec<VkDescriptorImageInfo> image_infos;
-
-  for (auto& mesh : meshes.iter()) {
-    vk::pipeline_barrier(cmd, mesh.base_color.sync_to({VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}));
-
-    image_infos.push(
-        alloc,
-        VkDescriptorImageInfo{
-            .sampler     = sampler,
-            .imageView   = mesh.base_color.image_view,
-            .imageLayout = mesh.base_color.sync.layout,
-        }
-    );
-  }
-
-  VkWriteDescriptorSet write{
-      .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-      .dstSet          = descriptor_set,
-      .dstBinding      = 0,
-      .dstArrayElement = 0,
-      .descriptorCount = (u32)image_infos.size(),
-      .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-      .pImageInfo      = image_infos.data(),
-  };
-  vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
-
   core::array color_attachments{
-      color.as_attachment(
+      color_target.as_attachment(
           vk::image2D::AttachmentLoadOp::Clear{{.color = {.float32 = {0.0, 0.0, 0.0, 0.0}}}},
           vk::image2D::AttachmentStoreOp::Store
       ),
   };
-  const auto depth_attachment = depth.as_attachment(
+  const auto depth_attachment = depth_target.as_attachment(
       vk::image2D::AttachmentLoadOp::Clear{{.depthStencil = {1.0, 0}}}, vk::image2D::AttachmentStoreOp::Store
 
   );
 
   VkRenderingInfo rendering_info{
       .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO,
-      .renderArea           = {{}, color.extent2},
+      .renderArea           = {{}, color_target.extent2},
       .layerCount           = 1,
       .colorAttachmentCount = (u32)color_attachments.size(),
       .pColorAttachments    = color_attachments.data,
@@ -259,18 +177,23 @@ void TriangleRenderer::render(
   };
   vkCmdBeginRendering(cmd, &rendering_info);
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-  VkRect2D scissor{{}, color.extent2};
+  vkCmdBindDescriptorSets(
+      cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &gpu_texture_descriptor_set, 0, nullptr
+  );
+
+  VkRect2D scissor{{}, color_target.extent2};
   vkCmdSetScissor(cmd, 0, 1, &scissor);
 
-  VkViewport viewport{0, (f32)color.extent2.height, (f32)color.extent2.width, -(f32)color.extent2.height, 0, 1};
+  VkViewport viewport{
+      0, (f32)color_target.extent2.height, (f32)color_target.extent2.width, -(f32)color_target.extent2.height, 0, 1
+  };
   vkCmdSetViewport(cmd, 0, 1, &viewport);
 
   for (auto [i, mesh] : core::enumerate{meshes.iter()}) {
     VkDeviceSize offset = 0;
     vkCmdBindVertexBuffers(cmd, 0, 1, &mesh->vertex_buffer, &offset);
-    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &descriptor_set, 0, nullptr);
 
-    f32 aspect_ratio = (f32)color.extent2.width / (f32)color.extent2.height;
+    f32 aspect_ratio = (f32)color_target.extent2.width / (f32)color_target.extent2.height;
     struct {
       CameraMatrices camera_matrices;
       Mat4 transform_matrix;
@@ -288,4 +211,80 @@ void TriangleRenderer::render(
   }
 
   vkCmdEndRendering(cmd);
+}
+
+GpuTextureDescriptor GpuTextureDescriptor::init(subsystem::video& v) {
+  core::array<VkDescriptorPoolSize, 1> pool_sizes{
+      VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = 50},
+  };
+  VkDescriptorPoolCreateInfo descriptor_pool_create_info{
+      .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+      .maxSets       = 1,
+      .poolSizeCount = (u32)pool_sizes.size(),
+      .pPoolSizes    = pool_sizes.data,
+  };
+  VkDescriptorPool descriptor_pool;
+  vkCreateDescriptorPool(v.device, &descriptor_pool_create_info, nullptr, &descriptor_pool);
+
+  core::array descriptor_set_layout_bindings{
+      VkDescriptorSetLayoutBinding{
+          .binding         = 0,
+          .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          .descriptorCount = 50,
+          .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT,
+      },
+  };
+  VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info{
+      .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+      .bindingCount = (u32)descriptor_set_layout_bindings.size(),
+      .pBindings    = descriptor_set_layout_bindings.data,
+  };
+  VkDescriptorSetLayout descriptor_set_layout;
+  vkCreateDescriptorSetLayout(v.device, &descriptor_set_layout_create_info, nullptr, &descriptor_set_layout);
+
+  VkDescriptorSetAllocateInfo descriptor_set_alloc_infos{
+      .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+      .descriptorPool     = descriptor_pool,
+      .descriptorSetCount = 1,
+      .pSetLayouts        = &descriptor_set_layout,
+  };
+  VkDescriptorSet descriptor_set;
+  vkAllocateDescriptorSets(v.device, &descriptor_set_alloc_infos, &descriptor_set);
+  return {
+      descriptor_pool,
+      descriptor_set_layout,
+      descriptor_set,
+  };
+}
+
+void GpuTextureDescriptor::update(VkDevice device, VkSampler sampler, core::storage<GpuMesh> meshes) {
+  auto scratch = core::scratch_get();
+  defer { scratch.retire(); };
+  core::Allocator alloc = scratch;
+  core::vec<VkDescriptorImageInfo> image_infos;
+  for (auto& mesh : meshes.iter()) {
+    image_infos.push(
+        alloc,
+        VkDescriptorImageInfo{
+            .sampler     = sampler,
+            .imageView   = mesh.base_color.image_view,
+            .imageLayout = mesh.base_color.sync.layout,
+        }
+    );
+  }
+  VkWriteDescriptorSet write{
+      .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+      .dstSet          = set,
+      .dstBinding      = 0,
+      .dstArrayElement = 0,
+      .descriptorCount = (u32)image_infos.size(),
+      .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      .pImageInfo      = image_infos.data(),
+  };
+  vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+}
+
+void GpuTextureDescriptor::uninit(subsystem::video& v) {
+  vkDestroyDescriptorSetLayout(v.device, layout, nullptr);
+  vkDestroyDescriptorPool(v.device, pool, nullptr);
 }

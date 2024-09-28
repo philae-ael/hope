@@ -47,7 +47,7 @@ struct vec {
 
   constexpr void push(noalloc_t, const T& t) {
     ASSERT(store.data != nullptr);
-    ASSERT(size() <= capacity());
+    ASSERT(size() < capacity());
     store[size_]  = t;
     size_        += 1;
   }

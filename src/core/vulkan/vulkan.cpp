@@ -1246,3 +1246,16 @@ EXPORT core::str8 to_str8(core::Allocator alloc, queue_flags_t, VkQueueFlags fla
   return sb.commit(alloc, " | "_s);
 }
 } // namespace vk
+
+EXPORT core::str8 to_str8(VkPresentModeKHR present_mode) {
+  switch (present_mode) {
+    CASE_STR(VK_PRESENT_MODE_IMMEDIATE_KHR)
+    CASE_STR(VK_PRESENT_MODE_MAILBOX_KHR)
+    CASE_STR(VK_PRESENT_MODE_FIFO_KHR)
+    CASE_STR(VK_PRESENT_MODE_FIFO_RELAXED_KHR)
+    CASE_STR(VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR)
+    CASE_STR(VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR)
+  default:
+    return "<unknown VkPresentMode>"_s;
+  }
+}

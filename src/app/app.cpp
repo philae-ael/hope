@@ -283,24 +283,21 @@ EXPORT AppEvent frame(App& app) {
   profiling_window();
   debug_stuff(app);
 
-handle_events: {
   auto poll_event_scope = utils::scope_start("poll event start"_hs);
-  defer { utils::scope_end(poll_event_scope); };
-
   while (SDL_PollEvent(&ev)) {
     sev |= handle_events(ev, app.input_state);
   }
-}
+  utils::scope_end(poll_event_scope);
 
   update(app);
 
-  AppEvent renderev = render(app.state, *app.video, *app.renderer);
+  AppEvent renderev  = render(app.state, *app.video, *app.renderer);
+  sev               |= renderev;
+
   if (any(renderev & AppEvent::SkipRender)) {
     LOG_TRACE("rendering skiped");
-    goto handle_events;
+    return sev;
   }
-
-  sev |= renderev;
 
   if (any(sev & AppEvent::RebuildRenderer)) {
     LOG_INFO("rebuilding renderer");

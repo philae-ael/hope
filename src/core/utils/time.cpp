@@ -102,7 +102,7 @@ EXPORT timing_infos get_last_frame_timing_infos(core::Allocator alloc, scope_cat
   return {
       v,
       {
-          {(u64)frame_time_series.last_sample()},
+          {(u64)frame_time_series.sample_back()},
           {(u64)frame_time_series.mean()},
           {(u64)frame_time_series.sigma()},
           {(u64)frame_time_series.low_95()},
@@ -112,6 +112,10 @@ EXPORT timing_infos get_last_frame_timing_infos(core::Allocator alloc, scope_cat
 }
 
 EXPORT os::time get_last_frame_dt() {
-  return os::time{(u64)frame_time_series.mean()};
+  f32 sum = 0.0;
+  for (auto i : core::range<usize>{0, 4}.iter()) {
+    sum += frame_time_series.sample_back(i);
+  }
+  return os::time{(u64)(sum / 4)};
 }
 } // namespace utils

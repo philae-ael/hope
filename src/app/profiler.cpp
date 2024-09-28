@@ -239,7 +239,7 @@ void profiling_window() {
     config.graph_width = v.x - config.legend_width;
     config.height      = v.y / 2 - 10;
     if (config.graph_width > 10 && config.height > 25) {
-      f32 dt = (f32)frame_timing_infos.stats.mean_frame_time.ns * 1e-9f;
+      f32 dt = (f32)frame_timing_infos.stats.raw_frame_time.ns * 1e-9f;
       render_profiling_graph(
           *scratch, cpu_frame_data,
           (usize(int(ARRAY_SIZE(cpu_frame_data)) - frame_offset) + cur_frame_idx) % ARRAY_SIZE(cpu_frame_data), cpu_max,

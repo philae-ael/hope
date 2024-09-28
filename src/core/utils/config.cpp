@@ -35,7 +35,7 @@ union entry {
     usize components;
   } f32xN;
 };
-entry entries[50]{};
+entry entries[150]{};
 static core::vec<entry> v{core::clear, entries};
 
 namespace utils {

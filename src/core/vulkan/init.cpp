@@ -650,6 +650,7 @@ EXPORT SwapchainConfig create_default_swapchain_config(const Device& device, VkS
 
     for (auto present_mode : present_modes.iter()) {
       int score = 0;
+      LOG_BUILDER(core::LogLevel::Debug, push("Surface accept present mode ").push(present_mode));
       switch (present_mode) {
       case VK_PRESENT_MODE_IMMEDIATE_KHR:
         score = 1;
@@ -673,6 +674,9 @@ EXPORT SwapchainConfig create_default_swapchain_config(const Device& device, VkS
     }
 
     swapchain_config.present_mode = best_present_mode;
+    LOG_BUILDER(
+        core::LogLevel::Info, push("Present Mode ").push(best_present_mode).pushf(" has been chosen for surface")
+    );
   }
 
   {

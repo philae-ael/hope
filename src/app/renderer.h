@@ -1,18 +1,21 @@
 #ifndef INCLUDE_APP_RENDERER_H_
 #define INCLUDE_APP_RENDERER_H_
 
+#include "basic_renderer.h"
 #include "core/vulkan/image.h"
 #include "imgui_renderer.h"
 #include "loader/app_loader.h"
 #include "mesh.h"
-#include "triangle_renderer.h"
 
 #include <core/fs/fs.h>
 
 struct MainRenderer {
+  GpuTextureDescriptor gpu_texture_descriptor;
   ImGuiRenderer imgui_renderer;
-  TriangleRenderer triangle_renderer;
+  BasicRenderer basic_renderer;
   vk::image2D depth;
+  VkSampler default_sampler;
+  bool should_update_descriptors;
   core::vec<GpuMesh> meshes;
 
   static MainRenderer init(subsystem::video& v);

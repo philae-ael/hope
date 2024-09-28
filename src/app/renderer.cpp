@@ -1,9 +1,9 @@
 
 #include "renderer.h"
 #include "app/mesh.h"
+#include "basic_renderer.h"
 #include "core/core/memory.h"
 #include "imgui_renderer.h"
-#include "triangle_renderer.h"
 
 #include <core/core.h>
 #include <core/fs/fs.h>
@@ -30,33 +30,61 @@ static core::array deps{
 
 MainRenderer MainRenderer::init(subsystem::video& v) {
   MainRenderer self;
-  self.triangle_renderer = TriangleRenderer::init(v, v.swapchain.config.surface_format.format);
-  self.imgui_renderer    = ImGuiRenderer::init(v);
-  self.depth             = vk::image2D::create(
+
+  VkSamplerCreateInfo sampler_create_info{
+      .sType            = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+      .magFilter        = VK_FILTER_LINEAR,
+      .minFilter        = VK_FILTER_LINEAR,
+      .mipmapMode       = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+      .addressModeU     = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+      .addressModeV     = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+      .addressModeW     = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+      .mipLodBias       = 0.0,
+      .anisotropyEnable = false,
+      .maxAnisotropy    = 1.0,
+      .compareEnable    = false,
+      .borderColor      = VK_BORDER_COLOR_INT_OPAQUE_WHITE,
+  };
+  vkCreateSampler(v.device, &sampler_create_info, nullptr, &self.default_sampler);
+
+  self.gpu_texture_descriptor = GpuTextureDescriptor::init(v);
+  self.basic_renderer =
+      BasicRenderer::init(v, v.swapchain.config.surface_format.format, self.gpu_texture_descriptor.layout);
+  self.imgui_renderer = ImGuiRenderer::init(v);
+  self.depth          = vk::image2D::create(
       v,
       vk::image2D::Config{
-                      .format            = VK_FORMAT_D16_UNORM,
-                      .extent            = {.swapchain{}},
-                      .usage             = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-                      .image_view_aspect = VK_IMAGE_ASPECT_DEPTH_BIT,
+                   .format            = VK_FORMAT_D16_UNORM,
+                   .extent            = {.swapchain{}},
+                   .usage             = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                   .image_view_aspect = VK_IMAGE_ASPECT_DEPTH_BIT,
       },
       {}
   );
 
-  self.meshes = load_mesh(core::get_named_allocator(core::AllocatorName::General), v, deps[0]);
+  self.meshes                    = load_mesh(core::get_named_allocator(core::AllocatorName::General), v, deps[0]);
+  self.should_update_descriptors = true;
 
   return self;
 }
 
 void MainRenderer::render(AppState* app_state, VkDevice device, VkCommandBuffer cmd, vk::image2D& swapchain_image) {
+  auto triangle_scope = vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "triangle"_hs);
   vk::pipeline_barrier(
       cmd, swapchain_image.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}),
       depth.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}, VK_IMAGE_ASPECT_DEPTH_BIT)
   );
 
-  auto triangle_scope = vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "triangle"_hs);
+  if (should_update_descriptors) {
+    for (auto& mesh : meshes.iter()) {
+      vk::pipeline_barrier(cmd, mesh.base_color.sync_to({VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}));
+    }
 
-  triangle_renderer.render(app_state, device, cmd, swapchain_image, depth, meshes);
+    gpu_texture_descriptor.update(device, default_sampler, meshes);
+    should_update_descriptors = false;
+  }
+
+  basic_renderer.render(app_state, device, cmd, swapchain_image, depth, gpu_texture_descriptor, meshes);
 
   vk::timestamp_scope_end(cmd, VK_PIPELINE_STAGE_2_NONE, triangle_scope);
 
@@ -77,15 +105,17 @@ void MainRenderer::uninit(subsystem::video& v) {
   for (auto& mesh : meshes.iter())
     unload_mesh(v, mesh);
 
-  triangle_renderer.uninit(v);
+  basic_renderer.uninit(v);
   imgui_renderer.uninit(v);
+  gpu_texture_descriptor.uninit(v);
   depth.destroy(v);
+  vkDestroySampler(v.device, default_sampler, nullptr);
 
   return;
 }
 
 core::vec<core::str8> MainRenderer::file_deps(core::Arena& arena) {
-  return core::vec{triangle_renderer.file_deps()}.clone(arena);
+  return core::vec{basic_renderer.file_deps()}.clone(arena);
 }
 
 void on_dep_file_modified(void* userdata) {

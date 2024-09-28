@@ -586,8 +586,8 @@ struct windowed_series {
     sum2 += sample * sample;
   }
 
-  constexpr f32 last_sample() const {
-    return store[(start + count - 1) % store.size];
+  constexpr f32 sample_back(usize idx = 0) const {
+    return store[(start + count - 1 - idx) % store.size];
   }
   constexpr f32 mean() const {
     return sum / f32(count);
