@@ -70,7 +70,7 @@ EXPORT string_builder& string_builder::push_str8(Allocator alloc, str8 str) {
   return push_str8(alloc.allocate<string_node>(), str);
 }
 
-string_builder& string_builder::push_str8(string_node* uninit_node, str8 str) {
+EXPORT string_builder& string_builder::push_str8(string_node* uninit_node, str8 str) {
   if (str.len == 0) {
     return *this;
   }

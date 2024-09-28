@@ -5,10 +5,10 @@
 #include <core/core.h>
 #include <core/fs/fs.h>
 #include <core/math.h>
-#include <core/utils/time.h>
-#include <core/vulkan/image.h>
-#include <core/vulkan/pipeline.h>
-#include <core/vulkan/subsystem.h>
+#include <engine/graphics/subsystem.h>
+#include <engine/graphics/vulkan/image.h>
+#include <engine/graphics/vulkan/pipeline.h>
+#include <engine/utils/time.h>
 #include <vulkan/vulkan_core.h>
 
 #include <vk_mem_alloc.h>
@@ -169,7 +169,7 @@ void BasicRenderer::render(
 
   VkRenderingInfo rendering_info{
       .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO,
-      .renderArea           = {{}, color_target.extent2},
+      .renderArea           = {{}, color_target.extent},
       .layerCount           = 1,
       .colorAttachmentCount = (u32)color_attachments.size(),
       .pColorAttachments    = color_attachments.data,
@@ -181,11 +181,11 @@ void BasicRenderer::render(
       cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &gpu_texture_descriptor_set, 0, nullptr
   );
 
-  VkRect2D scissor{{}, color_target.extent2};
+  VkRect2D scissor{{}, color_target.extent};
   vkCmdSetScissor(cmd, 0, 1, &scissor);
 
   VkViewport viewport{
-      0, (f32)color_target.extent2.height, (f32)color_target.extent2.width, -(f32)color_target.extent2.height, 0, 1
+      0, (f32)color_target.extent.height, (f32)color_target.extent.width, -(f32)color_target.extent.height, 0, 1
   };
   vkCmdSetViewport(cmd, 0, 1, &viewport);
 
@@ -193,7 +193,7 @@ void BasicRenderer::render(
     VkDeviceSize offset = 0;
     vkCmdBindVertexBuffers(cmd, 0, 1, &mesh->vertex_buffer, &offset);
 
-    f32 aspect_ratio = (f32)color_target.extent2.width / (f32)color_target.extent2.height;
+    f32 aspect_ratio = (f32)color_target.extent.width / (f32)color_target.extent.height;
     struct {
       CameraMatrices camera_matrices;
       Mat4 transform_matrix;

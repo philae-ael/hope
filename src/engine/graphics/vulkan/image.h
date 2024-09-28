@@ -7,21 +7,16 @@
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan_core.h>
 
-namespace subsystem {
-struct video;
-}
-
 namespace vk {
+struct Device;
+
 struct image2D {
-  enum class Source { Swapchain, Created } source;
+  enum class Source { Nop, Swapchain, Created } source = Source::Nop;
   VkImage image;
   VmaAllocation allocation;
   VkImageView image_view;
 
-  union {
-    VkExtent2D extent2;
-    VkExtent3D extent3;
-  };
+  VkExtent extent;
 
   struct Sync {
     VkImageLayout layout        = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -52,8 +47,17 @@ struct image2D {
     VkImageAspectFlags image_view_aspect = VK_IMAGE_ASPECT_COLOR_BIT;
     VmaAllocationCreateFlags alloc_flags{};
   };
+  struct ConfigExtentValues {
+    VkExtent swapchain;
+  };
 
-  static image2D create(subsystem::video& v, const image2D::Config& config, Sync sync);
+  static image2D create(
+      const vk::Device& device,
+      VmaAllocator allocator,
+      const ConfigExtentValues& config_extent_values,
+      const image2D::Config& config,
+      Sync sync
+  );
   VkImageMemoryBarrier2 sync_to(image2D::Sync new_sync, VkImageAspectFlags aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT);
 
   struct AttachmentLoadOp {
@@ -85,7 +89,7 @@ struct image2D {
   };
 
   VkRenderingAttachmentInfo as_attachment(AttachmentLoadOp loadop, AttachmentStoreOp storeop);
-  void destroy(subsystem::video& v);
+  void destroy(VkDevice device, VmaAllocator allocator);
 };
 
 void full_barrier(VkCommandBuffer cmd);

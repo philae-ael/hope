@@ -3,10 +3,9 @@
 
 #include "mesh.h"
 
-#include "core/vulkan/image.h"
-#include <core/vulkan.h>
-#include <core/vulkan/subsystem.h>
-#include <vulkan/vulkan_core.h>
+#include <engine/graphics/subsystem.h>
+#include <engine/graphics/vulkan.h>
+#include <engine/graphics/vulkan/image.h>
 
 struct AppState;
 

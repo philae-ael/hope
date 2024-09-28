@@ -2,10 +2,10 @@
 #define INCLUDE_APP_RENDERER_H_
 
 #include "basic_renderer.h"
-#include "core/vulkan/image.h"
 #include "imgui_renderer.h"
 #include "loader/app_loader.h"
 #include "mesh.h"
+#include <engine/graphics/vulkan/image.h>
 
 #include <core/fs/fs.h>
 
@@ -21,6 +21,8 @@ struct MainRenderer {
   static MainRenderer init(subsystem::video& v);
   void render(AppState* app_state, VkDevice device, VkCommandBuffer cmd, vk::image2D& swapchain_image);
   void uninit(subsystem::video& v);
+
+  void swapchain_rebuilt(subsystem::video& v);
 
   core::vec<core::str8> file_deps(core::Arena& arena);
 };

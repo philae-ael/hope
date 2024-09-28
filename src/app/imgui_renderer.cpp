@@ -1,8 +1,8 @@
 #include "imgui_renderer.h"
 
-#include <core/utils/time.h>
-#include <core/vulkan/subsystem.h>
-#include <core/vulkan/sync.h>
+#include <engine/graphics/subsystem.h>
+#include <engine/graphics/vulkan/sync.h>
+#include <engine/utils/time.h>
 
 ImGuiRenderer ImGuiRenderer::init(subsystem::video& v) {
   ImGuiRenderer imgui_renderer;
@@ -62,7 +62,7 @@ void ImGuiRenderer::render(VkCommandBuffer cmd, vk::image2D& image) {
     };
     VkRenderingInfo rendering_info{
         .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO,
-        .renderArea           = {{}, image.extent2},
+        .renderArea           = {{}, image.extent},
         .layerCount           = 1,
         .colorAttachmentCount = (u32)color_attachments.size(),
         .pColorAttachments    = color_attachments.data

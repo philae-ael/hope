@@ -115,4 +115,21 @@ core::str8 to_str8(VkStructureType struct_type);
 core::str8 to_str8(VkFormat format);
 core::str8 to_str8(VkPresentModeKHR present_mode);
 
+union VkExtent {
+  VkExtent2D extent2;
+  VkExtent3D extent3;
+  struct {
+    u32 width;
+    u32 height;
+    u32 depth;
+  };
+
+  operator VkExtent2D() const {
+    return extent2;
+  }
+  operator VkExtent3D() const {
+    return extent3;
+  }
+};
+
 #endif // INCLUDE_VULKAN_VULKAN_H_

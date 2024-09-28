@@ -3,3 +3,4 @@ main
 imgui.ini
 perf.data*
 gecko_profile.json
+.cache

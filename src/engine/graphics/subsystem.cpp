@@ -1,4 +1,11 @@
 
+
+#include "subsystem.h"
+#include "vulkan/frame.h"
+#include "vulkan/init.h"
+#include "vulkan/timings.h"
+#include "vulkan/vulkan.h"
+
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_stdinc.h>
@@ -7,15 +14,11 @@
 
 #include <core/containers/vec.h>
 #include <core/core.h>
-#include <core/utils/time.h>
-#include <core/vulkan/frame.h>
-#include <core/vulkan/init.h>
-#include <core/vulkan/subsystem.h>
-#include <core/vulkan/timings.h>
-#include <core/vulkan/vulkan.h>
+#include <engine/utils/time.h>
 
 #include <vk_mem_alloc.h>
 
+namespace subsystem {
 core::storage<const char*> enumerate_SDL_vulkan_instance_extensions() {
   u32 instance_extension_count;
   const char** d = (const char**)SDL_Vulkan_GetInstanceExtensions(&instance_extension_count);
@@ -42,7 +45,7 @@ vk::image2D swapchain_image_to_image2D(VkDevice device, vk::Swapchain& swapchain
       .source     = vk::image2D::Source::Swapchain,
       .image      = swapchain_image,
       .image_view = swapchain_image_view,
-      .extent3    = swapchain.config.extent3,
+      .extent     = swapchain.config.extent,
       .sync =
           {
               .layout = VK_IMAGE_LAYOUT_UNDEFINED,
@@ -52,7 +55,7 @@ vk::image2D swapchain_image_to_image2D(VkDevice device, vk::Swapchain& swapchain
   };
 }
 
-EXPORT subsystem::video subsystem::init_video(core::Allocator alloc) {
+EXPORT video init_video(core::Allocator alloc) {
   SDL_InitSubSystem(SDL_INIT_VIDEO);
 
   LOG_INFO("initializing video subsystem");
@@ -97,7 +100,7 @@ EXPORT subsystem::video subsystem::init_video(core::Allocator alloc) {
   };
 }
 
-EXPORT void subsystem::uninit_video(video& v) {
+EXPORT void uninit_video(video& v) {
   for (auto swapchain_image : v.swapchain_images.iter()) {
     vkDestroyImageView(v.device, swapchain_image.image_view, nullptr);
   }
@@ -111,7 +114,7 @@ EXPORT void subsystem::uninit_video(video& v) {
   SDL_DestroyWindow(v.window);
 }
 
-EXPORT void subsystem::video_rebuild_swapchain(video& v) {
+EXPORT void video_rebuild_swapchain(video& v) {
   vk::rebuild_default_swapchain(v.device, v.surface, v.swapchain).expect("can't rebuild swapchain");
 
   for (auto [idx, swapchain_image] : core::enumerate{v.swapchain_images.iter()}) {
@@ -120,7 +123,6 @@ EXPORT void subsystem::video_rebuild_swapchain(video& v) {
   }
 }
 
-namespace subsystem {
 EXPORT vk::Result<VideoFrame> video::begin_frame() {
   auto frame = vk::begin_frame(device, swapchain, sync);
   if (frame.is_err()) {

@@ -6,9 +6,9 @@
 #include <core/fs/fs.h>
 #include <core/os.h>
 #include <core/os/time.h>
-#include <core/utils/config.h>
-#include <core/utils/time.h>
-#include <core/vulkan/subsystem.h>
+#include <engine/graphics/subsystem.h>
+#include <engine/utils/config.h>
+#include <engine/utils/time.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_events.h>
@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
   /// === Env setup and globals initializations  ===
   setup_crash_handler();
   log_register_global_formatter(log_timed_formatter, nullptr);
-  log_set_global_level(core::LogLevel::Debug);
+  log_set_global_level(core::LogLevel::Trace);
   utils::timings_init();
   fs::init();
 
@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
   AppPFNs app_pfns;
   load_app(app_pfns);
 
-  /// === APP INIT ===
+  /// === App init ===
 
   SDL_Init(SDL_INIT_GAMEPAD);
   IMGUI_CHECKVERSION();
@@ -69,6 +69,12 @@ int main(int argc, char* argv[]) {
     utils::timings_frame_start();
     defer { utils::timings_frame_end(); };
 
+    /// === Frame Callbacks ===
+    auto fs_process_scope = utils::scope_start("fs process"_hs);
+    fs::process_modified_file_callbacks();
+    utils::scope_end(fs_process_scope);
+
+    /// === Frame Udpate ===
     auto sev = app_pfns.frame(*app);
 
     /// === Handle system event ===
@@ -76,10 +82,6 @@ int main(int argc, char* argv[]) {
     if (any(sev & AppEvent::Exit)) {
       break;
     }
-
-    auto fs_process_scope = utils::scope_start("fs process"_hs);
-    fs::process_modified_file_callbacks();
-    utils::scope_end(fs_process_scope);
 
     if (any(sev & AppEvent::ReloadApp) || need_reload(app_pfns)) {
       LOG_INFO("reloading app");
@@ -92,7 +94,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  /// === CLEANUP ===
+  /// === Cleanup ===
 
   LOG_INFO("Exiting...");
   app_pfns.uninit(*app);

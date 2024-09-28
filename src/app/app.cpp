@@ -13,10 +13,10 @@
 #include <core/core.h>
 #include <core/core/memory.h>
 #include <core/os/time.h>
-#include <core/utils/config.h>
-#include <core/utils/time.h>
-#include <core/vulkan/frame.h>
-#include <core/vulkan/init.h>
+#include <engine/graphics/vulkan/frame.h>
+#include <engine/graphics/vulkan/init.h>
+#include <engine/utils/config.h>
+#include <engine/utils/time.h>
 #include <loader/app_loader.h>
 #include <type_traits>
 

@@ -2,8 +2,8 @@
 
 #include <core/containers/vec.h>
 #include <core/core.h>
-#include <core/utils/time.h>
-#include <core/vulkan/timings.h>
+#include <engine/graphics/vulkan/timings.h>
+#include <engine/utils/time.h>
 
 #include <vulkan/vulkan_core.h>
 

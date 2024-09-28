@@ -3,8 +3,8 @@
 
 #include <core/containers/vec.h>
 #include <core/math/math.h>
-#include <core/vulkan.h>
-#include <core/vulkan/subsystem.h>
+#include <engine/graphics/subsystem.h>
+#include <engine/graphics/vulkan.h>
 
 #include <vk_mem_alloc.h>
 

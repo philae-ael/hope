@@ -5,8 +5,9 @@
 #include <backends/imgui_impl_vulkan.h>
 #include <imgui.h>
 
-#include <core/vulkan.h>
-#include <core/vulkan/image.h>
+#include <engine/graphics/subsystem.h>
+#include <engine/graphics/vulkan.h>
+#include <engine/graphics/vulkan/image.h>
 
 struct ImGuiRenderer {
   VkDescriptorPool descriptor_pool;

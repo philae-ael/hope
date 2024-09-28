@@ -4,10 +4,10 @@
 #include "app/camera.h"
 #include "app/renderer.h"
 #include "core/core.h"
-#include "core/vulkan/subsystem.h"
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_gamepad.h>
 #include <SDL3/SDL_keycode.h>
+#include <engine/graphics/subsystem.h>
 
 namespace core {
 inline f32 clamp_positive(f32 value) {

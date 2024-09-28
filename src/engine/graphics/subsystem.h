@@ -1,14 +1,15 @@
-#ifndef INCLUDE_SRC_SUBSYSTEMS_H_
-#define INCLUDE_SRC_SUBSYSTEMS_H_
+#ifndef INCLUDE_GRAPHICS_SUBSYSTEMS_H_
+#define INCLUDE_GRAPHICS_SUBSYSTEMS_H_
+
+#include "vulkan/frame.h"
+#include "vulkan/image.h"
+#include "vulkan/init.h"
+#include "vulkan/vulkan.h"
 
 #include <SDL3/SDL_video.h>
 
 #include <core/containers/vec.h>
 #include <core/core/fwd.h>
-#include <core/vulkan/frame.h>
-#include <core/vulkan/image.h>
-#include <core/vulkan/init.h>
-#include <core/vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
 
 namespace core {
@@ -37,6 +38,11 @@ struct video {
 
   vk::Result<VideoFrame> begin_frame();
   VkResult end_frame(VideoFrame, VkCommandBuffer);
+
+  inline vk::image2D create_image2D(const vk::image2D::Config& config, vk::image2D::Sync sync) {
+    vk::image2D::ConfigExtentValues config_extent_values{.swapchain = swapchain.config.extent};
+    return vk::image2D::create(device, allocator, config_extent_values, config, sync);
+  }
 };
 video init_video(core::Allocator alloc);
 void uninit_video(video& v);
@@ -44,4 +50,4 @@ void video_rebuild_swapchain(video& v);
 
 } // namespace subsystem
 
-#endif // INCLUDE_SRC_SUBSYSTEMS_H_
+#endif // INCLUDE_GRAPHICS_SUBSYSTEMS_H_

@@ -27,21 +27,13 @@ add_library(core
   src/core/core/platform.cpp
   src/core/core/string.cpp
   src/core/core/type_info.cpp
-  src/core/utils/config.cpp
-  src/core/utils/time.cpp
   src/core/fs/fs.cpp
   src/core/math/math.cpp
   src/core/os/memory.cpp
   src/core/os/time.cpp
-  src/core/vulkan/frame.cpp
-  src/core/vulkan/image.cpp
-  src/core/vulkan/init.cpp
-  src/core/vulkan/subsystem.cpp
-  src/core/vulkan/timings.cpp
-  src/core/vulkan/vma.cpp
-  src/core/vulkan/vulkan.cpp
 )
 target_include_directories(core PUBLIC src)
+
 
 if (UNIX)
   target_sources(core PRIVATE
@@ -80,14 +72,28 @@ else()
   # target_compile_definitions(core PRIVATE -DSCRATCH_DEBUG )
 endif()
 
-target_link_libraries(core PUBLIC SDL3::SDL3 Vulkan::Vulkan imgui GPUOpen::VulkanMemoryAllocator misc)
 set_property(TARGET core PROPERTY POSITION_INDEPENDENT_CODE ON)
 # set_property(TARGET core PROPERTY UNITY_BUILD ON)
-
 
 if (UNIX)
   target_link_libraries(core PUBLIC stdc++exp)
 endif()
+
+add_library(engine
+  src/engine/graphics/subsystem.cpp
+  src/engine/graphics/vulkan/frame.cpp
+  src/engine/graphics/vulkan/image.cpp
+  src/engine/graphics/vulkan/init.cpp
+  src/engine/graphics/vulkan/timings.cpp
+  src/engine/graphics/vulkan/vma.cpp
+  src/engine/graphics/vulkan/vulkan.cpp
+  src/engine/utils/config.cpp
+  src/engine/utils/time.cpp
+)
+target_link_libraries(engine PUBLIC core SDL3::SDL3 Vulkan::Vulkan imgui GPUOpen::VulkanMemoryAllocator misc)
+set_property(TARGET engine PROPERTY POSITION_INDEPENDENT_CODE ON)
+target_include_directories(engine PUBLIC src)
+
 
 add_executable(loader src/loader/main.cpp)
 
@@ -101,7 +107,7 @@ else()
   target_sources(loader PRIVATE src/loader/app_loader-static.cpp)
   target_link_libraries(loader PRIVATE app)
 endif()
-target_link_libraries(app PUBLIC core)
+target_link_libraries(app PUBLIC core engine)
 
 target_sources(app PRIVATE
   src/app/app.cpp
@@ -112,11 +118,11 @@ target_sources(app PRIVATE
   src/app/mesh.cpp
 )
 
-target_link_libraries(loader PRIVATE core)
+target_link_libraries(loader PRIVATE core engine)
 
 add_executable(testcore
   src/tests/tests.cpp
   src/tests/math.cpp
 )
-target_link_libraries(testcore PRIVATE core)
+target_link_libraries(testcore PRIVATE core engine)
 target_compile_options(testcore PRIVATE -Wno-format-zero-length -Wno-format-security)

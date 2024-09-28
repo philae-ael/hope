@@ -1,11 +1,17 @@
 #include "image.h"
 
-#include "subsystem.h"
+#include "engine/graphics/subsystem.h"
 #include <vulkan/vulkan_core.h>
 
 namespace vk {
 
-EXPORT image2D image2D::create(subsystem::video& v, const Config& config, Sync sync) {
+EXPORT image2D image2D::create(
+    const vk::Device& device,
+    VmaAllocator allocator,
+    const ConfigExtentValues& config_extent_values,
+    const Config& config,
+    Sync sync
+) {
   image2D image{
       .source = Source::Created,
       .sync   = sync,
@@ -17,10 +23,10 @@ EXPORT image2D image2D::create(subsystem::video& v, const Config& config, Sync s
     extent.height = config.extent.constant.height;
     break;
   case Config::image2DExtent::tag_t::Swapchain:
-    extent = v.swapchain.config.extent3;
+    extent = config_extent_values.swapchain;
     break;
   }
-  image.extent3 = extent;
+  image.extent.extent3 = extent;
 
   VkImageCreateInfo image_create_info{
       .sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -34,15 +40,14 @@ EXPORT image2D image2D::create(subsystem::video& v, const Config& config, Sync s
       .usage                 = config.usage,
       .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
       .queueFamilyIndexCount = 1,
-      .pQueueFamilyIndices   = &v.device.omni_queue_family_index,
+      .pQueueFamilyIndices   = &device.omni_queue_family_index,
       .initialLayout         = sync.layout,
   };
   VmaAllocationCreateInfo alloc_create_info{
       .flags = config.alloc_flags,
       .usage = VMA_MEMORY_USAGE_AUTO,
   };
-  VK_ASSERT(
-      vmaCreateImage(v.allocator, &image_create_info, &alloc_create_info, &image.image, &image.allocation, nullptr)
+  VK_ASSERT(vmaCreateImage(allocator, &image_create_info, &alloc_create_info, &image.image, &image.allocation, nullptr)
   );
   VkImageViewCreateInfo image_view_create_info{
       .sType      = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -57,7 +62,7 @@ EXPORT image2D image2D::create(subsystem::video& v, const Config& config, Sync s
               .layerCount = 1,
           },
   };
-  VK_ASSERT(vkCreateImageView(v.device, &image_view_create_info, nullptr, &image.image_view));
+  VK_ASSERT(vkCreateImageView(device, &image_view_create_info, nullptr, &image.image_view));
   return image;
 }
 
@@ -78,10 +83,13 @@ EXPORT VkImageMemoryBarrier2 image2D::sync_to(image2D::Sync new_sync, VkImageAsp
   };
 }
 
-EXPORT void image2D::destroy(subsystem::video& v) {
+EXPORT void image2D::destroy(VkDevice device, VmaAllocator allocator) {
+  if (source == image2D::Source::Nop)
+    return;
+
   ASSERT(source == image2D::Source::Created);
-  vkDestroyImageView(v.device, image_view, nullptr);
-  vmaDestroyImage(v.allocator, image, allocation);
+  vkDestroyImageView(device, image_view, nullptr);
+  vmaDestroyImage(allocator, image, allocation);
   image      = VK_NULL_HANDLE;
   image_view = VK_NULL_HANDLE;
   allocation = VK_NULL_HANDLE;

@@ -2,7 +2,7 @@
 #define INCLUDE_SRC_APP_LOADER_H_
 
 #include <core/core.h>
-#include <core/vulkan/subsystem.h>
+#include <engine/graphics/subsystem.h>
 
 enum class AppEvent : u8 {
   Exit             = 0x1,

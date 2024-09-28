@@ -1,6 +1,7 @@
 #include "mesh.h"
-#include "core/vulkan/image.h"
-#include "core/vulkan/vulkan.h"
+
+#include <engine/graphics/vulkan/image.h>
+#include <engine/graphics/vulkan/vulkan.h>
 
 #include <core/containers/vec.h>
 #include <core/core.h>
@@ -156,8 +157,7 @@ core::vec<GpuMesh> load_mesh(core::Allocator alloc, subsystem::video& v, core::s
         );
         ASSERTM(mem != 0, "can't load texture: %s", stbi_failure_reason());
 
-        gpu_mesh.base_color = vk::image2D::create(
-            v,
+        gpu_mesh.base_color = v.create_image2D(
             vk::image2D::Config{
                 .format      = VK_FORMAT_R8G8B8A8_UNORM,
                 .extent      = {.constant{.width = (u32)x, .height = (u32)y}},
@@ -198,5 +198,5 @@ core::vec<GpuMesh> load_mesh(core::Allocator alloc, subsystem::video& v, core::s
 void unload_mesh(subsystem::video& v, GpuMesh mesh) {
   vmaDestroyBuffer(v.allocator, mesh.vertex_buffer, mesh.vertex_buf_allocation);
   vmaDestroyBuffer(v.allocator, mesh.index_buffer, mesh.index_buf_allocation);
-  mesh.base_color.destroy(v);
+  mesh.base_color.destroy(v.device, v.allocator);
 }

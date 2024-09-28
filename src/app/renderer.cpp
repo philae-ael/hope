@@ -7,15 +7,15 @@
 
 #include <core/core.h>
 #include <core/fs/fs.h>
-#include <core/utils/config.h>
-#include <core/utils/time.h>
-#include <core/vulkan.h>
-#include <core/vulkan/frame.h>
-#include <core/vulkan/image.h>
-#include <core/vulkan/init.h>
-#include <core/vulkan/subsystem.h>
-#include <core/vulkan/sync.h>
-#include <core/vulkan/timings.h>
+#include <engine/graphics/subsystem.h>
+#include <engine/graphics/vulkan.h>
+#include <engine/graphics/vulkan/frame.h>
+#include <engine/graphics/vulkan/image.h>
+#include <engine/graphics/vulkan/init.h>
+#include <engine/graphics/vulkan/sync.h>
+#include <engine/graphics/vulkan/timings.h>
+#include <engine/utils/config.h>
+#include <engine/utils/time.h>
 #include <loader/app_loader.h>
 #include <vulkan/vulkan_core.h>
 
@@ -51,19 +51,11 @@ MainRenderer MainRenderer::init(subsystem::video& v) {
   self.basic_renderer =
       BasicRenderer::init(v, v.swapchain.config.surface_format.format, self.gpu_texture_descriptor.layout);
   self.imgui_renderer = ImGuiRenderer::init(v);
-  self.depth          = vk::image2D::create(
-      v,
-      vk::image2D::Config{
-                   .format            = VK_FORMAT_D16_UNORM,
-                   .extent            = {.swapchain{}},
-                   .usage             = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-                   .image_view_aspect = VK_IMAGE_ASPECT_DEPTH_BIT,
-      },
-      {}
-  );
 
   self.meshes                    = load_mesh(core::get_named_allocator(core::AllocatorName::General), v, deps[0]);
   self.should_update_descriptors = true;
+
+  self.swapchain_rebuilt(v);
 
   return self;
 }
@@ -108,10 +100,22 @@ void MainRenderer::uninit(subsystem::video& v) {
   basic_renderer.uninit(v);
   imgui_renderer.uninit(v);
   gpu_texture_descriptor.uninit(v);
-  depth.destroy(v);
+  depth.destroy(v.device, v.allocator);
   vkDestroySampler(v.device, default_sampler, nullptr);
 
   return;
+}
+void MainRenderer::swapchain_rebuilt(subsystem::video& v) {
+  depth.destroy(v.device, v.allocator);
+  depth = v.create_image2D(
+      vk::image2D::Config{
+          .format            = VK_FORMAT_D16_UNORM,
+          .extent            = {.swapchain{}},
+          .usage             = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+          .image_view_aspect = VK_IMAGE_ASPECT_DEPTH_BIT,
+      },
+      {}
+  );
 }
 
 core::vec<core::str8> MainRenderer::file_deps(core::Arena& arena) {
@@ -206,8 +210,7 @@ AppEvent render(AppState* app_state, subsystem::video& v, Renderer& renderer) {
 void swapchain_rebuilt(subsystem::video& v, Renderer& renderer) {
   LOG_TRACE("swapchain rebuilt");
   vkDeviceWaitIdle(v.device);
-  renderer.main_renderer.uninit(v);
-  renderer.main_renderer = MainRenderer::init(v);
+  renderer.main_renderer.swapchain_rebuilt(v);
 }
 
 void uninit_renderer(subsystem::video& v, Renderer& renderer) {
