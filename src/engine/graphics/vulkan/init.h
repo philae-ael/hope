@@ -1,11 +1,10 @@
 #ifndef INCLUDE_VULKAN_INIT_H_
 #define INCLUDE_VULKAN_INIT_H_
 
-#include <vulkan/vulkan_core.h>
-
 #include "vulkan.h"
 #include <core/containers/vec.h>
-#include <core/core/fwd.h>
+#include <core/core.h>
+#include <vk_mem_alloc.h>
 
 namespace vk {
 // GENERAL
@@ -34,6 +33,7 @@ Result<VkDebugUtilsMessengerEXT> setup_debug_messenger(VkInstance instance);
 struct Device {
   VkPhysicalDevice physical;
   VkDevice logical;
+  VmaAllocator allocator;
 
   VkPhysicalDeviceProperties properties;
 

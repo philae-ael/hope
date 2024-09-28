@@ -486,8 +486,18 @@ EXPORT Result<Device> create_default_device(
   VkQueue omniQueue;
   u32 omniQueueFamilyIndex = queues_creation_infos[0].family_index;
   vkGetDeviceQueue(*device, omniQueueFamilyIndex, 0, &omniQueue);
+
+  VmaAllocatorCreateInfo allocator_create_info = {
+      // .flags            = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT,
+      .physicalDevice   = physical_device,
+      .device           = device.value(),
+      .instance         = instance,
+      .vulkanApiVersion = VK_API_VERSION_1_3,
+  };
+  VmaAllocator allocator;
+  VK_ASSERT(vmaCreateAllocator(&allocator_create_info, &allocator));
   return Device{
-      physical_device, device.value(), properties, omniQueueFamilyIndex, omniQueue,
+      physical_device, device.value(), allocator, properties, omniQueueFamilyIndex, omniQueue,
 
   };
 }
@@ -547,6 +557,7 @@ EXPORT bool physical_device_features::check_features(const VkPhysicalDevicePrope
 }
 
 EXPORT void destroy_device(vk::Device device) {
+  vmaDestroyAllocator(device.allocator);
   vkDestroyDevice(device, nullptr);
 }
 EXPORT core::vec<VkPresentModeKHR> enumerate_physical_device_surface_present_modes(

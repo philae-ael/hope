@@ -53,7 +53,6 @@ struct image2D {
 
   static image2D create(
       const vk::Device& device,
-      VmaAllocator allocator,
       const ConfigExtentValues& config_extent_values,
       const image2D::Config& config,
       Sync sync
@@ -89,7 +88,7 @@ struct image2D {
   };
 
   VkRenderingAttachmentInfo as_attachment(AttachmentLoadOp loadop, AttachmentStoreOp storeop);
-  void destroy(VkDevice device, VmaAllocator allocator);
+  void destroy(const vk::Device& device);
 };
 
 void full_barrier(VkCommandBuffer cmd);

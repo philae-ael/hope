@@ -77,11 +77,11 @@ core::vec<GpuMesh> load_mesh(core::Allocator alloc, subsystem::video& v, core::s
             .usage = VMA_MEMORY_USAGE_AUTO,
         };
         vmaCreateBuffer(
-            v.allocator, &index_buf_create_info, &alloc_create_info, &gpu_mesh.index_buffer,
+            v.device.allocator, &index_buf_create_info, &alloc_create_info, &gpu_mesh.index_buffer,
             &gpu_mesh.index_buf_allocation, nullptr
         );
         vmaCopyMemoryToAllocation(
-            v.allocator, indices.data, gpu_mesh.index_buf_allocation, 0, indices.into_bytes().size
+            v.device.allocator, indices.data, gpu_mesh.index_buf_allocation, 0, indices.into_bytes().size
         );
         gpu_mesh.indices = (u32)indices.size;
       }
@@ -136,11 +136,11 @@ core::vec<GpuMesh> load_mesh(core::Allocator alloc, subsystem::video& v, core::s
           .usage = VMA_MEMORY_USAGE_AUTO,
       };
       vmaCreateBuffer(
-          v.allocator, &vertex_buf_create_info, &alloc_create_info, &gpu_mesh.vertex_buffer,
+          v.device.allocator, &vertex_buf_create_info, &alloc_create_info, &gpu_mesh.vertex_buffer,
           &gpu_mesh.vertex_buf_allocation, nullptr
       );
       vmaCopyMemoryToAllocation(
-          v.allocator, vertices.data, gpu_mesh.vertex_buf_allocation, 0, vertices.into_bytes().size
+          v.device.allocator, vertices.data, gpu_mesh.vertex_buf_allocation, 0, vertices.into_bytes().size
       );
 
       // === Materials ===
@@ -167,9 +167,9 @@ core::vec<GpuMesh> load_mesh(core::Allocator alloc, subsystem::video& v, core::s
             },
             {}
         );
-        VK_ASSERT(
-            vmaCopyMemoryToAllocation(v.allocator, mem, gpu_mesh.base_color.allocation, 0, VkDeviceSize(4 * x * y))
-        );
+        VK_ASSERT(vmaCopyMemoryToAllocation(
+            v.device.allocator, mem, gpu_mesh.base_color.allocation, 0, VkDeviceSize(4 * x * y)
+        ));
         stbi_image_free(mem);
       }
 
@@ -196,7 +196,7 @@ core::vec<GpuMesh> load_mesh(core::Allocator alloc, subsystem::video& v, core::s
 }
 
 void unload_mesh(subsystem::video& v, GpuMesh mesh) {
-  vmaDestroyBuffer(v.allocator, mesh.vertex_buffer, mesh.vertex_buf_allocation);
-  vmaDestroyBuffer(v.allocator, mesh.index_buffer, mesh.index_buf_allocation);
-  mesh.base_color.destroy(v.device, v.allocator);
+  vmaDestroyBuffer(v.device.allocator, mesh.vertex_buffer, mesh.vertex_buf_allocation);
+  vmaDestroyBuffer(v.device.allocator, mesh.index_buffer, mesh.index_buf_allocation);
+  mesh.base_color.destroy(v.device);
 }

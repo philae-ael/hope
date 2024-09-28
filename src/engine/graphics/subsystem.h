@@ -32,7 +32,6 @@ struct video {
   VkSurfaceKHR surface;
   vk::Swapchain swapchain;
   vk::FrameSynchro sync;
-  VmaAllocator allocator;
 
   core::vec<vk::image2D> swapchain_images;
 
@@ -41,7 +40,7 @@ struct video {
 
   inline vk::image2D create_image2D(const vk::image2D::Config& config, vk::image2D::Sync sync) {
     vk::image2D::ConfigExtentValues config_extent_values{.swapchain = swapchain.config.extent};
-    return vk::image2D::create(device, allocator, config_extent_values, config, sync);
+    return vk::image2D::create(device, config_extent_values, config, sync);
   }
 };
 video init_video(core::Allocator alloc);

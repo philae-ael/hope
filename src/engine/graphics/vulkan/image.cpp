@@ -1,13 +1,12 @@
 #include "image.h"
 
-#include "engine/graphics/subsystem.h"
+#include "init.h"
 #include <vulkan/vulkan_core.h>
 
 namespace vk {
 
 EXPORT image2D image2D::create(
     const vk::Device& device,
-    VmaAllocator allocator,
     const ConfigExtentValues& config_extent_values,
     const Config& config,
     Sync sync
@@ -47,7 +46,8 @@ EXPORT image2D image2D::create(
       .flags = config.alloc_flags,
       .usage = VMA_MEMORY_USAGE_AUTO,
   };
-  VK_ASSERT(vmaCreateImage(allocator, &image_create_info, &alloc_create_info, &image.image, &image.allocation, nullptr)
+  VK_ASSERT(
+      vmaCreateImage(device.allocator, &image_create_info, &alloc_create_info, &image.image, &image.allocation, nullptr)
   );
   VkImageViewCreateInfo image_view_create_info{
       .sType      = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -83,13 +83,13 @@ EXPORT VkImageMemoryBarrier2 image2D::sync_to(image2D::Sync new_sync, VkImageAsp
   };
 }
 
-EXPORT void image2D::destroy(VkDevice device, VmaAllocator allocator) {
+EXPORT void image2D::destroy(const vk::Device& device) {
   if (source == image2D::Source::Nop)
     return;
 
   ASSERT(source == image2D::Source::Created);
   vkDestroyImageView(device, image_view, nullptr);
-  vmaDestroyImage(allocator, image, allocation);
+  vmaDestroyImage(device.allocator, image, allocation);
   image      = VK_NULL_HANDLE;
   image_view = VK_NULL_HANDLE;
   allocation = VK_NULL_HANDLE;

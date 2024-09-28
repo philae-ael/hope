@@ -100,13 +100,13 @@ void MainRenderer::uninit(subsystem::video& v) {
   basic_renderer.uninit(v);
   imgui_renderer.uninit(v);
   gpu_texture_descriptor.uninit(v);
-  depth.destroy(v.device, v.allocator);
+  depth.destroy(v.device);
   vkDestroySampler(v.device, default_sampler, nullptr);
 
   return;
 }
 void MainRenderer::swapchain_rebuilt(subsystem::video& v) {
-  depth.destroy(v.device, v.allocator);
+  depth.destroy(v.device);
   depth = v.create_image2D(
       vk::image2D::Config{
           .format            = VK_FORMAT_D16_UNORM,

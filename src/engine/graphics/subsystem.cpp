@@ -77,16 +77,7 @@ EXPORT video init_video(core::Allocator alloc) {
   vk::Device device       = vk::create_default_device(instance, surface, {}).expect("can't create device");
   vk::Swapchain swapchain = vk::create_default_swapchain(alloc, device, surface).expect("can't acquire swapchain");
 
-  vk::FrameSynchro frame_sync                  = vk::create_frame_synchro(alloc, device, 1);
-  VmaAllocatorCreateInfo allocator_create_info = {
-      // .flags            = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT,
-      .physicalDevice   = device.physical,
-      .device           = device,
-      .instance         = instance,
-      .vulkanApiVersion = VK_API_VERSION_1_3,
-  };
-  VmaAllocator allocator;
-  VK_ASSERT(vmaCreateAllocator(&allocator_create_info, &allocator));
+  vk::FrameSynchro frame_sync = vk::create_frame_synchro(alloc, device, 1);
 
   core::vec<vk::image2D> swapchain_images{};
   for (auto swapchain_image : swapchain.images.iter()) {
@@ -96,7 +87,7 @@ EXPORT video init_video(core::Allocator alloc) {
   vk::timestamp_init(device, device.properties.limits.timestampPeriod);
 
   return {
-      window, instance, device, surface, swapchain, frame_sync, allocator, swapchain_images,
+      window, instance, device, surface, swapchain, frame_sync, swapchain_images,
   };
 }
 
@@ -104,7 +95,6 @@ EXPORT void uninit_video(video& v) {
   for (auto swapchain_image : v.swapchain_images.iter()) {
     vkDestroyImageView(v.device, swapchain_image.image_view, nullptr);
   }
-  vmaDestroyAllocator(v.allocator);
   vk::destroy_frame_synchro(v.device, v.sync);
   vk::destroy_swapchain(v.device, v.swapchain);
   vkDestroySurfaceKHR(v.instance, v.surface, nullptr);
