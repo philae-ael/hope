@@ -45,14 +45,14 @@ struct vec {
     return t;
   }
 
-  constexpr void push(noalloc_t, const T& t) {
+  constexpr void push(noalloc_t, T t) {
     ASSERT(store.data != nullptr);
     ASSERT(size() < capacity());
     store[size_]  = t;
     size_        += 1;
   }
 
-  constexpr void push(Allocator alloc, const T& t) {
+  constexpr void push(Allocator alloc, T t) {
     if (size() >= capacity()) {
       set_capacity(alloc, MAX(4, capacity() * 2));
     }
@@ -88,6 +88,11 @@ struct vec {
     reset(noalloc);
     set_capacity(alloc, 0);
   }
+
+  void deallocate(Allocator alloc) {
+    reset(alloc);
+  }
+
   vec clone(Allocator alloc) {
     vec copy = *this;
     copy.set_capacity(alloc, capacity(), false);

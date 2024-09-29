@@ -87,6 +87,10 @@ struct Allocator {
   inline void deallocate(void* alloc_base_ptr, usize size, const char* src = "<unknown>") {
     return vtable->deallocate(userdata, alloc_base_ptr, size, src);
   }
+  template <class T>
+  inline void deallocate(T* alloc_base_ptr, const char* src = "<unknown>") {
+    return vtable->deallocate(userdata, alloc_base_ptr, sizeof(T), src);
+  }
 
   inline bool try_resize(void* alloc_base_ptr, usize cur_size, usize new_size, const char* src = "<unknown>") {
     return vtable->try_resize(userdata, alloc_base_ptr, cur_size, new_size, src);

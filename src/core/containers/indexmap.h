@@ -96,6 +96,12 @@ public:
     return handles[handle.idx()].idx();
   }
 
+  void deallocate(core::Allocator alloc) {
+    handles.deallocate(alloc);
+    max_handle_idx = 0;
+    freelist_tail = freelist_head = free_list_dangling;
+  }
+
 private:
   struct handle_inner {
     bool operator==(const handle_inner& other) const   = default;
@@ -196,6 +202,11 @@ struct linear_growable_pool_with_generational_handles {
   }
   auto iter() {
     return data.iter();
+  }
+  void deallocate(core::Allocator alloc) {
+    handles.deallocate(alloc);
+    data.deallocate(alloc);
+    im.deallocate(alloc);
   }
 };
 
