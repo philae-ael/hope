@@ -15,19 +15,26 @@ EXPORT void destroy_frame_synchro(VkDevice device, FrameSynchro& frame_synchro) 
   }
 }
 
+EXPORT bool wait_frame(VkDevice device, FrameSynchro& sync, u64 timeout) {
+  auto wait_for_fence_scope = utils::scope_start("wait for fence"_hs);
+  defer { utils::scope_end(wait_for_fence_scope); };
+
+  auto frame_id = (sync.frame_id + 1) % sync.inflight;
+  VkResult res  = vkWaitForFences(device, 1, &sync.render_done_fences[frame_id], VK_TRUE, timeout);
+
+  if (res == VK_TIMEOUT) {
+    return false;
+  }
+  return true;
+}
+
 EXPORT Result<Frame> begin_frame(VkDevice device, VkSwapchainKHR swapchain, FrameSynchro& sync) {
   auto frame_id = (sync.frame_id + 1) % sync.inflight;
 
   u32 swapchain_image_index;
+  wait_frame(device, sync, 0);
 
-  auto wait_for_fence_scope = utils::scope_start("wait for fence"_hs);
-  VkResult res              = vkWaitForFences(device, 1, &sync.render_done_fences[frame_id], VK_TRUE, 100'000'000);
-  utils::scope_end(wait_for_fence_scope);
-
-  if (res != VK_SUCCESS) {
-    return res;
-  }
-  res = vkAcquireNextImageKHR(
+  VkResult res = vkAcquireNextImageKHR(
       device, swapchain, 0, sync.acquire_semaphores[frame_id], VK_NULL_HANDLE, &swapchain_image_index
   );
   if (res != VK_SUCCESS) {

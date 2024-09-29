@@ -113,6 +113,10 @@ EXPORT void video_rebuild_swapchain(video& v) {
   }
 }
 
+EXPORT bool video::wait_frame(u64 timeout) {
+  return vk::wait_frame(device, sync, timeout);
+}
+
 EXPORT vk::Result<VideoFrame> video::begin_frame() {
   auto frame = vk::begin_frame(device, swapchain, sync);
   if (frame.is_err()) {

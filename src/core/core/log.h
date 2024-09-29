@@ -37,6 +37,7 @@ void log_register_global_writer(log_writer, void* user);
 void log_emit(Arena&, log_entry&);
 bool log_filter(LogLevel level);
 void log_set_global_level(LogLevel level);
+LogLevel log_get_global_level();
 
 struct log_builder {
   Scratch arena;

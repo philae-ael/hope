@@ -94,7 +94,7 @@ struct AppState {
 
     // === MOVEMENT ===
 
-    math::Vec4 speed{2, 2, 2, 0};
+    math::Vec4 speed{7, 3, 0, 0};
     struct {
       f32 pitch = 2;
       f32 yaw   = 2;

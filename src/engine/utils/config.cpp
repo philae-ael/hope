@@ -3,7 +3,7 @@
 #include <imgui.h>
 
 union entry {
-  enum class Tag { boolean, u64, f32, f32xN };
+  enum class Tag { boolean, u64, f32, f32xN, Choice };
   struct {
     Tag tag;
     const char* label;
@@ -34,6 +34,14 @@ union entry {
     ::f32* value;
     usize components;
   } f32xN;
+  struct {
+    Tag tag = Tag::Choice;
+    const char* label;
+    bool read_only;
+    int* value;
+    const char* const* choices;
+    usize choice_count;
+  } choice;
 };
 entry entries[150]{};
 static core::vec<entry> v{core::clear, entries};
@@ -64,6 +72,9 @@ EXPORT void config_new_frame() {
           break;
         case entry::Tag::f32xN:
           ImGui::InputScalarN(entry.f32xN.label, ImGuiDataType_Float, entry.f32xN.value, (int)entry.f32xN.components);
+          break;
+        case entry::Tag::Choice:
+          ImGui::Combo(entry.choice.label, entry.choice.value, entry.choice.choices, (int)entry.choice.choice_count);
           break;
         }
         if (entry.base.read_only) {
@@ -121,6 +132,26 @@ EXPORT void config_f32xN(const char* label, f32* target, usize components, bool 
               .read_only  = read_only,
               .value      = target,
               .components = components,
+          },
+      }
+  );
+}
+EXPORT void config_choice(
+    const char* label,
+    int* target,
+    const char* const* choices,
+    usize choice_count,
+    bool read_only
+) {
+  v.push(
+      core::noalloc,
+      entry{
+          .choice{
+              .label        = label,
+              .read_only    = read_only,
+              .value        = target,
+              .choices      = choices,
+              .choice_count = choice_count,
           },
       }
   );

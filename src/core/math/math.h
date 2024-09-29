@@ -212,6 +212,12 @@ union Vec4 {
   inline constexpr Vec4 normalize() const {
     return *this * (1.f / norm());
   }
+  inline constexpr Vec4 normalize_or_zero() const {
+    if (auto norm_ = norm(); norm_ != 0.0) {
+      return *this * (1.0f / norm_);
+    }
+    return Zero;
+  }
 
   inline constexpr f32 norm2() const {
     return dot(*this);

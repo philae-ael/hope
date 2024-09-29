@@ -35,6 +35,7 @@ struct video {
 
   core::vec<vk::image2D> swapchain_images;
 
+  bool wait_frame(u64 timeout = 0);
   vk::Result<VideoFrame> begin_frame();
   VkResult end_frame(VideoFrame, VkCommandBuffer);
 

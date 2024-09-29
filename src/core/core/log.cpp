@@ -59,11 +59,11 @@ EXPORT void default_log_writer(void*, str8 msg) {
 
 /* REGISTRATION */
 
-log_writer global_log_writer        = default_log_writer;
-void* global_log_writer_userdata    = nullptr;
-log_formatter global_log_formatter  = default_log_formatter;
-void* global_log_formatter_userdata = nullptr;
-LogLevel global_log_level           = LOG_DEFAULT_GLOBAL_LEVEL;
+static log_writer global_log_writer        = default_log_writer;
+static void* global_log_writer_userdata    = nullptr;
+static log_formatter global_log_formatter  = default_log_formatter;
+static void* global_log_formatter_userdata = nullptr;
+static LogLevel global_log_level           = LOG_DEFAULT_GLOBAL_LEVEL;
 
 EXPORT void log_register_global_writer(log_writer w, void* user) {
   global_log_writer          = w;
@@ -74,6 +74,9 @@ EXPORT void log_register_global_formatter(log_formatter f, void* user) {
   global_log_formatter_userdata = user;
 }
 
+EXPORT LogLevel log_get_global_level() {
+  return global_log_level;
+}
 EXPORT void log_set_global_level(LogLevel level) {
   global_log_level = level;
 }

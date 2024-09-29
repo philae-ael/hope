@@ -78,10 +78,6 @@ AppEvent handle_events(SDL_Event& ev, InputState& input_state) {
       break;
     }
     switch (ev.key.key) {
-    case SDLK_Q: {
-      sev |= AppEvent::Exit;
-      break;
-    }
     case SDLK_R: {
       sev |= AppEvent::RebuildRenderer;
       break;
@@ -198,19 +194,28 @@ static_assert(std::is_same_v<decltype(&uninit), PFN_uninit>);
 using namespace core::literals;
 
 void update(App& app) {
-  utils::config_f32xN("input.speed", app.state->config.speed._coeffs, 3);
+  utils::config_f32xN("input.speed", app.state->config.speed._coeffs, 2);
   utils::config_f32xN("input.rot_speed", (f32*)&app.state->config.rot_speed, 2);
 
-  auto dt      = utils::get_last_frame_dt().secs();
-  auto forward = app.state->camera.rotation.rotate(-Vec4::Z);
-  auto sideway = app.state->camera.rotation.rotate(Vec4::X);
-  auto upward  = Vec4::Y;
+  auto dt       = utils::get_last_frame_dt().secs();
+  auto forward1 = app.state->camera.rotation.rotate(-Vec4::Z);
+  auto forward  = (forward1 - forward1.dot(Vec4::Y) * Vec4::Y).normalize_or_zero();
+  auto sideway  = app.state->camera.rotation.rotate(Vec4::X);
+  auto upward   = Vec4::Y;
 
-  // clang-format off
-  app.state->camera.position += dt * (+ app.state->config.speed.x * app.input_state.x.value() * sideway 
-                                      + app.state->config.speed.y * app.input_state.y.value() * upward 
-                                      - app.state->config.speed.z * app.input_state.z.value() * forward);
-  // clang-format on
+  auto horizontal_dir = (app.input_state.x.value() * sideway - app.input_state.z.value() * forward).normalize_or_zero();
+  auto sqr            = [](f32 x) -> f32 {
+    return x * x;
+  };
+  auto horizontal_speed_factor = MIN(1.f, sqr(app.input_state.x.value()) + sqr(app.input_state.z.value()));
+
+  static Vec4 input_move  = Vec4::Zero;
+  input_move              = Vec4::Zero;
+  input_move              = app.state->config.speed.x * horizontal_speed_factor * horizontal_dir;
+  input_move             += app.state->config.speed.y * app.input_state.y.value() * upward;
+  utils::config_f32xN("input.movement", input_move._coeffs, 3);
+  //
+  app.state->camera.position += dt * input_move;
 
   app.state->camera.rotation =
       Quat::from_axis_angle(sideway, app.state->config.rot_speed.pitch * dt * app.input_state.pitch.value()) *
@@ -218,6 +223,9 @@ void update(App& app) {
       app.state->camera.rotation;
 }
 
+const char* log_level_choices[] = {
+    "trace", "debug", "info", "warn", "error",
+};
 void debug_stuff(App& app) {
   auto& appconf = app.state->config;
 
@@ -260,14 +268,16 @@ void debug_stuff(App& app) {
   utils::config_f32xN("camera.position", app.state->camera.position._coeffs, 3, true);
   utils::config_f32xN("camera.rotation", app.state->camera.rotation.v._coeffs, 4, true);
 
-  static Vec4 input_move_dir = Vec4::Zero;
-  input_move_dir             = Vec4{
-      app.input_state.x.value(),
-      app.input_state.y.value(),
-      app.input_state.z.value(),
-      0,
-  };
-  utils::config_f32xN("input.move_dir", input_move_dir._coeffs, 3, true);
+  static int log_level = (int)core::log_get_global_level();
+  utils::config_choice("debug.log_level", &log_level, log_level_choices, ARRAY_SIZE(log_level_choices));
+  if (log_level != (int)core::log_get_global_level()) {
+    core::LogLevel log_level_from_choice[]{
+        core::LogLevel::Trace,   core::LogLevel::Debug, core::LogLevel::Info,
+        core::LogLevel::Warning, core::LogLevel::Error,
+    };
+    LOG_INFO("setting log level to %s", log_level_choices[log_level]);
+    core::log_set_global_level(log_level_from_choice[log_level]);
+  }
 }
 
 EXPORT AppEvent frame(App& app) {
@@ -283,22 +293,21 @@ EXPORT AppEvent frame(App& app) {
   profiling_window();
   debug_stuff(app);
 
-  auto poll_event_scope = utils::scope_start("poll event start"_hs);
-  while (SDL_PollEvent(&ev)) {
-    sev |= handle_events(ev, app.input_state);
-  }
-  utils::scope_end(poll_event_scope);
+  do {
+    auto poll_event_scope = utils::scope_start("poll event start"_hs);
+    while (SDL_PollEvent(&ev)) {
+      sev |= handle_events(ev, app.input_state);
+    }
+    utils::scope_end(poll_event_scope);
+  } while (!app.video->wait_frame(1000));
 
   update(app);
 
-  AppEvent renderev  = render(app.state, *app.video, *app.renderer);
-  sev               |= renderev;
+  sev |= render(app.state, *app.video, *app.renderer);
 
-  if (any(renderev & AppEvent::SkipRender)) {
+  if (any(sev & AppEvent::SkipRender)) {
     LOG_TRACE("rendering skiped");
-    return sev;
   }
-
   if (any(sev & AppEvent::RebuildRenderer)) {
     LOG_INFO("rebuilding renderer");
     uninit_renderer(*app.video, *app.renderer);
