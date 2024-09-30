@@ -1,6 +1,6 @@
 #include "tests.h"
 
-#include <core/containers/tuple.h>
+#include <core/core.h>
 #include <utility>
 
 TEST(tuple set) {
@@ -31,7 +31,7 @@ TEST(tuple to struct) {
     u32 c;
   };
   const core::tuple<u16, char, u32> a{0, 1, 2};
-  A aa = core::build_from_tuple<A>(a);
+  A aa = core::map_construct<A>(a, core::identity_f);
   tassert(aa.a == 0, "a == 0");
   tassert(aa.b == 1, "b == 1");
   tassert(aa.c == 2, "c == 2");

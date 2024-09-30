@@ -363,10 +363,7 @@ EXPORT core::Maybe<physical_device> find_physical_device(
       continue;
     }
 
-    return {{
-        physical_device,
-        queue_creation_infos.value(),
-    }};
+    return {core::inplace, physical_device, queue_creation_infos.value()};
   }
   LOG_WARNING("no physical_device found");
   return {};

@@ -207,7 +207,7 @@ void BasicRenderer::render(
     vkCmdPushConstants(cmd, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(matrices), 4, &idx);
 
     vkCmdBindIndexBuffer(cmd, mesh->index_buffer, 0, VK_INDEX_TYPE_UINT16);
-    vkCmdDrawIndexed(cmd, mesh->indices, 1, 0, 0, 0);
+    vkCmdDrawIndexed(cmd, mesh->indice_count, 1, 0, 0, 0);
   }
 
   vkCmdEndRendering(cmd);

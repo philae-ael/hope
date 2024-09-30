@@ -45,11 +45,13 @@
 #define DEBUG_ASSERT(...) DEBUG_STMT(ASSERT(__VA_ARGS__))
 #define DEBUG_ASSERTM(...) DEBUG_STMT(ASSERTM(__VA_ARGS__))
 
-#define DROP_1_ARG(a1, ...) (__VA_ARGS__)
-#define DROP_2_ARG(a1, a2, ...) (__VA_ARGS__)
-#define DROP_3_ARG(a1, a2, a3, ...) (__VA_ARGS__)
+#ifdef DEBUG
+  #define ASSERT_INVARIANT(x) ASSERT(x)
+#else
+  #define ASSERT_INVARIANT(x) [[assume(x)]]
+#endif
+
 #define DROP_4_ARG(a1, a2, a3, a4, ...) (__VA_ARGS__)
-#define DROP_5_ARG(a1, a2, a3, a4, a5, ...) (__VA_ARGS__)
 #define todo(...)                                                                                                  \
   core::panic __VA_OPT__(DROP_4_ARG)(                                                                              \
       "function %s has not been implemented in file %s:%d", __func__, __FILE__, __LINE__ __VA_OPT__(, __VA_ARGS__) \

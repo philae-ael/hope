@@ -14,7 +14,7 @@ namespace core {
 // Map handles into contiguous indices
 // Allow for lookup while keeping data iterable and defragmented
 template <class handle_type = core::handle_t<void, u32>>
-class index_map {
+class handle_map_adapter {
 public:
   using handle = handle_type;
   union Command {
@@ -131,7 +131,7 @@ private:
       inner = ((u32)generation() << 24) | (idx & 0x00FFFFFF);
     }
   };
-  static_assert(sizeof(handle_inner) == sizeof(handle));
+  static_assert(sizeof(handle_inner) == sizeof(handle), "index_map requires u32 handles");
 
   struct freelist_node : handle_inner {};
   static_assert(sizeof(handle) >= sizeof(freelist_node));
@@ -144,21 +144,30 @@ private:
   u32 max_handle_idx = 0;
 };
 
-template <class T>
-struct linear_growable_pool_with_generational_handles {
-  using handle    = core::handle_t<T, u32>;
-  using index_map = core::index_map<handle>;
-
-  core::vec<T> data;
+// A struct that maps handles to elements of T
+// Implemented using index_map
+// insertion: O(1)
+// deletion: O(1)
+// access: O(1)
+// Can be iterated with good cache locality => This is the principal way this should be used
+// Not ordered
+// Caveat:
+// - update is 2 array lookups (2 cache miss) -> random access is quite bad
+// - stores 1 * T + 2*u32 for each elememts
+template <class T, class Handle = core::handle_t<T, u32>>
+struct handle_map {
+  using handle             = Handle;
+  using handle_map_adapter = core::handle_map_adapter<handle>;
 
   // There are 2 vec! Be careful with arenas
   // It allows for O(1) delete in exchange for O(N) additional storage added
   core::vec<handle> handles;
-  index_map im;
+  core::vec<T> data;
+  handle_map_adapter hma;
 
   handle insert(core::Allocator alloc, T&& t) {
-    auto handle = im.new_handle(alloc);
-    auto idx    = im.resolve(handle).expect("handle can't be resolved afer being created");
+    auto handle = hma.new_handle(alloc);
+    auto idx    = hma.resolve(handle).expect("handle can't be resolved afer being created");
     ASSERTM(idx == data.size(), "The index map does strange unexpected things");
 
     handles.push(alloc, handle);
@@ -167,7 +176,7 @@ struct linear_growable_pool_with_generational_handles {
   }
 
   core::Maybe<const T&> get(handle h) const {
-    auto idx = im.resolve(h);
+    auto idx = hma.resolve(h);
     if (idx.is_none()) {
       return {};
     }
@@ -175,24 +184,27 @@ struct linear_growable_pool_with_generational_handles {
   }
 
   core::Maybe<T&> get(handle h) {
-    auto idx = im.resolve(h);
+    auto idx = hma.resolve(h);
     if (idx.is_none()) {
       return {};
     }
     return data[idx.value()];
   }
+  core::Maybe<T&> operator[](handle h) {
+    return get(h);
+  }
 
   void destroy(handle h) {
-    auto command = im.free_handle(h, handles.last().copied());
+    auto command = hma.free_handle(h, handles.last().copied());
     switch (command.tag) {
-    case index_map::Command::Tag::SwapDeleteLast:
-      SWAP(data[command.swap_delete_last.idx], data[data.size() - 1]);
-      [[fallthrough]];
-    case index_map::Command::Tag::DeleteLast:
+    case handle_map_adapter::Command::Tag::SwapDeleteLast:
+      data.swap_last_pop(command.swap_delete_last.idx);
+      break;
+    case handle_map_adapter::Command::Tag::DeleteLast:
       data.pop(noalloc);
       handles.pop(noalloc);
       break;
-    case index_map::Command::Tag::Nop:
+    case handle_map_adapter::Command::Tag::Nop:
       break;
     }
   }
@@ -203,10 +215,15 @@ struct linear_growable_pool_with_generational_handles {
   auto iter() {
     return data.iter();
   }
+
+  auto iter_enumerate() {
+    return core::zipiter{handles.iter(), data.iter()};
+  }
+
   void deallocate(core::Allocator alloc) {
     handles.deallocate(alloc);
     data.deallocate(alloc);
-    im.deallocate(alloc);
+    hma.deallocate(alloc);
   }
 };
 

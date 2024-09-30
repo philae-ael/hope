@@ -1,6 +1,5 @@
 #define _CRT_SECURE_NO_WARNINGS
 
-
 #include "core/os/fs.h"
 
 #include "core/containers/vec.h"
@@ -131,7 +130,9 @@ EXPORT core::storage<u8> read_all(core::Allocator alloc, core::str8 path) {
 
   FILE* f = fopen(realpath, "rb");
   if (f == nullptr) {
-    LOG_BUILDER(core::LogLevel::Error, with_stacktrace().panic().pushf("can't open file %s: %s", realpath, strerror(errno)));
+    LOG_BUILDER(
+        core::LogLevel::Error, with_stacktrace().panic().pushf("can't open file %s: %s", realpath, strerror(errno))
+    );
   }
 
   fseek(f, 0L, SEEK_END);

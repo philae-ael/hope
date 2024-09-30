@@ -32,7 +32,7 @@ EXPORT string_builder& string_builder::vpushf(Allocator alloc, const char* fmt, 
   n->str.data = (u8*)n + sizeof(string_node);
 
   usize len_wrote = (usize)vsnprintf((char*)n->str.data, len + 1, fmt, ap);
-  ASSERT(len_wrote == len);
+  ASSERT_INVARIANT(len_wrote == len);
 
   push_node(n);
   return *this;

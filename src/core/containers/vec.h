@@ -139,11 +139,25 @@ struct vec {
     return storage<const T>{*this}.iter();
   }
 
+  auto iter_rev() {
+    return storage<T>{*this}.iter_rev();
+  }
+  auto iter_rev() const {
+    return storage<const T>{*this}.iter_rev();
+  }
+
   Maybe<T&> last() {
-    return size() > 0 ? (*this)[size() - 1] : Maybe<T&>{};
+    return size() > 0 ? (*this)[size() - 1] : core::None<T&>();
   }
   Maybe<const T&> last() const {
-    return size() > 0 ? (*this)[size() - 1] : Maybe<T&>{};
+    return size() > 0 ? (*this)[size() - 1] : core::None<const T&>();
+  }
+
+  // Does not invalidate a reverse iterator!
+  // Useful to delete elements from a vector while iterating it backward
+  void swap_last_pop(usize idx) {
+    SWAP((*this)[idx], (*this)[size() - 1]);
+    pop(core::noalloc);
   }
 };
 
