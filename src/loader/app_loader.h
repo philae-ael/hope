@@ -37,7 +37,7 @@ struct AppPFNs {
 };
 
 #if SHARED
-inline core::str8 default_soname = core::str8::from("lib/libapp.so");
+inline core::str8 default_soname = core::str8::from("/lib/libapp.so");
 #endif
 
 void load_app(AppPFNs& app);

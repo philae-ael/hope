@@ -1,5 +1,6 @@
 
 #include "app_loader.h"
+#include "core/os/fs.h"
 
 #include <backends/imgui_impl_sdl3.h>
 #include <core/core.h>
@@ -34,14 +35,27 @@ int main(int argc, char* argv[]) {
   /// === Env setup and globals initializations  ===
   setup_crash_handler();
   log_register_global_formatter(log_timed_formatter, nullptr);
-  log_set_global_level(core::LogLevel::Debug);
+  log_set_global_level(core::LogLevel::Trace);
   utils::timings_init();
   fs::init();
 
   auto global_alloc = core::get_named_allocator(core::AllocatorName::General);
+  {
+    auto cwd = os::getcwd(global_alloc);
+    // fs::mount("/"_s, cwd);
+
+    auto assetdir = core::join(global_alloc, "/"_s, cwd, "assets");
+    fs::mount("/assets"_s, assetdir);
+    global_alloc.deallocate(assetdir.data);
+
 #ifdef SHARED
-  fs::register_path("lib"_s, fs::resolve_path(global_alloc, "build"_s));
+    auto libdir = core::join(global_alloc, "/"_s, cwd, "build");
+    fs::mount("/lib"_s, libdir);
+    global_alloc.deallocate(libdir.data);
 #endif
+
+    global_alloc.deallocate(cwd.data);
+  }
 
   /// === Load App ===
 

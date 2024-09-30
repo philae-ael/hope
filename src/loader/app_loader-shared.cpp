@@ -78,7 +78,7 @@ AppPFNs load_app(core::str8 soname_) {
   auto scratch = core::scratch_get();
   defer { scratch.retire(); };
 
-  const char* soname = fs::resolve_path(*scratch, soname_).cstring(*scratch);
+  const char* soname = fs::resolve_path(*scratch, soname_).expect("can't load so").cstring(*scratch);
 
   AppPFNs app;
   LOG_DEBUG("loading app at location %s", soname);

@@ -101,13 +101,15 @@ core::str8 to_str8(core::Allocator alloc, queue_flags_t, VkQueueFlags struct_typ
     (parent)->pNext = (child);                \
   } while (0)
 
-#define VK_ASSERT(x)                                                                                                   \
-  do {                                                                                                                 \
-    VkResult res_assert_ = (x);                                                                                        \
-    if (res_assert_ != VK_SUCCESS) {                                                                                   \
-      LOG_BUILDER(::core::LogLevel::Error, push("expected VK_SUCCESS, " STRINGIFY(x) " returned ").push(res_assert_)); \
-      ::core::panic("VK_ASSERT failed");                                                                               \
-    }                                                                                                                  \
+#define VK_ASSERT(x)                                                                                          \
+  do {                                                                                                        \
+    VkResult res_assert_ = (x);                                                                               \
+    if (res_assert_ != VK_SUCCESS) {                                                                          \
+      LOG_BUILDER(                                                                                            \
+          ::core::LogLevel::Error,                                                                            \
+          push("VK_ASSERT failed: expected VK_SUCCESS, " STRINGIFY(x) " returned ").push(res_assert_).panic() \
+      );                                                                                                      \
+    }                                                                                                         \
   } while (0)
 
 core::str8 to_str8(VkResult res);

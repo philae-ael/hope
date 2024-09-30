@@ -1,10 +1,8 @@
 #define _CRT_SECURE_NO_WARNINGS
 
-#include "core/os/fs.h"
-
+#include "fs.h"
 #include "core/containers/vec.h"
 #include "core/core/fwd.h"
-#include "fs.h"
 #include <cerrno>
 #include <core/containers/pool.h>
 #include <core/core.h>
@@ -60,12 +58,11 @@ using namespace core::literals;
 
 EXPORT void init() {
   fs.arena = &core::arena_alloc();
-  register_path("/"_s, os::getcwd(*fs.arena));
 }
 
-EXPORT void register_path(core::str8 path, core::str8 target) {
+EXPORT void mount(core::str8 path, core::str8 target) {
   auto parts = core::split{path, '/'};
-  LOG_BUILDER(core::LogLevel::Trace, push("registering path ").push(path).push(" to ").push(target));
+  LOG2_TRACE("registering path ", path, " to ", target);
 
   auto* t = &fs.root;
   for (auto part : parts) {
@@ -84,15 +81,15 @@ EXPORT void register_path(core::str8 path, core::str8 target) {
   t->target = core::intern(target.hash());
 }
 
-EXPORT core::str8 resolve_path(core::Allocator alloc, core::str8 path) {
+EXPORT core::Maybe<core::str8> resolve_path(core::Allocator alloc, core::str8 path) {
   auto tmp = fs.arena->make_temp();
   defer { tmp.retire(); };
 
   auto parts = core::split{path, '/'};
 
-  auto* t            = &fs.root;
-  core::hstr8 target = fs.root.target.expect("root not set");
-  core::str8 rest    = path;
+  auto* t                         = &fs.root;
+  core::Maybe<core::hstr8> target = fs.root.target;
+  core::str8 rest                 = path;
   while (true) {
     auto part_ = parts.next();
     if (part_.is_none()) {
@@ -115,8 +112,11 @@ EXPORT core::str8 resolve_path(core::Allocator alloc, core::str8 path) {
     }
   }
 
+  if (target.is_none()) {
+    return {};
+  }
   core::string_builder sb{};
-  sb.push(*tmp, target);
+  sb.push(*tmp, *target);
   sb.push(*tmp, rest);
 
   return sb.commit(alloc, core::str8::from("/"));
@@ -126,7 +126,8 @@ EXPORT core::storage<u8> read_all(core::Allocator alloc, core::str8 path) {
   auto scratch = core::scratch_get();
   defer { scratch.retire(); };
 
-  auto realpath = resolve_path(*scratch, path).cstring(*scratch);
+  LOG2_TRACE("reading file ", path);
+  auto realpath = resolve_path(*scratch, path).expect("can't find path").cstring(*scratch);
 
   FILE* f = fopen(realpath, "rb");
   if (f == nullptr) {
@@ -148,8 +149,8 @@ EXPORT core::storage<u8> read_all(core::Allocator alloc, core::str8 path) {
 }
 
 EXPORT on_file_modified_handle
-register_modified_file_callback(const char* path, on_file_modified_t callback, void* userdata) {
-  const char* cpath = core::str8::from(core::cstr, path).cstring(*fs.arena);
+register_modified_file_callback(core::str8 path, on_file_modified_t callback, void* userdata) {
+  const char* cpath = resolve_path(*fs.arena, path).expect("can't resolve path").cstring(*fs.arena);
 
   LOG_TRACE("registering path %s to be watched", cpath);
 
@@ -171,15 +172,6 @@ register_modified_file_callback(const char* path, on_file_modified_t callback, v
   );
 
   return on_file_modified_handle{fs.watchs[fs.watchs.size() - 1].id};
-}
-
-EXPORT on_file_modified_handle
-register_modified_file_callback(virtualpath vpath, on_file_modified_t callback, void* userdata) {
-  auto scratch = core::scratch_get();
-  defer { scratch.retire(); };
-  auto real_path = resolve_path(*scratch, vpath).cstring(*scratch);
-
-  return register_modified_file_callback(real_path, callback, userdata);
 }
 
 EXPORT void process_modified_file_callbacks() {

@@ -291,10 +291,9 @@ EXPORT core::Maybe<core::vec<queue_creation_info>> find_physical_device_queue_al
   core::vec<queue_creation_info> queues;
   for (auto [family_index, queue_family_property] : core::enumerate{queue_family_properties.iter()}) {
 
-    LOG_BUILDER(
-        core::LogLevel::Debug,
-        pushf("queue family %zu with count %u and flags ", family_index, queue_family_property->queueCount)
-            .push(queue_flags, queue_family_property->queueFlags)
+    LOG2_DEBUG(
+        core::cformat{"queue family %zu with count %u and flags ", family_index, queue_family_property->queueCount},
+        core::format{queue_flags, queue_family_property->queueFlags}
     );
 
     for (auto [request_index, queue_request] : core::enumerate{queue_requests.iter()}) {
@@ -546,7 +545,7 @@ EXPORT bool physical_device_features::check_features(const VkPhysicalDevicePrope
   while (s != nullptr) {
     switch (s->sType) {
     default:
-      LOG_BUILDER(core::LogLevel::Error, pushf("Feature not supported in check_features").push(s->sType));
+      LOG2_ERROR("Feature not supported in check_features", s->sType);
     }
     s = s->pNext;
   }
@@ -658,7 +657,7 @@ EXPORT SwapchainConfig create_default_swapchain_config(const Device& device, VkS
 
     for (auto present_mode : present_modes.iter()) {
       int score = 0;
-      LOG_BUILDER(core::LogLevel::Debug, push("Surface accept present mode ").push(present_mode));
+      LOG2_DEBUG("Surface accept present mode ", present_mode);
       switch (present_mode) {
       case VK_PRESENT_MODE_IMMEDIATE_KHR:
         score = 1;
@@ -682,9 +681,7 @@ EXPORT SwapchainConfig create_default_swapchain_config(const Device& device, VkS
     }
 
     swapchain_config.present_mode = best_present_mode;
-    LOG_BUILDER(
-        core::LogLevel::Info, push("Present Mode ").push(best_present_mode).pushf(" has been chosen for surface")
-    );
+    LOG2_INFO("Present Mode ", best_present_mode, " has been chosen for surface");
   }
 
   {
@@ -694,7 +691,7 @@ EXPORT SwapchainConfig create_default_swapchain_config(const Device& device, VkS
     int best_score = -1;
 
     for (auto format : formats.iter()) {
-      LOG_BUILDER(core::LogLevel::Info, push("Surface accept format ").push(format.format));
+      LOG2_INFO("Surface accept format ", format.format);
       int score = 0;
       switch (format.format) {
       case VK_FORMAT_B8G8R8A8_SRGB:
@@ -711,7 +708,7 @@ EXPORT SwapchainConfig create_default_swapchain_config(const Device& device, VkS
       }
     }
     swapchain_config.surface_format = best_format;
-    LOG_BUILDER(core::LogLevel::Info, push("Format ").push(best_format.format).pushf(" has been chosen for surface"));
+    LOG2_INFO("Format ", best_format.format, " has been chosen for surface");
   }
   VkFormatProperties surface_format_properties{};
   vkGetPhysicalDeviceFormatProperties(

@@ -249,20 +249,13 @@ void debug_stuff(App& app) {
     auto timing_infos = utils::get_last_frame_timing_infos(core::get_named_allocator(core::AllocatorName::Frame));
     if (appconf.print_frame_report_full) {
       for (auto [name, t] : timing_infos.timings.iter()) {
-        LOG_BUILDER(core::LogLevel::Debug, push(name).push(" at ").push(t, os::TimeFormat::MMM_UUU_NNN));
+        LOG2_DEBUG(name, " at ", core::format{t, os::TimeFormat::MMM_UUU_NNN});
       }
     }
 
-    LOG_BUILDER(
-        core::LogLevel::Debug,
-        push("frame mean: ").push(timing_infos.stats.mean_frame_time, os::TimeFormat::MMM_UUU_NNN)
-    );
-    LOG_BUILDER(
-        core::LogLevel::Debug, push("frame low 95: ").push(timing_infos.stats.low_95, os::TimeFormat::MMM_UUU_NNN)
-    );
-    LOG_BUILDER(
-        core::LogLevel::Debug, push("frame low 99: ").push(timing_infos.stats.low_99, os::TimeFormat::MMM_UUU_NNN)
-    );
+    LOG2_DEBUG("frame mean: ", core::format{timing_infos.stats.mean_frame_time, os::TimeFormat::MMM_UUU_NNN});
+    LOG2_DEBUG("frame low 98: ", core::format{timing_infos.stats.low_95, os::TimeFormat::MMM_UUU_NNN});
+    LOG2_DEBUG("frame low 99: ", core::format{timing_infos.stats.low_99, os::TimeFormat::MMM_UUU_NNN});
   }
 
   utils::config_f32xN("camera.position", app.state->camera.position._coeffs, 3, true);

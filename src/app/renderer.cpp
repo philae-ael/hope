@@ -25,7 +25,7 @@ using namespace core::enum_helpers;
 using namespace core::literals;
 
 static core::array deps{
-    "assets/scenes/sponza.glb"_s,
+    "/assets/scenes/sponza.glb"_s,
 };
 
 MainRenderer MainRenderer::init(subsystem::video& v) {

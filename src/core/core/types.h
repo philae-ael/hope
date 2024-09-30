@@ -194,9 +194,6 @@ struct Maybe {
   inline reference operator*() {
     return value();
   }
-  inline pointer operator->() {
-    return &*data;
-  }
 
   T expect(const char* msg) {
     if (is_none()) {
@@ -270,7 +267,28 @@ auto& get(tuple<Args...>& t) {
 }
 
 template <usize N, class... Args>
-const auto& get(const tuple<Args...>& t) {
+auto& get(const tuple<Args...>& t) {
+  static_assert(N < sizeof...(Args), "out of index");
+
+  if constexpr (N == 0) {
+    return t.head;
+  } else {
+    return get<N - 1>(t.tail);
+  }
+}
+
+template <usize N, class... Args>
+auto&& get(tuple<Args...>&& t) {
+  static_assert(N < sizeof...(Args), "out of index");
+  if constexpr (N == 0) {
+    return t.head;
+  } else {
+    return get<N - 1>(t.tail);
+  }
+}
+
+template <usize N, class... Args>
+auto&& get(const tuple<Args...>&& t) {
   static_assert(N < sizeof...(Args), "out of index");
 
   if constexpr (N == 0) {
@@ -678,8 +696,8 @@ struct zipiter : cpp_iter<tuple<typename detail_::storage_traits<typename Its::I
     bool is_some = true;
 
     // Hum... how beautiful
-    auto tuple_of_maybes = map_construct<tuple<Maybe<typename Its::Item>...>>(its, [&is_some](auto& it) {
-      decltype(auto) v = it.next();
+    auto tuple_of_maybes = map_construct<tuple<Maybe<typename Its::Item>...>>(its, [&is_some](auto&& it) {
+      decltype(auto) v = FWD(it).next();
       is_some          = is_some && v.is_some();
       return v;
     });
@@ -689,7 +707,7 @@ struct zipiter : cpp_iter<tuple<typename detail_::storage_traits<typename Its::I
       return {};
     }
 
-    return map_construct<Item>(tuple_of_maybes, [](auto& v) -> decltype(auto) { return v.value(); });
+    return map_construct<Item>(tuple_of_maybes, [](auto&& v) -> decltype(auto) { return FWD(v).value(); });
   }
 };
 } // namespace core

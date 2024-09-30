@@ -19,7 +19,7 @@ core::vec<GpuMesh> load_mesh(core::Allocator alloc, subsystem::video& v, core::s
   defer { scratch.retire(); };
   core::Allocator scratch_alloc = scratch;
 
-  const char* path      = fs::resolve_path(*scratch, src).cstring(scratch_alloc);
+  const char* path      = fs::resolve_path(*scratch, src).expect("can't find mesh").cstring(scratch);
   cgltf_options options = {
       .type   = cgltf_file_type_glb,
       .memory = {
@@ -83,7 +83,7 @@ core::vec<GpuMesh> load_mesh(core::Allocator alloc, subsystem::video& v, core::s
         vmaCopyMemoryToAllocation(
             v.device.allocator, indices.data, gpu_mesh.index_buf_allocation, 0, indices.into_bytes().size
         );
-        gpu_mesh.indices = (u32)indices.size;
+        gpu_mesh.indice_count = (u32)indices.size;
       }
 
       // === Vertex buffer ===
@@ -199,4 +199,8 @@ void unload_mesh(subsystem::video& v, GpuMesh mesh) {
   vmaDestroyBuffer(v.device.allocator, mesh.vertex_buffer, mesh.vertex_buf_allocation);
   vmaDestroyBuffer(v.device.allocator, mesh.index_buffer, mesh.index_buf_allocation);
   mesh.base_color.destroy(v.device);
+}
+
+MeshToken MeshLoader::queue_mesh(subsystem::video& v, core::str8 src) {
+  todo();
 }

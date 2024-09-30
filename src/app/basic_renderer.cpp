@@ -17,7 +17,7 @@ using namespace core::literals;
 using math::Mat4;
 
 core::array deps{
-    "assets/shaders/tri.spv"_s,
+    "/assets/shaders/tri.spv"_s,
 };
 
 BasicRenderer BasicRenderer::init(

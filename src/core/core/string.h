@@ -70,6 +70,15 @@ struct string_builder {
   str8 commit(Allocator alloc, str8 join = {}) const;
 };
 
+template <class... Args>
+str8 join(core::Allocator alloc, str8 sep, const Args&... args) {
+  auto scratch = scratch_get();
+  defer { scratch.retire(); };
+  string_builder sb{};
+  (sb.push(scratch, args), ...);
+  return sb.commit(alloc, sep);
+}
+
 namespace literals {
 inline str8 operator""_s(const char* s, std::size_t len) {
   return str8::from(s, len);

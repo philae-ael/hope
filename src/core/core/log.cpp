@@ -85,7 +85,7 @@ EXPORT bool log_filter(LogLevel level) {
 }
 
 EXPORT void log_emit(Arena& arena, log_entry& entry) {
-  str8 msg = global_log_formatter(global_log_formatter_userdata, arena, entry).builder.commit(arena);
+  str8 msg = global_log_formatter(global_log_formatter_userdata, arena, entry).builder.commit(arena, entry.sep);
   global_log_writer(global_log_writer_userdata, msg);
 }
 
