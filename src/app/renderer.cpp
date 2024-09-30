@@ -170,6 +170,7 @@ AppEvent render(AppState* app_state, subsystem::video& v, Renderer& renderer) {
   if (frame.is_err()) {
     switch (frame.err()) {
     case VK_TIMEOUT:
+    case VK_NOT_READY:
       sev |= AppEvent::SkipRender;
       return sev;
     case VK_ERROR_OUT_OF_DATE_KHR:

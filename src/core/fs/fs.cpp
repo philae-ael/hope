@@ -62,7 +62,7 @@ EXPORT void init() {
 
 EXPORT void mount(core::str8 path, core::str8 target) {
   auto parts = core::split{path, '/'};
-  LOG2_TRACE("registering path ", path, " to ", target);
+  LOG2_DEBUG("registering path ", path, " to ", target);
 
   auto* t = &fs.root;
   for (auto part : parts) {
@@ -78,48 +78,46 @@ EXPORT void mount(core::str8 path, core::str8 target) {
       t = &pth.value();
     }
   }
-  t->target = core::intern(target.hash());
+  t->target = core::Some(core::intern(target.hash()));
 }
 
 EXPORT core::Maybe<core::str8> resolve_path(core::Allocator alloc, core::str8 path) {
-  auto tmp = fs.arena->make_temp();
-  defer { tmp.retire(); };
 
-  auto parts = core::split{path, '/'};
+  LOG2_TRACE("resolving path ", path);
 
-  auto* t                         = &fs.root;
-  core::Maybe<core::hstr8> target = fs.root.target;
-  core::str8 rest                 = path;
-  while (true) {
-    auto part_ = parts.next();
-    if (part_.is_none()) {
-      break;
-    }
-    auto part = part_.value();
-    if (part.len == 0) {
+  auto* t     = &fs.root;
+  auto parts  = core::split{path, '/'};
+  auto& begin = parts.begin();
+  auto end    = parts.end();
+  core::str8 cur_part;
+  for (; begin != end; ++begin) {
+    cur_part = *begin;
+    if (cur_part.len == 0) {
       continue;
     }
 
-    auto pth = t->find_child(part.hash());
+    LOG2_TRACE(cur_part);
+    auto pth = t->find_child(cur_part.hash());
     if (pth.is_none()) {
       break;
     }
 
     t = &pth.value();
-    if (t->target.is_some()) {
-      target = t->target.value();
-      rest   = parts.rest;
-    }
   }
 
-  if (target.is_none()) {
-    return {};
+  if (t->target.is_none()) {
+    LOG2_TRACE("could not found base ", cur_part);
+    return core::None<core::str8>();
   }
-  core::string_builder sb{};
-  sb.push(*tmp, *target);
-  sb.push(*tmp, rest);
 
-  return sb.commit(alloc, core::str8::from("/"));
+  core::str8 s;
+  if (parts.rest.len == 0) {
+    s = core::join(alloc, "/"_s, *t->target, cur_part);
+  } else {
+    s = core::join(alloc, "/"_s, *t->target, cur_part, parts.rest);
+  }
+  LOG2_TRACE(s);
+  return s;
 }
 
 EXPORT core::storage<u8> read_all(core::Allocator alloc, core::str8 path) {
@@ -152,7 +150,7 @@ EXPORT on_file_modified_handle
 register_modified_file_callback(core::str8 path, on_file_modified_t callback, void* userdata) {
   const char* cpath = resolve_path(*fs.arena, path).expect("can't resolve path").cstring(*fs.arena);
 
-  LOG_TRACE("registering path %s to be watched", cpath);
+  LOG2_INFO("registering path ", cpath, " (", path, ") to be watched");
 
   std::error_code ec;
   auto ftime = std::filesystem::last_write_time(cpath, ec);
@@ -171,7 +169,7 @@ register_modified_file_callback(core::str8 path, on_file_modified_t callback, vo
       }
   );
 
-  return on_file_modified_handle{fs.watchs[fs.watchs.size() - 1].id};
+  return on_file_modified_handle{fs.watchs.last().value().id};
 }
 
 EXPORT void process_modified_file_callbacks() {
