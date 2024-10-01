@@ -1,5 +1,6 @@
 
 #include "renderer.h"
+#include "app/app.h"
 #include "app/mesh.h"
 #include "basic_renderer.h"
 #include "core/core/memory.h"
@@ -47,9 +48,11 @@ MainRenderer MainRenderer::init(subsystem::video& v) {
   };
   vkCreateSampler(v.device, &sampler_create_info, nullptr, &self.default_sampler);
 
+  self.camera_descriptor      = CameraDescriptor::init(v);
   self.gpu_texture_descriptor = GpuTextureDescriptor::init(v);
-  self.basic_renderer =
-      BasicRenderer::init(v, v.swapchain.config.surface_format.format, self.gpu_texture_descriptor.layout);
+  self.basic_renderer         = BasicRenderer::init(
+      v, v.swapchain.config.surface_format.format, self.camera_descriptor.layout, self.gpu_texture_descriptor.layout
+  );
   self.imgui_renderer = ImGuiRenderer::init(v);
 
   self.meshes                    = load_mesh(core::get_named_allocator(core::AllocatorName::General), v, deps[0]);
@@ -60,7 +63,7 @@ MainRenderer MainRenderer::init(subsystem::video& v) {
   return self;
 }
 
-void MainRenderer::render(AppState* app_state, VkDevice device, VkCommandBuffer cmd, vk::image2D& swapchain_image) {
+void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuffer cmd, vk::image2D& swapchain_image) {
   auto triangle_scope = vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "triangle"_hs);
   vk::pipeline_barrier(
       cmd, swapchain_image.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}),
@@ -75,8 +78,13 @@ void MainRenderer::render(AppState* app_state, VkDevice device, VkCommandBuffer 
     gpu_texture_descriptor.update(device, default_sampler, meshes);
     should_update_descriptors = false;
   }
+  f32 aspect_ratio     = (f32)swapchain_image.extent.width / (f32)swapchain_image.extent.height;
+  auto camera_matrices = app_state->camera.matrices(aspect_ratio);
+  camera_descriptor.update(device, camera_matrices);
 
-  basic_renderer.render(app_state, device, cmd, swapchain_image, depth, gpu_texture_descriptor, meshes);
+  basic_renderer.render(
+      app_state, device, cmd, swapchain_image, depth, camera_descriptor, gpu_texture_descriptor, meshes
+  );
 
   vk::timestamp_scope_end(cmd, VK_PIPELINE_STAGE_2_NONE, triangle_scope);
 
@@ -99,6 +107,7 @@ void MainRenderer::uninit(subsystem::video& v) {
 
   basic_renderer.uninit(v);
   imgui_renderer.uninit(v);
+  camera_descriptor.uninit(v);
   gpu_texture_descriptor.uninit(v);
   depth.destroy(v.device);
   vkDestroySampler(v.device, default_sampler, nullptr);

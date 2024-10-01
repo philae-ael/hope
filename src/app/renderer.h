@@ -10,6 +10,7 @@
 #include <core/fs/fs.h>
 
 struct MainRenderer {
+  CameraDescriptor camera_descriptor;
   GpuTextureDescriptor gpu_texture_descriptor;
   ImGuiRenderer imgui_renderer;
   BasicRenderer basic_renderer;
@@ -19,7 +20,7 @@ struct MainRenderer {
   core::vec<GpuMesh> meshes;
 
   static MainRenderer init(subsystem::video& v);
-  void render(AppState* app_state, VkDevice device, VkCommandBuffer cmd, vk::image2D& swapchain_image);
+  void render(AppState* app_state, vk::Device& device, VkCommandBuffer cmd, vk::image2D& swapchain_image);
   void uninit(subsystem::video& v);
 
   void swapchain_rebuilt(subsystem::video& v);

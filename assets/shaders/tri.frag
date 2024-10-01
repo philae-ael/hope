@@ -5,10 +5,10 @@ layout(location = 0) in vec3 inColor;
 layout(location = 1) in vec2 inTexCoord;
 
 layout(location = 0) out vec4 outFragColor;
-layout(binding = 0, set = 0) uniform sampler2D sampledColor[];
+layout(set = 1, binding = 0) uniform sampler2D sampledColor[];
 
 layout(push_constant) uniform pc {
-   layout(offset=192) int sampler_idx;
+   layout(offset=64) int sampler_idx;
 };
 
 void main() 

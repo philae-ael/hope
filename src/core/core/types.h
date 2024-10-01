@@ -650,7 +650,7 @@ struct array {
   }
 };
 template <class Arg, class... Args>
-array(Arg&& arg, Args&&... args) -> array<Arg, 1 + sizeof...(Args)>;
+array(Arg arg, Args... args) -> array<Arg, 1 + sizeof...(Args)>;
 
 template <class Idx, iterable It>
 struct EnumerateItem {

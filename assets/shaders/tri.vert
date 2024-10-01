@@ -8,9 +8,12 @@ layout(location = 2) in vec2 texCoord;
 layout(location = 0) out vec3 outColor;
 layout(location = 1) out vec2 outTexCoord;
 
-layout(push_constant) uniform pc {
+layout(set = 0, binding=0) uniform camera {
   mat4 projMatrix;
   mat4 cameraFromLocal;
+};
+
+layout(push_constant) uniform pc {
   mat4 localFromWorld;
 };
 

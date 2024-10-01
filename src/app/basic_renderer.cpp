@@ -1,5 +1,6 @@
 #include "basic_renderer.h"
 #include "app.h"
+#include "app/camera.h"
 #include "core/core/memory.h"
 
 #include <core/core.h>
@@ -23,6 +24,7 @@ core::array deps{
 BasicRenderer BasicRenderer::init(
     subsystem::video& v,
     VkFormat format,
+    VkDescriptorSetLayout camera_descriptor_layout,
     VkDescriptorSetLayout gpu_texture_descriptor_layout
 ) {
   auto scratch = core::scratch_get();
@@ -33,19 +35,23 @@ BasicRenderer BasicRenderer::init(
       VkPushConstantRange{
           .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
           .offset     = 0,
-          .size       = 3 * 4 * 4 * sizeof(f32), // 3 mat4
+          .size       = 1 * 4 * 4 * sizeof(f32), // 1 mat4
       },
       VkPushConstantRange{
           .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-          .offset     = 192,
+          .offset     = 64,
           .size       = 4,
       },
   };
   // # Layout
+  core::array set_layouts{
+      camera_descriptor_layout,
+      gpu_texture_descriptor_layout,
+  };
   VkPipelineLayoutCreateInfo pipeline_layout_create_info{
       .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-      .setLayoutCount         = 1,
-      .pSetLayouts            = &gpu_texture_descriptor_layout,
+      .setLayoutCount         = (u32)set_layouts.size(),
+      .pSetLayouts            = set_layouts.data,
       .pushConstantRangeCount = (u32)push_constants.size(),
       .pPushConstantRanges    = push_constants.data,
   };
@@ -149,6 +155,7 @@ void BasicRenderer::render(
     VkCommandBuffer cmd,
     vk::image2D color_target,
     vk::image2D depth_target,
+    VkDescriptorSet camera_descriptor_set,
     VkDescriptorSet gpu_texture_descriptor_set,
     core::storage<GpuMesh> meshes
 ) {
@@ -177,8 +184,14 @@ void BasicRenderer::render(
   };
   vkCmdBeginRendering(cmd, &rendering_info);
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+  core::array descriptor_sets{
+      camera_descriptor_set,
+      gpu_texture_descriptor_set,
+  };
   vkCmdBindDescriptorSets(
-      cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &gpu_texture_descriptor_set, 0, nullptr
+      cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, (u32)descriptor_sets.size(), descriptor_sets.data, 0,
+      nullptr
   );
 
   VkRect2D scissor{{}, color_target.extent};
@@ -193,16 +206,12 @@ void BasicRenderer::render(
     VkDeviceSize offset = 0;
     vkCmdBindVertexBuffers(cmd, 0, 1, &mesh->vertex_buffer, &offset);
 
-    f32 aspect_ratio = (f32)color_target.extent.width / (f32)color_target.extent.height;
     struct {
-      CameraMatrices camera_matrices;
       Mat4 transform_matrix;
     } matrices = {
-        app_state->camera.matrices(aspect_ratio),
         mesh->transform,
     };
     vkCmdPushConstants(cmd, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(matrices), &matrices);
-
     auto idx{u32(i)};
     vkCmdPushConstants(cmd, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(matrices), 4, &idx);
 
@@ -287,4 +296,90 @@ void GpuTextureDescriptor::update(VkDevice device, VkSampler sampler, core::stor
 void GpuTextureDescriptor::uninit(subsystem::video& v) {
   vkDestroyDescriptorSetLayout(v.device, layout, nullptr);
   vkDestroyDescriptorPool(v.device, pool, nullptr);
+}
+
+CameraDescriptor CameraDescriptor::init(subsystem::video& v) {
+  core::array<VkDescriptorPoolSize, 1> pool_sizes{
+      VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1},
+  };
+  VkDescriptorPoolCreateInfo descriptor_pool_create_info{
+      .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+      .maxSets       = 1,
+      .poolSizeCount = (u32)pool_sizes.size(),
+      .pPoolSizes    = pool_sizes.data,
+  };
+  VkDescriptorPool descriptor_pool;
+  vkCreateDescriptorPool(v.device, &descriptor_pool_create_info, nullptr, &descriptor_pool);
+
+  core::array descriptor_set_layout_bindings{
+      VkDescriptorSetLayoutBinding{
+          .binding         = 0,
+          .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+          .descriptorCount = 1,
+          .stageFlags      = VK_SHADER_STAGE_VERTEX_BIT,
+      },
+  };
+  VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info{
+      .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+      .bindingCount = (u32)descriptor_set_layout_bindings.size(),
+      .pBindings    = descriptor_set_layout_bindings.data,
+  };
+  VkDescriptorSetLayout descriptor_set_layout;
+  vkCreateDescriptorSetLayout(v.device, &descriptor_set_layout_create_info, nullptr, &descriptor_set_layout);
+
+  VkDescriptorSetAllocateInfo descriptor_set_alloc_infos{
+      .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+      .descriptorPool     = descriptor_pool,
+      .descriptorSetCount = 1,
+      .pSetLayouts        = &descriptor_set_layout,
+  };
+  VkDescriptorSet descriptor_set;
+  vkAllocateDescriptorSets(v.device, &descriptor_set_alloc_infos, &descriptor_set);
+
+  VkBufferCreateInfo buffer_create_info{
+      .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+      .size                  = sizeof(CameraMatrices),
+      .usage                 = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+      .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
+      .queueFamilyIndexCount = 1,
+      .pQueueFamilyIndices   = &v.device.omni_queue_family_index,
+  };
+  VmaAllocationCreateInfo allocation_create_info{
+      .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
+      .usage = VMA_MEMORY_USAGE_AUTO,
+  };
+  VkBuffer buffer;
+  VmaAllocation allocation;
+  VK_ASSERT(
+      vmaCreateBuffer(v.device.allocator, &buffer_create_info, &allocation_create_info, &buffer, &allocation, nullptr)
+  );
+
+  VkDescriptorBufferInfo buffer_info{
+      .buffer = buffer,
+      .offset = 0,
+      .range  = sizeof(CameraMatrices),
+  };
+  VkWriteDescriptorSet write{
+      .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+      .dstSet          = descriptor_set,
+      .dstBinding      = 0,
+      .dstArrayElement = 0,
+      .descriptorCount = 1,
+      .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+      .pBufferInfo     = &buffer_info,
+  };
+  vkUpdateDescriptorSets(v.device, 1, &write, 0, nullptr);
+  return {
+      descriptor_pool, descriptor_set_layout, descriptor_set, buffer, allocation,
+  };
+}
+
+void CameraDescriptor::update(vk::Device& device, CameraMatrices& matrices) {
+  vmaCopyMemoryToAllocation(device.allocator, &matrices, allocation, 0, sizeof(CameraMatrices));
+}
+
+void CameraDescriptor::uninit(subsystem::video& v) {
+  vkDestroyDescriptorSetLayout(v.device, layout, nullptr);
+  vkDestroyDescriptorPool(v.device, pool, nullptr);
+  vmaDestroyBuffer(v.device.allocator, buffer, allocation);
 }
