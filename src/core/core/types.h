@@ -189,10 +189,14 @@ struct Maybe {
     return d == Discriminant::None;
   }
   inline reference value() {
+    DEBUG_ASSERT(is_some());
     return *data;
   }
   inline reference operator*() {
     return value();
+  }
+  inline pointer operator->() {
+    return &value();
   }
 
   T expect(const char* msg) {

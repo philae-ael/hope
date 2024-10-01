@@ -36,7 +36,7 @@ struct video {
   core::vec<vk::image2D> swapchain_images;
 
   bool wait_frame(u64 timeout = 0);
-  vk::Result<VideoFrame> begin_frame();
+  core::tuple<core::Maybe<VideoFrame>, bool> begin_frame();
   VkResult end_frame(VideoFrame, VkCommandBuffer);
 
   inline vk::image2D create_image2D(const vk::image2D::Config& config, vk::image2D::Sync sync) {

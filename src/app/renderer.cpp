@@ -175,22 +175,15 @@ AppEvent render(AppState* app_state, subsystem::video& v, Renderer& renderer) {
     sev |= AppEvent::RebuildRenderer;
   }
 
-  auto frame = v.begin_frame();
-  if (frame.is_err()) {
-    switch (frame.err()) {
-    case VK_TIMEOUT:
-    case VK_NOT_READY:
-      sev |= AppEvent::SkipRender;
-      return sev;
-    case VK_ERROR_OUT_OF_DATE_KHR:
-      sev |= AppEvent::RebuildSwapchain;
-      return sev;
-    case VK_SUBOPTIMAL_KHR:
-      sev |= AppEvent::RebuildSwapchain;
-      break;
-    default:
-      VK_ASSERT(frame.err());
-    }
+  auto t                        = v.begin_frame();
+  auto frame                    = get<0>(t);
+  auto should_rebuild_swapchain = get<1>(t);
+  if (should_rebuild_swapchain) {
+    sev |= AppEvent::RebuildSwapchain;
+  }
+  if (frame.is_none()) {
+    sev |= AppEvent::SkipRender;
+    return sev;
   }
 
   VkCommandBufferBeginInfo command_buffer_begin_info{

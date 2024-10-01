@@ -117,18 +117,23 @@ EXPORT bool video::wait_frame(u64 timeout) {
   return vk::wait_frame(device, sync, timeout);
 }
 
-EXPORT vk::Result<VideoFrame> video::begin_frame() {
-  auto frame = vk::begin_frame(device, swapchain, sync);
-  if (frame.is_err()) {
-    return frame.err();
+EXPORT core::tuple<core::Maybe<VideoFrame>, bool> video::begin_frame() {
+  auto t = vk::begin_frame(device, swapchain, sync);
+
+  auto frame                    = core::get<0>(t);
+  auto should_rebuild_swapchain = core::get<1>(t);
+  if (frame.is_none()) {
+    return {core::None<VideoFrame>(), should_rebuild_swapchain};
   }
 
   vk::timestamp_frame_start(device);
-
-  return {{
-      .swapchain_image = swapchain_images[frame->swapchain_image_index],
-      .frame           = *frame,
-  }};
+  return {
+      VideoFrame{
+          .swapchain_image = swapchain_images[frame->swapchain_image_index],
+          .frame           = *frame,
+      },
+      should_rebuild_swapchain
+  };
 }
 
 using namespace core::literals;

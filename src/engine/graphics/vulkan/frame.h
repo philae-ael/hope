@@ -25,7 +25,7 @@ struct Frame {
 };
 
 bool wait_frame(VkDevice device, FrameSynchro& sync, u64 timeout = 0);
-Result<Frame> begin_frame(VkDevice device, VkSwapchainKHR swapchain, FrameSynchro& sync);
+core::tuple<core::Maybe<Frame>, bool> begin_frame(VkDevice device, VkSwapchainKHR swapchain, FrameSynchro& sync);
 
 VkResult end_frame(VkDevice device, VkQueue present_queue, VkSwapchainKHR swapchain, Frame frame);
 

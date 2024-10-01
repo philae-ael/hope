@@ -28,7 +28,11 @@ EXPORT bool wait_frame(VkDevice device, FrameSynchro& sync, u64 timeout) {
   return true;
 }
 
-EXPORT Result<Frame> begin_frame(VkDevice device, VkSwapchainKHR swapchain, FrameSynchro& sync) {
+EXPORT core::tuple<core::Maybe<Frame>, bool> begin_frame(
+    VkDevice device,
+    VkSwapchainKHR swapchain,
+    FrameSynchro& sync
+) {
   auto frame_id = (sync.frame_id + 1) % sync.inflight;
 
   u32 swapchain_image_index;
@@ -37,17 +41,33 @@ EXPORT Result<Frame> begin_frame(VkDevice device, VkSwapchainKHR swapchain, Fram
   VkResult res = vkAcquireNextImageKHR(
       device, swapchain, 0, sync.acquire_semaphores[frame_id], VK_NULL_HANDLE, &swapchain_image_index
   );
-  if (res != VK_SUCCESS) {
-    return res;
+
+  bool should_rebuild_swapchain = false;
+  switch (res) {
+  case VK_SUCCESS:
+    break;
+  case VK_TIMEOUT:
+  case VK_NOT_READY:
+    return {core::None<Frame>(), false};
+  case VK_ERROR_OUT_OF_DATE_KHR:
+    return {core::None<Frame>(), true};
+  case VK_SUBOPTIMAL_KHR:
+    should_rebuild_swapchain = true;
+    break;
+  default:
+    VK_ASSERT(res);
   }
   vkResetFences(device, 1, &sync.render_done_fences[frame_id]);
   sync.frame_id = frame_id;
-  return {{
-      swapchain_image_index,
-      sync.acquire_semaphores[frame_id],
-      sync.render_semaphores[frame_id],
-      sync.render_done_fences[frame_id],
-  }};
+  return {
+      core::Some(Frame{
+          swapchain_image_index,
+          sync.acquire_semaphores[frame_id],
+          sync.render_semaphores[frame_id],
+          sync.render_done_fences[frame_id],
+      }),
+      should_rebuild_swapchain
+  };
 }
 
 EXPORT VkResult end_frame(VkDevice device, VkQueue present_queue, VkSwapchainKHR swapchain, Frame frame) {

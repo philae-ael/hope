@@ -1,6 +1,7 @@
 #ifndef INCLUDE_VULKAN_VULKAN_H_
 #define INCLUDE_VULKAN_VULKAN_H_
 
+#include "core/core/debug.h"
 #include <core/core/log.h>
 
 // IWYU pragma: begin_exports
@@ -66,13 +67,14 @@ struct Result {
     return res;
   }
   inline T& value() {
+    DEBUG_ASSERT(is_ok());
     return t;
   }
   inline T& operator*() {
     return value();
   }
   inline T* operator->() {
-    return &t;
+    return &value();
   }
 
   T expect(const char* msg) {
