@@ -12,12 +12,21 @@
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan_core.h>
 
-core::vec<GpuMesh> load_mesh(core::Allocator alloc, subsystem::video& v, core::str8 src) {
-  core::vec<GpuMesh> meshes{};
+void unload_mesh(subsystem::video& v, GpuMesh mesh) {
+  vmaDestroyBuffer(v.device.allocator, mesh.vertex_buffer, mesh.vertex_buf_allocation);
+  vmaDestroyBuffer(v.device.allocator, mesh.index_buffer, mesh.index_buf_allocation);
+  mesh.base_color.destroy(v.device);
+}
+
+MeshToken MeshLoader::queue_mesh(subsystem::video& v, core::str8 src) {
+  auto alloc = core::get_named_allocator(core::AllocatorName::General);
 
   auto scratch = core::scratch_get();
   defer { scratch.retire(); };
   core::Allocator scratch_alloc = scratch;
+
+  MeshToken mesh_token = mesh_job_infos.insert(alloc, {});
+  auto& infos          = mesh_job_infos[mesh_token].value();
 
   const char* path      = fs::resolve_path(*scratch, src).expect("can't find mesh").cstring(scratch);
   cgltf_options options = {
@@ -173,7 +182,15 @@ core::vec<GpuMesh> load_mesh(core::Allocator alloc, subsystem::video& v, core::s
         stbi_image_free(mem);
       }
 
-      meshes.push(alloc, gpu_mesh);
+      infos.counter += 1;
+      jobs.push(
+          alloc,
+          {
+              mesh_token,
+              {},
+              gpu_mesh,
+          }
+      );
     }
   };
 
@@ -191,16 +208,5 @@ core::vec<GpuMesh> load_mesh(core::Allocator alloc, subsystem::video& v, core::s
   for (auto* node : core::storage{data->scene->nodes_count, data->scene->nodes}.iter()) {
     work_on_node(*node);
   }
-
-  return meshes;
-}
-
-void unload_mesh(subsystem::video& v, GpuMesh mesh) {
-  vmaDestroyBuffer(v.device.allocator, mesh.vertex_buffer, mesh.vertex_buf_allocation);
-  vmaDestroyBuffer(v.device.allocator, mesh.index_buffer, mesh.index_buf_allocation);
-  mesh.base_color.destroy(v.device);
-}
-
-MeshToken MeshLoader::queue_mesh(subsystem::video& v, core::str8 src) {
-  todo();
+  return mesh_token;
 }

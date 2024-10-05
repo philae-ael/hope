@@ -17,6 +17,7 @@ struct MainRenderer {
   vk::image2D depth;
   VkSampler default_sampler;
   bool should_update_descriptors;
+  MeshLoader mesh_loader;
   core::vec<GpuMesh> meshes;
 
   static MainRenderer init(subsystem::video& v);

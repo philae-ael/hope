@@ -55,7 +55,7 @@ MainRenderer MainRenderer::init(subsystem::video& v) {
   );
   self.imgui_renderer = ImGuiRenderer::init(v);
 
-  self.meshes                    = load_mesh(core::get_named_allocator(core::AllocatorName::General), v, deps[0]);
+  self.mesh_loader.queue_mesh(v, deps[0]);
   self.should_update_descriptors = true;
 
   self.swapchain_rebuilt(v);
@@ -68,6 +68,14 @@ void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuff
   vk::pipeline_barrier(
       cmd, swapchain_image.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}),
       depth.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}, VK_IMAGE_ASPECT_DEPTH_BIT)
+  );
+
+  mesh_loader.work(
+      [](void* u, MeshToken, GpuMesh mesh, bool) {
+        auto* self = static_cast<MainRenderer*>(u);
+        self->meshes.push(core::get_named_allocator(core::AllocatorName::General), mesh);
+      },
+      this
   );
 
   if (should_update_descriptors) {
@@ -104,6 +112,7 @@ void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuff
 void MainRenderer::uninit(subsystem::video& v) {
   for (auto& mesh : meshes.iter())
     unload_mesh(v, mesh);
+  meshes.deallocate(core::get_named_allocator(core::AllocatorName::General));
 
   basic_renderer.uninit(v);
   imgui_renderer.uninit(v);
