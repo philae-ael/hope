@@ -6,6 +6,7 @@
 #include <core/core.h>
 #include <core/fs/fs.h>
 #include <core/math.h>
+#include <cstring>
 #include <engine/graphics/subsystem.h>
 #include <engine/graphics/vulkan/image.h>
 #include <engine/graphics/vulkan/pipeline.h>
@@ -281,6 +282,9 @@ void GpuTextureDescriptor::update(VkDevice device, VkSampler sampler, core::stor
         }
     );
   }
+  if (image_infos.size() == 0) {
+    return;
+  }
   VkWriteDescriptorSet write{
       .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
       .dstSet          = set,
@@ -345,14 +349,15 @@ CameraDescriptor CameraDescriptor::init(subsystem::video& v) {
       .pQueueFamilyIndices   = &v.device.omni_queue_family_index,
   };
   VmaAllocationCreateInfo allocation_create_info{
-      .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
+      .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
       .usage = VMA_MEMORY_USAGE_AUTO,
   };
   VkBuffer buffer;
   VmaAllocation allocation;
-  VK_ASSERT(
-      vmaCreateBuffer(v.device.allocator, &buffer_create_info, &allocation_create_info, &buffer, &allocation, nullptr)
-  );
+  VmaAllocationInfo allocation_info;
+  VK_ASSERT(vmaCreateBuffer(
+      v.device.allocator, &buffer_create_info, &allocation_create_info, &buffer, &allocation, &allocation_info
+  ));
 
   VkDescriptorBufferInfo buffer_info{
       .buffer = buffer,
@@ -369,13 +374,11 @@ CameraDescriptor CameraDescriptor::init(subsystem::video& v) {
       .pBufferInfo     = &buffer_info,
   };
   vkUpdateDescriptorSets(v.device, 1, &write, 0, nullptr);
-  return {
-      descriptor_pool, descriptor_set_layout, descriptor_set, buffer, allocation,
-  };
+  return {descriptor_pool, descriptor_set_layout, descriptor_set, buffer, allocation, allocation_info};
 }
 
 void CameraDescriptor::update(vk::Device& device, CameraMatrices& matrices) {
-  vmaCopyMemoryToAllocation(device.allocator, &matrices, allocation, 0, sizeof(CameraMatrices));
+  memcpy(allocation_info.pMappedData, &matrices, sizeof(CameraMatrices));
 }
 
 void CameraDescriptor::uninit(subsystem::video& v) {

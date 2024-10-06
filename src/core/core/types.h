@@ -593,6 +593,8 @@ struct storage {
       return v[idx.value()];
     }
   };
+  auto begin() = delete /*("use the iter() method")*/;
+  auto end()   = delete /*("use the iter() method")*/;
   auto indices() const {
     return range{0zu, size};
   }

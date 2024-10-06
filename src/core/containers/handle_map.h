@@ -219,6 +219,9 @@ struct handle_map {
   auto iter_enumerate() {
     return core::zipiter{handles.iter(), data.iter()};
   }
+  auto iter_rev_enumerate() {
+    return core::zipiter{handles.iter_rev(), data.iter_rev()};
+  }
 
   void deallocate(core::Allocator alloc) {
     handles.deallocate(alloc);

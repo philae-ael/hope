@@ -16,6 +16,7 @@ struct CameraDescriptor {
   VkDescriptorSet set;
   VkBuffer buffer;
   VmaAllocation allocation;
+  VmaAllocationInfo allocation_info;
 
   static CameraDescriptor init(subsystem::video& v);
   void update(vk::Device& device, CameraMatrices& matrices);

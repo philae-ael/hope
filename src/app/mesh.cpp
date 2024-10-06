@@ -1,4 +1,5 @@
 #include "mesh.h"
+#include "engine/graphics/vulkan/sync.h"
 
 #include <engine/graphics/vulkan/image.h>
 #include <engine/graphics/vulkan/vulkan.h>
@@ -18,7 +19,8 @@ void unload_mesh(subsystem::video& v, GpuMesh mesh) {
   mesh.base_color.destroy(v.device);
 }
 
-MeshToken MeshLoader::queue_mesh(subsystem::video& v, core::str8 src) {
+MeshToken MeshLoader::queue_mesh(vk::Device& device, VkCommandBuffer cmd, core::str8 src) {
+  LOG2_INFO("loading mesh from ", src);
   auto alloc = core::get_named_allocator(core::AllocatorName::General);
 
   auto scratch = core::scratch_get();
@@ -46,6 +48,7 @@ MeshToken MeshLoader::queue_mesh(subsystem::video& v, core::str8 src) {
       },
   };
 
+  LOG2_TRACE("loading into memory ", src);
   cgltf_data* data    = NULL;
   cgltf_result result = cgltf_parse_file(&options, path, &data);
   if (result != cgltf_result_success) {
@@ -56,6 +59,19 @@ MeshToken MeshLoader::queue_mesh(subsystem::video& v, core::str8 src) {
   if (result != cgltf_result_success) {
     core::panic("can't load gltf: %u", result);
   }
+
+  LOG2_TRACE("loaded into memory ", src);
+
+  usize staging_buffer_size = 0;
+  for (const auto& buffer : core::storage{data->buffers_count, data->buffers}.iter()) {
+    staging_buffer_size += buffer.size;
+  }
+  for (const auto& texture : core::storage{data->buffers_count, data->buffers}.iter()) {
+    staging_buffer_size += texture.size;
+  }
+  auto staging_token =
+      staging_buffers.insert(alloc, StagingBuffer::init(device, usize(1.5 * (f32)staging_buffer_size)));
+  auto& staging = staging_buffers[staging_token].value();
 
   auto work_on_mesh = [&](cgltf_mesh& mesh, const math::Mat4& transform) {
     for (auto& primitive : core::storage{mesh.primitives_count, mesh.primitives}.iter()) {
@@ -76,22 +92,20 @@ MeshToken MeshLoader::queue_mesh(subsystem::video& v, core::str8 src) {
         VkBufferCreateInfo index_buf_create_info{
             .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
             .size                  = indices.into_bytes().size,
-            .usage                 = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+            .usage                 = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
             .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
             .queueFamilyIndexCount = 1,
-            .pQueueFamilyIndices   = &v.device.omni_queue_family_index
+            .pQueueFamilyIndices   = &device.omni_queue_family_index
         };
         VmaAllocationCreateInfo alloc_create_info{
             .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
             .usage = VMA_MEMORY_USAGE_AUTO,
         };
         vmaCreateBuffer(
-            v.device.allocator, &index_buf_create_info, &alloc_create_info, &gpu_mesh.index_buffer,
+            device.allocator, &index_buf_create_info, &alloc_create_info, &gpu_mesh.index_buffer,
             &gpu_mesh.index_buf_allocation, nullptr
         );
-        vmaCopyMemoryToAllocation(
-            v.device.allocator, indices.data, gpu_mesh.index_buf_allocation, 0, indices.into_bytes().size
-        );
+        staging.copyMemoryToBuffer(device, cmd, indices.data, gpu_mesh.index_buffer, 0, indices.into_bytes().size);
         gpu_mesh.indice_count = (u32)indices.size;
       }
 
@@ -135,22 +149,21 @@ MeshToken MeshLoader::queue_mesh(subsystem::video& v, core::str8 src) {
       VkBufferCreateInfo vertex_buf_create_info{
           .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
           .size                  = vertices.into_bytes().size,
-          .usage                 = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+          .usage                 = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
           .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
           .queueFamilyIndexCount = 1,
-          .pQueueFamilyIndices   = &v.device.omni_queue_family_index
+          .pQueueFamilyIndices   = &device.omni_queue_family_index
       };
       VmaAllocationCreateInfo alloc_create_info{
           .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
           .usage = VMA_MEMORY_USAGE_AUTO,
       };
       vmaCreateBuffer(
-          v.device.allocator, &vertex_buf_create_info, &alloc_create_info, &gpu_mesh.vertex_buffer,
+          device.allocator, &vertex_buf_create_info, &alloc_create_info, &gpu_mesh.vertex_buffer,
           &gpu_mesh.vertex_buf_allocation, nullptr
       );
-      vmaCopyMemoryToAllocation(
-          v.device.allocator, vertices.data, gpu_mesh.vertex_buf_allocation, 0, vertices.into_bytes().size
-      );
+
+      staging.copyMemoryToBuffer(device, cmd, vertices.data, gpu_mesh.vertex_buffer, 0, vertices.into_bytes().size);
 
       // === Materials ===
       if (primitive.material != nullptr) {
@@ -159,26 +172,29 @@ MeshToken MeshLoader::queue_mesh(subsystem::video& v, core::str8 src) {
 
         auto buf_view = material.pbr_metallic_roughness.base_color_texture.texture->image->buffer_view;
         int x, y, channels;
-        u8* mem{};
 
-        mem = stbi_load_from_memory(
+        // This is the slow part of loading a mesh so maybe... do  it on another thread
+        // LOG2_TRACE("decode image start");
+        u8* mem = stbi_load_from_memory(
             (const stbi_uc*)buf_view->buffer->data + buf_view->offset, (int)buf_view->size, &x, &y, &channels, 4
         );
+        // LOG2_TRACE("decode image end");
         ASSERTM(mem != 0, "can't load texture: %s", stbi_failure_reason());
 
-        gpu_mesh.base_color = v.create_image2D(
+        vk::image2D::ConfigExtentValues config_extent_values{};
+        gpu_mesh.base_color = vk::image2D::create(
+            device, config_extent_values,
             vk::image2D::Config{
-                .format      = VK_FORMAT_R8G8B8A8_UNORM,
-                .extent      = {.constant{.width = (u32)x, .height = (u32)y}},
-                .tiling      = VK_IMAGE_TILING_LINEAR, // TODO: use a staging buffer
-                .usage       = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                .alloc_flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
+                .format = VK_FORMAT_R8G8B8A8_UNORM,
+                .extent = {.constant{.width = (u32)x, .height = (u32)y}},
+                .tiling = VK_IMAGE_TILING_OPTIMAL,
+                .usage  = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
             },
             {}
         );
-        VK_ASSERT(vmaCopyMemoryToAllocation(
-            v.device.allocator, mem, gpu_mesh.base_color.allocation, 0, VkDeviceSize(4 * x * y)
-        ));
+
+        vk::pipeline_barrier(cmd, gpu_mesh.base_color.sync_to({VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL}));
+        staging.copyMemoryToImage(device, cmd, mem, gpu_mesh.base_color, sizeof(u8) * 4, {}, (u32)x, (u32)y);
         stbi_image_free(mem);
       }
 
@@ -187,7 +203,7 @@ MeshToken MeshLoader::queue_mesh(subsystem::video& v, core::str8 src) {
           alloc,
           {
               mesh_token,
-              {},
+              staging_token,
               gpu_mesh,
           }
       );
@@ -196,11 +212,14 @@ MeshToken MeshLoader::queue_mesh(subsystem::video& v, core::str8 src) {
 
   auto work_on_node = [&](cgltf_node& node) {
     for (auto& node : core::storage{data->scene->nodes_count, data->scene->nodes}.iter()) {
+      LOG2_TRACE("node start");
       if (node->mesh != nullptr) {
         math::Mat4 transform = math::Mat4::Id;
         cgltf_node_transform_world(node, transform._coeffs);
+
         work_on_mesh(*node->mesh, transform);
       }
+      LOG2_TRACE("node end");
     }
   };
 
@@ -208,5 +227,8 @@ MeshToken MeshLoader::queue_mesh(subsystem::video& v, core::str8 src) {
   for (auto* node : core::storage{data->scene->nodes_count, data->scene->nodes}.iter()) {
     work_on_node(*node);
   }
+  staging.close(cmd);
+
+  LOG2_INFO("loading of mesh ", src, " is done (still waiting data to copied onto the gpu)");
   return mesh_token;
 }

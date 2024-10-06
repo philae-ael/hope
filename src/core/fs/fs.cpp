@@ -1,14 +1,15 @@
-#define _CRT_SECURE_NO_WARNINGS
 
 #include "fs.h"
-#include "core/containers/vec.h"
-#include "core/core/fwd.h"
-#include <cerrno>
 #include <core/containers/pool.h>
+#include <core/containers/vec.h>
 #include <core/core.h>
 
+#if WINDOWS
+  #define _CRT_SECURE_NO_WARNINGS
+#endif
 #include <cstdio>
 
+#include <cerrno>
 #include <filesystem>
 
 namespace std {
@@ -82,9 +83,6 @@ EXPORT void mount(core::str8 path, core::str8 target) {
 }
 
 EXPORT core::Maybe<core::str8> resolve_path(core::Allocator alloc, core::str8 path) {
-
-  LOG2_TRACE("resolving path ", path);
-
   auto* t     = &fs.root;
   auto parts  = core::split{path, '/'};
   auto& begin = parts.begin();
@@ -96,7 +94,6 @@ EXPORT core::Maybe<core::str8> resolve_path(core::Allocator alloc, core::str8 pa
       continue;
     }
 
-    LOG2_TRACE(cur_part);
     auto pth = t->find_child(cur_part.hash());
     if (pth.is_none()) {
       break;
@@ -116,7 +113,7 @@ EXPORT core::Maybe<core::str8> resolve_path(core::Allocator alloc, core::str8 pa
   } else {
     s = core::join(alloc, "/"_s, *t->target, cur_part, parts.rest);
   }
-  LOG2_TRACE(s);
+  LOG2_TRACE("path ", path, " has been resolved to ", s);
   return s;
 }
 

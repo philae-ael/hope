@@ -14,6 +14,7 @@
 struct StagingBuffer {
   VkBuffer buffer;
   VmaAllocation allocation;
+  VkEvent event;
   VkDeviceSize offset;
   VkDeviceSize size;
 
@@ -33,20 +34,25 @@ struct StagingBuffer {
     VkBuffer buffer;
     VmaAllocation allocation;
     vmaCreateBuffer(device.allocator, &buffer_create_info, &allocation_create_info, &buffer, &allocation, nullptr);
-    return {buffer, allocation, 0, size};
+
+    VkEventCreateInfo fence_create_info{
+        .sType = VK_STRUCTURE_TYPE_EVENT_CREATE_INFO,
+    };
+    VkEvent event;
+    vkCreateEvent(device, &fence_create_info, nullptr, &event);
+    return {buffer, allocation, event, 0, size};
   }
 
   void copyMemoryToBuffer(
       vk::Device& device,
       VkCommandBuffer cmd,
       void* src,
-      VmaAllocation dst_allocation,
       VkBuffer dst_buffer,
       VkDeviceSize dst_offset,
       VkDeviceSize dst_size
   ) {
     ASSERT(offset + dst_size < size);
-    vmaCopyMemoryToAllocation(device.allocator, src, dst_allocation, offset, dst_size);
+    vmaCopyMemoryToAllocation(device.allocator, src, allocation, offset, dst_size);
 
     VkBufferCopy region{
         .srcOffset = offset,
@@ -62,7 +68,6 @@ struct StagingBuffer {
       vk::Device& device,
       VkCommandBuffer cmd,
       void* src,
-      VmaAllocation dst_allocation,
       VkImage dst_image,
       VkImageLayout dst_image_layout,
       VkExtent3D dst_image_extent3,
@@ -72,15 +77,22 @@ struct StagingBuffer {
       u32 image_height            = 0
   ) {
     usize dst_size = image_width * image_height * texel_size;
+    offset         = ALIGN_UP(offset, texel_size);
     ASSERT(offset + dst_size < size);
-    vmaCopyMemoryToAllocation(device.allocator, src, dst_allocation, offset, size);
+    vmaCopyMemoryToAllocation(device.allocator, src, allocation, offset, dst_size);
 
     VkBufferImageCopy region{
         .bufferOffset      = offset,
         .bufferRowLength   = image_width,
         .bufferImageHeight = image_height,
-        .imageOffset       = dst_image_offset,
-        .imageExtent       = dst_image_extent3,
+        .imageSubresource =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .mipLevel   = 0,
+                .layerCount = 1,
+            },
+        .imageOffset = dst_image_offset,
+        .imageExtent = dst_image_extent3
     };
 
     vkCmdCopyBufferToImage(cmd, buffer, dst_image, dst_image_layout, 1, &region);
@@ -92,18 +104,30 @@ struct StagingBuffer {
       vk::Device& device,
       VkCommandBuffer cmd,
       void* src,
-      vk::image2D& image,
+      vk::image2D& dst,
       usize texel_size,
       VkOffset3D dst_image_offset = {},
       u32 image_width             = 0,
       u32 image_height            = 0
   ) {
     copyMemoryToImage(
-        device, cmd, src, image.allocation, image.image, image.sync.layout, image.extent.extent3, texel_size,
-        dst_image_offset, image_width, image_height
+        device, cmd, src, dst.image, dst.sync.layout, dst.extent.extent3, texel_size, dst_image_offset, image_width,
+        image_height
     );
   }
-  void uninit();
+
+  // Call this one after the data has been fully queued to upload
+  void close(VkCommandBuffer cmd) {
+    vkCmdSetEvent(cmd, event, VK_PIPELINE_STAGE_TRANSFER_BIT);
+  }
+
+  void uninit(vk::Device& device) {
+    vmaDestroyBuffer(device.allocator, buffer, allocation);
+    vkDestroyEvent(device, event, nullptr);
+  }
+  bool done(VkDevice device) {
+    return vkGetEventStatus(device, event) == VK_EVENT_SET;
+  }
 };
 
 struct GpuMesh {
@@ -134,26 +158,37 @@ struct Job {
 // TODO: this is a coroutine... I should dive into c++ coroutines... I guess... maybe...
 class MeshLoader {
 public:
-  using Callback = void (*)(void*, MeshToken, GpuMesh, bool mesh_fully_loaded);
-  MeshToken queue_mesh(subsystem::video& v, core::str8 src);
-  void work(Callback callback, void* userdata) {
+  using Callback = void (*)(void*, vk::Device& device, MeshToken, GpuMesh, bool mesh_fully_loaded);
+  MeshToken queue_mesh(vk::Device& device, VkCommandBuffer cmd, core::str8 src);
+  void work(vk::Device& device, Callback callback, void* userdata) {
     // Do work
-    // Get staging token
-    usize idx = jobs.size();
-    for (auto& job : jobs.iter_rev()) {
-      idx -= 1;
-      if (true) {
-        bool mesh_fully_loaded  = false;
-        auto& infos             = mesh_job_infos[job.mesh_token].expect("counter does not exist!");
-        infos.counter          -= 1;
-        if (infos.counter == 0) {
-          mesh_fully_loaded = true;
-          mesh_job_infos.destroy(job.mesh_token);
-        }
+    for (auto t : staging_buffers.iter_rev_enumerate()) {
+      StagingBufferToken staging_token = *core::get<0>(t);
+      StagingBuffer& buffer            = *core::get<1>(t);
 
-        callback(userdata, job.mesh_token, job.mesh, mesh_fully_loaded);
-        jobs.swap_last_pop(idx);
+      if (!buffer.done(device)) {
+        continue;
       }
+
+      usize idx = jobs.size();
+      for (auto& job : jobs.iter_rev()) {
+        idx -= 1;
+        if (job.staging_token == staging_token) {
+          bool mesh_fully_loaded  = false;
+          auto& infos             = mesh_job_infos[job.mesh_token].expect("counter does not exist!");
+          infos.counter          -= 1;
+          if (infos.counter == 0) {
+            mesh_fully_loaded = true;
+            mesh_job_infos.destroy(job.mesh_token);
+          }
+
+          callback(userdata, device, job.mesh_token, job.mesh, mesh_fully_loaded);
+          jobs.swap_last_pop(idx);
+        }
+      }
+
+      buffer.uninit(device);
+      staging_buffers.destroy(staging_token);
     }
   }
 
@@ -161,10 +196,11 @@ public:
     return jobs.size() > 0;
   }
 
-  static MeshLoader init() {}
+  static MeshLoader init(vk::Device& device) {
+    return {};
+  }
 
 private:
-  VkCommandPool pool;
   struct MeshJobInfo {
     VkCommandBuffer buf;
     usize counter;

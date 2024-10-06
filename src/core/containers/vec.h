@@ -139,6 +139,7 @@ struct vec {
     return storage<const T>{*this}.iter();
   }
 
+  // iterator is not invalidated when the current item is destroyed
   auto iter_rev() {
     return storage<T>{*this}.iter_rev();
   }

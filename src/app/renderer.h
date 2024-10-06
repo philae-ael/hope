@@ -16,7 +16,8 @@ struct MainRenderer {
   BasicRenderer basic_renderer;
   vk::image2D depth;
   VkSampler default_sampler;
-  bool should_update_descriptors;
+  bool should_update_texture_descriptor;
+  bool first_cmd_buffer;
   MeshLoader mesh_loader;
   core::vec<GpuMesh> meshes;
 

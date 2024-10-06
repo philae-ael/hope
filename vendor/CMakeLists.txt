@@ -21,6 +21,6 @@ add_library(misc STATIC
   misc/cgltf.c
   misc/stb_image.c
 )
-target_compile_options(misc PRIVATE)
+target_compile_options(misc PRIVATE -O3)
 target_include_directories(misc PUBLIC misc)
 set_property(TARGET misc PROPERTY POSITION_INDEPENDENT_CODE ON)

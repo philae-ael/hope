@@ -55,8 +55,8 @@ MainRenderer MainRenderer::init(subsystem::video& v) {
   );
   self.imgui_renderer = ImGuiRenderer::init(v);
 
-  self.mesh_loader.queue_mesh(v, deps[0]);
-  self.should_update_descriptors = true;
+  self.mesh_loader      = MeshLoader::init(v.device);
+  self.first_cmd_buffer = true;
 
   self.swapchain_rebuilt(v);
 
@@ -65,27 +65,35 @@ MainRenderer MainRenderer::init(subsystem::video& v) {
 
 void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuffer cmd, vk::image2D& swapchain_image) {
   auto triangle_scope = vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "triangle"_hs);
+  if (first_cmd_buffer) {
+    // TODO: send this in a second thread and voilà
+    mesh_loader.queue_mesh(device, cmd, deps[0]);
+    first_cmd_buffer = false;
+  }
+
   vk::pipeline_barrier(
       cmd, swapchain_image.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}),
       depth.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}, VK_IMAGE_ASPECT_DEPTH_BIT)
   );
 
   mesh_loader.work(
-      [](void* u, MeshToken, GpuMesh mesh, bool) {
+      device,
+      [](void* u, vk::Device& device, MeshToken, GpuMesh mesh, bool) {
         auto* self = static_cast<MainRenderer*>(u);
         self->meshes.push(core::get_named_allocator(core::AllocatorName::General), mesh);
+        self->should_update_texture_descriptor = true;
       },
       this
   );
 
-  if (should_update_descriptors) {
+  if (should_update_texture_descriptor) {
     for (auto& mesh : meshes.iter()) {
       vk::pipeline_barrier(cmd, mesh.base_color.sync_to({VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}));
     }
-
     gpu_texture_descriptor.update(device, default_sampler, meshes);
-    should_update_descriptors = false;
+    should_update_texture_descriptor = false;
   }
+
   f32 aspect_ratio     = (f32)swapchain_image.extent.width / (f32)swapchain_image.extent.height;
   auto camera_matrices = app_state->camera.matrices(aspect_ratio);
   camera_descriptor.update(device, camera_matrices);
