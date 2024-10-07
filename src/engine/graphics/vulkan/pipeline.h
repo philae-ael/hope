@@ -4,7 +4,93 @@
 #include "vulkan.h"
 #include <vulkan/vulkan_core.h>
 
+namespace vk {
+struct Pipeline {
+  VkPipelineLayout layout;
+  VkPipeline pipeline;
+
+  operator VkPipeline() {
+    return pipeline;
+  }
+
+  void uninit(VkDevice device) {
+    vkDestroyPipeline(device, pipeline, nullptr);
+    vkDestroyPipelineLayout(device, layout, nullptr);
+  }
+};
+} // namespace vk
+
 namespace vk::pipeline {
+
+struct ShaderStage {
+  VkShaderStageFlagBits stage;
+  VkShaderModule module;
+  const char* entry_point;
+
+  inline VkPipelineShaderStageCreateInfo vk() const {
+    return {
+        .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage  = stage,
+        .module = module,
+        .pName  = entry_point,
+    };
+  }
+};
+
+struct InputAttribute {
+  u32 offset;
+  VkFormat format;
+};
+template <class Vertex>
+struct VertexDescription;
+
+template <class T>
+struct VertexBinding {
+  u32 binding;
+  VkVertexInputRate input_rate = VK_VERTEX_INPUT_RATE_VERTEX;
+  inline VkVertexInputBindingDescription vk() const {
+    return {
+        .binding   = binding,
+        .stride    = sizeof(T),
+        .inputRate = input_rate,
+    };
+  }
+};
+template <class Vertex>
+struct VertexInputAttributes {
+  u32 binding;
+  inline constexpr auto vk() const {
+    core::array<VkVertexInputAttributeDescription, VertexDescription<Vertex>::input_attributes.size()> ret{};
+    for (usize i = 0; i < VertexDescription<Vertex>::input_attributes.size(); i++) {
+      ret[i] = VkVertexInputAttributeDescription{
+          .location = (u32)i,
+          .binding  = binding,
+          .format   = VertexDescription<Vertex>::input_attributes[i].format,
+          .offset   = VertexDescription<Vertex>::input_attributes[i].offset,
+      };
+    }
+    return ret;
+  }
+};
+
+struct PipelineLayoutBuilder {
+  core::storage<VkDescriptorSetLayout> set_layouts;
+  core::storage<VkPushConstantRange> push_constant_ranges;
+
+  VkPipelineLayout build(VkDevice device) {
+    VkPipelineLayoutCreateInfo pipeline_layout_create_info{
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount         = (u32)set_layouts.size,
+        .pSetLayouts            = set_layouts.data,
+        .pushConstantRangeCount = (u32)push_constant_ranges.size,
+        .pPushConstantRanges    = push_constant_ranges.data,
+    };
+    VkPipelineLayout layout;
+    VK_ASSERT(vkCreatePipelineLayout(device, &pipeline_layout_create_info, nullptr, &layout));
+
+    return layout;
+  }
+};
 
 // load shader, compile them if needed, use basic reflection to generate pass infos and pipeline
 // layout
@@ -157,7 +243,7 @@ struct Rendering {
   }
 };
 
-struct Pipeline {
+struct PipelineBuilder {
   Rendering rendering{};
   core::storage<VkPipelineShaderStageCreateInfo> shader_stages{};
   VertexInput vertex_input{};
@@ -169,7 +255,7 @@ struct Pipeline {
   ColorBlend color_blend{};
   DynamicState dynamic_state{};
 
-  inline VkPipeline build(VkDevice device, VkPipelineLayout layout) {
+  inline Pipeline build(VkDevice device, VkPipelineLayout layout) {
     auto rendering_create_info      = rendering.vk();
     auto vertex_input_create_info   = vertex_input.vk();
     auto input_assembly_create_info = input_assembly.vk();
@@ -199,7 +285,7 @@ struct Pipeline {
     };
     VkPipeline pipeline;
     VK_ASSERT(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &graphic_pipeline_create_info, nullptr, &pipeline));
-    return pipeline;
+    return {layout, pipeline};
   }
 };
 

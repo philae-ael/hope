@@ -7,6 +7,7 @@
 #include <engine/graphics/subsystem.h>
 #include <engine/graphics/vulkan.h>
 #include <engine/graphics/vulkan/image.h>
+#include <engine/graphics/vulkan/pipeline.h>
 
 struct AppState;
 
@@ -41,8 +42,7 @@ struct GpuTextureDescriptor {
 };
 
 struct BasicRenderer {
-  VkPipeline pipeline;
-  VkPipelineLayout pipeline_layout;
+  vk::Pipeline pipeline;
 
   static BasicRenderer init(
       subsystem::video& v,
@@ -63,7 +63,9 @@ struct BasicRenderer {
       VkDescriptorSet gpu_texture_descriptor_set,
       core::storage<GpuMesh> meshes
   );
-  void uninit(subsystem::video& v);
+  void uninit(VkDevice device) {
+    pipeline.uninit(device);
+  }
 };
 
 #endif // INCLUDE_APP_BASIC_RENDERER_CPP_

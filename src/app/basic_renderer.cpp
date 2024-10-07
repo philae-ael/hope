@@ -22,6 +22,21 @@ core::array deps{
     "/assets/shaders/tri.spv"_s,
 };
 
+struct Vertex {
+  f32 x, y, z;    // Position
+  f32 nx, ny, nz; // Normal
+  f32 u, v;       // Texcoord
+};
+
+template <>
+struct vk::pipeline::VertexDescription<Vertex> {
+  static constexpr core::array input_attributes{
+      vk::pipeline::InputAttribute{offsetof(Vertex, x), VK_FORMAT_R32G32B32_SFLOAT},
+      vk::pipeline::InputAttribute{offsetof(Vertex, nx), VK_FORMAT_R32G32B32_SFLOAT},
+      vk::pipeline::InputAttribute{offsetof(Vertex, u), VK_FORMAT_R32G32_SFLOAT},
+  };
+};
+
 BasicRenderer BasicRenderer::init(
     subsystem::video& v,
     VkFormat format,
@@ -32,37 +47,16 @@ BasicRenderer BasicRenderer::init(
   defer { scratch.retire(); };
   core::Allocator alloc = scratch;
 
-  core::array push_constants{
-      VkPushConstantRange{
-          .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-          .offset     = 0,
-          .size       = 1 * 4 * 4 * sizeof(f32), // 1 mat4
-      },
-      VkPushConstantRange{
-          .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-          .offset     = 64,
-          .size       = 4,
-      },
-  };
-  // # Layout
-  core::array set_layouts{
-      camera_descriptor_layout,
-      gpu_texture_descriptor_layout,
-  };
-  VkPipelineLayoutCreateInfo pipeline_layout_create_info{
-      .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-      .setLayoutCount         = (u32)set_layouts.size(),
-      .pSetLayouts            = set_layouts.data,
-      .pushConstantRangeCount = (u32)push_constants.size(),
-      .pPushConstantRanges    = push_constants.data,
-  };
-  VkPipelineLayout pipeline_layout;
-  vkCreatePipelineLayout(v.device, &pipeline_layout_create_info, nullptr, &pipeline_layout);
+  VkPipelineLayout pipeline_layout = vk::pipeline::PipelineLayoutBuilder{
+      .set_layouts          = {core::array{camera_descriptor_layout, gpu_texture_descriptor_layout}},
+      .push_constant_ranges = {core::array{
+          VkPushConstantRange{VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Mat4)},
+          VkPushConstantRange{VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(Mat4), 4}
+      }}
+  }.build(v.device);
 
   auto code = fs::read_all(alloc, deps[0]);
   ASSERT(code.size % sizeof(u32) == 0);
-
-  // # Pipeline
   VkShaderModuleCreateInfo fragment_module_create_info{
       .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
       .codeSize = code.size,
@@ -71,79 +65,27 @@ BasicRenderer BasicRenderer::init(
   VkShaderModule module;
   VK_ASSERT(vkCreateShaderModule(v.device, &fragment_module_create_info, nullptr, &module));
 
-  core::array shader_stage_create_infos{
-      VkPipelineShaderStageCreateInfo{
-          .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-          .stage  = VK_SHADER_STAGE_VERTEX_BIT,
-          .module = module,
-          .pName  = "main"
-      },
-      VkPipelineShaderStageCreateInfo{
-          .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-          .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
-          .module = module,
-          .pName  = "main"
-      },
-  };
-
-  core::array vertex_binding_descriptions{
-      VkVertexInputBindingDescription{
-          .binding   = 0,
-          .stride    = sizeof(f32) * (3 + 3 + 2),
-          .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
-      },
-  };
-  core::array vertex_attribute_descriptions{
-      VkVertexInputAttributeDescription{
-          .location = 0,
-          .binding  = 0,
-          .format   = VK_FORMAT_R32G32B32_SFLOAT,
-          .offset   = 0,
-      },
-      VkVertexInputAttributeDescription{
-          .location = 1,
-          .binding  = 0,
-          .format   = VK_FORMAT_R32G32B32_SFLOAT,
-          .offset   = sizeof(f32) * 3,
-      },
-      VkVertexInputAttributeDescription{
-          .location = 2,
-          .binding  = 0,
-          .format   = VK_FORMAT_R32G32_SFLOAT,
-          .offset   = sizeof(f32) * 6,
-      },
-  };
-
-  core::array color_blend_attachments{
-      vk::pipeline::ColorBlendAttachement::NoBlend.vk(),
-  };
-  core::array dynamic_states{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
-
-  VkPipeline pipeline =
-      vk::pipeline::Pipeline{
-          .rendering =
-              {
-                  .color_attachment_formats = {1, &format},
-                  .depth_attachment_format  = VK_FORMAT_D16_UNORM,
-              },
-          .shader_stages = shader_stage_create_infos,
-          .vertex_input  = {vertex_binding_descriptions, vertex_attribute_descriptions},
-          .depth_stencil = vk::pipeline::DepthStencil::WriteAndCompareDepth,
-          .color_blend   = {color_blend_attachments},
-          .dynamic_state = {dynamic_states},
-      }
-          .build(v.device, pipeline_layout);
+  vk::Pipeline pipeline = vk::pipeline::PipelineBuilder{
+      .rendering = {.color_attachment_formats = {1, &format}, .depth_attachment_format = VK_FORMAT_D16_UNORM},
+      .shader_stages =
+          core::array{
+              vk::pipeline::ShaderStage{VK_SHADER_STAGE_VERTEX_BIT, module, "main"}.vk(),
+              vk::pipeline::ShaderStage{VK_SHADER_STAGE_FRAGMENT_BIT, module, "main"}.vk()
+          },
+      .vertex_input =
+          {
+              core::array{vk::pipeline::VertexBinding<Vertex>{0}.vk()},
+              vk::pipeline::VertexInputAttributes<Vertex>{0}.vk(),
+          },
+      .depth_stencil = vk::pipeline::DepthStencil::WriteAndCompareDepth,
+      .color_blend   = {core::array{vk::pipeline::ColorBlendAttachement::NoBlend.vk()}},
+      .dynamic_state = {core::array{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR}}
+  }.build(v.device, pipeline_layout);
 
   vkDestroyShaderModule(v.device, module, nullptr);
   return {
       pipeline,
-      pipeline_layout,
   };
-}
-
-void BasicRenderer::uninit(subsystem::video& v) {
-  vkDestroyPipeline(v.device, pipeline, nullptr);
-  vkDestroyPipelineLayout(v.device, pipeline_layout, nullptr);
 }
 
 core::storage<core::str8> BasicRenderer::file_deps() {
@@ -191,7 +133,7 @@ void BasicRenderer::render(
       gpu_texture_descriptor_set,
   };
   vkCmdBindDescriptorSets(
-      cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, (u32)descriptor_sets.size(), descriptor_sets.data, 0,
+      cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.layout, 0, (u32)descriptor_sets.size(), descriptor_sets.data, 0,
       nullptr
   );
 
@@ -212,9 +154,9 @@ void BasicRenderer::render(
     } matrices = {
         mesh->transform,
     };
-    vkCmdPushConstants(cmd, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(matrices), &matrices);
+    vkCmdPushConstants(cmd, pipeline.layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(matrices), &matrices);
     auto idx{u32(i)};
-    vkCmdPushConstants(cmd, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(matrices), 4, &idx);
+    vkCmdPushConstants(cmd, pipeline.layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(matrices), 4, &idx);
 
     vkCmdBindIndexBuffer(cmd, mesh->index_buffer, 0, VK_INDEX_TYPE_UINT16);
     vkCmdDrawIndexed(cmd, mesh->indice_count, 1, 0, 0, 0);

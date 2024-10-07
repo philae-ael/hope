@@ -122,7 +122,7 @@ void MainRenderer::uninit(subsystem::video& v) {
     unload_mesh(v, mesh);
   meshes.deallocate(core::get_named_allocator(core::AllocatorName::General));
 
-  basic_renderer.uninit(v);
+  basic_renderer.uninit(v.device);
   imgui_renderer.uninit(v);
   camera_descriptor.uninit(v);
   gpu_texture_descriptor.uninit(v);
