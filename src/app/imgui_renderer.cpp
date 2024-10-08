@@ -1,4 +1,5 @@
 #include "imgui_renderer.h"
+#include "engine/graphics/vulkan/rendering.h"
 
 #include <engine/graphics/subsystem.h>
 #include <engine/graphics/vulkan/sync.h>
@@ -56,19 +57,11 @@ void ImGuiRenderer::render(VkCommandBuffer cmd, vk::image2D& image) {
   defer { utils::scope_end(imgui_scope); };
 
   vk::pipeline_barrier(cmd, image.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}));
-  {
-    core::array color_attachments{
-        image.as_attachment(vk::image2D::AttachmentLoadOp::Load, vk::image2D::AttachmentStoreOp::Store),
-    };
-    VkRenderingInfo rendering_info{
-        .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO,
-        .renderArea           = {{}, image.extent},
-        .layerCount           = 1,
-        .colorAttachmentCount = (u32)color_attachments.size(),
-        .pColorAttachments    = color_attachments.data
-    };
-    vkCmdBeginRendering(cmd, &rendering_info);
-  }
+  vk::RenderingInfo{
+      .render_area = {{}, image.extent},
+      .color_attachments =
+          core::array{image.as_attachment(vk::image2D::AttachmentLoadOp::Load, vk::image2D::AttachmentStoreOp::Store)}
+  }.begin_rendering(cmd);
 
   ImGui::Render();
   ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);

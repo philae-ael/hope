@@ -41,8 +41,36 @@ struct GpuTextureDescriptor {
   }
 };
 
+struct Vertex {
+  f32 x, y, z;    // Position
+  f32 nx, ny, nz; // Normal
+  f32 u, v;       // Texcoord
+};
+
+template <>
+struct vk::pipeline::VertexDescription<Vertex> {
+  static constexpr core::array input_attributes{
+      vk::pipeline::InputAttribute{offsetof(Vertex, x), VK_FORMAT_R32G32B32_SFLOAT},
+      vk::pipeline::InputAttribute{offsetof(Vertex, nx), VK_FORMAT_R32G32B32_SFLOAT},
+      vk::pipeline::InputAttribute{offsetof(Vertex, u), VK_FORMAT_R32G32_SFLOAT},
+  };
+};
+
+struct PushConstant {
+  math::Mat4 transform_matrix;
+  u32 mesh_idx;
+};
+template <>
+struct vk::pipeline::PushConstantDescriptor<PushConstant> {
+  static constexpr core::array ranges{
+      VkPushConstantRange{VK_SHADER_STAGE_VERTEX_BIT, offsetof(PushConstant, transform_matrix), sizeof(math::Mat4)},
+      VkPushConstantRange{VK_SHADER_STAGE_FRAGMENT_BIT, offsetof(PushConstant, mesh_idx), sizeof(u32)}
+  };
+};
+
 struct BasicRenderer {
-  vk::Pipeline pipeline;
+  VkPipeline pipeline;
+  VkPipelineLayout layout;
 
   static BasicRenderer init(
       subsystem::video& v,
@@ -64,7 +92,8 @@ struct BasicRenderer {
       core::storage<GpuMesh> meshes
   );
   void uninit(VkDevice device) {
-    pipeline.uninit(device);
+    vkDestroyPipeline(device, pipeline, nullptr);
+    vkDestroyPipelineLayout(device, layout, nullptr);
   }
 };
 

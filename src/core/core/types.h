@@ -649,7 +649,7 @@ struct array {
     return core::storage{*this}.iter();
   }
   auto iter() const {
-    return core::storage{*this}.iter();
+    return core::storage<const S>{*this}.iter();
   }
   constexpr usize size() const {
     return N;

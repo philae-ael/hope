@@ -4,22 +4,6 @@
 #include "vulkan.h"
 #include <vulkan/vulkan_core.h>
 
-namespace vk {
-struct Pipeline {
-  VkPipelineLayout layout;
-  VkPipeline pipeline;
-
-  operator VkPipeline() {
-    return pipeline;
-  }
-
-  void uninit(VkDevice device) {
-    vkDestroyPipeline(device, pipeline, nullptr);
-    vkDestroyPipelineLayout(device, layout, nullptr);
-  }
-};
-} // namespace vk
-
 namespace vk::pipeline {
 
 struct ShaderStage {
@@ -34,6 +18,30 @@ struct ShaderStage {
         .module = module,
         .pName  = entry_point,
     };
+  }
+};
+
+struct ShaderBuilder {
+  core::storage<u8> code;
+  VkShaderModule build(VkDevice device) {
+    VkShaderModuleCreateInfo fragment_module_create_info{
+        .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = code.size,
+        .pCode    = (u32*)code.data,
+    };
+    VkShaderModule module;
+    VK_ASSERT(vkCreateShaderModule(device, &fragment_module_create_info, nullptr, &module));
+    return module;
+  }
+};
+
+template <class T>
+struct PushConstantDescriptor;
+
+template <class PushConstant>
+struct PushConstantRanges {
+  inline constexpr auto vk() const {
+    return PushConstantDescriptor<PushConstant>::ranges;
   }
 };
 
@@ -255,7 +263,7 @@ struct PipelineBuilder {
   ColorBlend color_blend{};
   DynamicState dynamic_state{};
 
-  inline Pipeline build(VkDevice device, VkPipelineLayout layout) {
+  inline VkPipeline build(VkDevice device, VkPipelineLayout layout) {
     auto rendering_create_info      = rendering.vk();
     auto vertex_input_create_info   = vertex_input.vk();
     auto input_assembly_create_info = input_assembly.vk();
@@ -285,7 +293,7 @@ struct PipelineBuilder {
     };
     VkPipeline pipeline;
     VK_ASSERT(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &graphic_pipeline_create_info, nullptr, &pipeline));
-    return {layout, pipeline};
+    return pipeline;
   }
 };
 
