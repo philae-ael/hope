@@ -1,20 +1,21 @@
 #include "basic_renderer.h"
 #include "app.h"
-#include "app/camera.h"
-#include "core/core/memory.h"
+#include "camera.h"
 
 #include <core/core.h>
 #include <core/fs/fs.h>
 #include <core/math.h>
 #include <cstring>
 #include <engine/graphics/subsystem.h>
+#include <engine/graphics/vulkan/descriptor.h>
 #include <engine/graphics/vulkan/image.h>
 #include <engine/graphics/vulkan/pipeline.h>
 #include <engine/graphics/vulkan/rendering.h>
+#include <engine/graphics/vulkan/vulkan.h>
 #include <engine/utils/time.h>
-#include <vulkan/vulkan_core.h>
 
 #include <vk_mem_alloc.h>
+#include <vulkan/vulkan_core.h>
 
 using namespace core::literals;
 using math::Mat4;
@@ -136,46 +137,30 @@ void BasicRenderer::render(
 }
 
 GpuTextureDescriptor GpuTextureDescriptor::init(subsystem::video& v) {
-  core::array<VkDescriptorPoolSize, 1> pool_sizes{
-      VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = 50},
-  };
-  VkDescriptorPoolCreateInfo descriptor_pool_create_info{
-      .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-      .maxSets       = 1,
-      .poolSizeCount = (u32)pool_sizes.size(),
-      .pPoolSizes    = pool_sizes.data,
-  };
-  VkDescriptorPool descriptor_pool;
-  vkCreateDescriptorPool(v.device, &descriptor_pool_create_info, nullptr, &descriptor_pool);
+  VkDescriptorPool pool = vk::DescriptorPoolBuilder{
+      .max_sets = 1,
+      .sizes    = {core::array{
+          VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 50},
+      }}
+  }.build(v.device);
 
-  core::array descriptor_set_layout_bindings{
-      VkDescriptorSetLayoutBinding{
-          .binding         = 0,
-          .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-          .descriptorCount = 50,
-          .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT,
-      },
-  };
-  VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info{
-      .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-      .bindingCount = (u32)descriptor_set_layout_bindings.size(),
-      .pBindings    = descriptor_set_layout_bindings.data,
-  };
-  VkDescriptorSetLayout descriptor_set_layout;
-  vkCreateDescriptorSetLayout(v.device, &descriptor_set_layout_create_info, nullptr, &descriptor_set_layout);
+  VkDescriptorSetLayout layout = vk::DescriptorSetLayoutBuilder{
+      .bindings = {core::array{
+          VkDescriptorSetLayoutBinding{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 50, VK_SHADER_STAGE_FRAGMENT_BIT},
+      }}
+  }.build(v.device);
 
-  VkDescriptorSetAllocateInfo descriptor_set_alloc_infos{
-      .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool     = descriptor_pool,
-      .descriptorSetCount = 1,
-      .pSetLayouts        = &descriptor_set_layout,
-  };
-  VkDescriptorSet descriptor_set;
-  vkAllocateDescriptorSets(v.device, &descriptor_set_alloc_infos, &descriptor_set);
+  VkDescriptorSet set = vk::DescriptorSetAllocateInfo{
+      pool,
+      {core::array{
+          layout,
+      }}
+  }.allocate(v.device);
+
   return {
-      descriptor_pool,
-      descriptor_set_layout,
-      descriptor_set,
+      pool,
+      layout,
+      set,
   };
 }
 
@@ -197,16 +182,21 @@ void GpuTextureDescriptor::update(VkDevice device, VkSampler sampler, core::stor
   if (image_infos.size() == 0) {
     return;
   }
-  VkWriteDescriptorSet write{
-      .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-      .dstSet          = set,
-      .dstBinding      = 0,
-      .dstArrayElement = 0,
-      .descriptorCount = (u32)image_infos.size(),
-      .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-      .pImageInfo      = image_infos.data(),
-  };
-  vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+  vk::DescriptorSetUpdater{
+      .write_descriptor_set{
+          core::array{
+              vk::DescriptorSetWriter{
+                  .set               = set,
+                  .dst_binding       = 0,
+                  .dst_array_element = 0,
+                  .descriptor_type   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                  .image             = {.image_infos = image_infos},
+              }
+                  .vk(),
+          },
+      },
+  }
+      .update(device);
 }
 
 void GpuTextureDescriptor::uninit(subsystem::video& v) {
@@ -215,42 +205,27 @@ void GpuTextureDescriptor::uninit(subsystem::video& v) {
 }
 
 CameraDescriptor CameraDescriptor::init(subsystem::video& v) {
-  core::array<VkDescriptorPoolSize, 1> pool_sizes{
-      VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1},
-  };
-  VkDescriptorPoolCreateInfo descriptor_pool_create_info{
-      .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-      .maxSets       = 1,
-      .poolSizeCount = (u32)pool_sizes.size(),
-      .pPoolSizes    = pool_sizes.data,
-  };
-  VkDescriptorPool descriptor_pool;
-  vkCreateDescriptorPool(v.device, &descriptor_pool_create_info, nullptr, &descriptor_pool);
+  VkDescriptorPool pool = vk::DescriptorPoolBuilder{
+      .max_sets = 1,
+      .sizes    = {core::array{
+          VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1},
+      }}
+  }.build(v.device);
 
-  core::array descriptor_set_layout_bindings{
-      VkDescriptorSetLayoutBinding{
-          .binding         = 0,
-          .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-          .descriptorCount = 1,
-          .stageFlags      = VK_SHADER_STAGE_VERTEX_BIT,
-      },
-  };
-  VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info{
-      .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-      .bindingCount = (u32)descriptor_set_layout_bindings.size(),
-      .pBindings    = descriptor_set_layout_bindings.data,
-  };
-  VkDescriptorSetLayout descriptor_set_layout;
-  vkCreateDescriptorSetLayout(v.device, &descriptor_set_layout_create_info, nullptr, &descriptor_set_layout);
+  VkDescriptorSetLayout layout = vk::DescriptorSetLayoutBuilder{
+      .bindings = {core::array{
+          VkDescriptorSetLayoutBinding{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT},
+      }}
+  }.build(v.device);
 
-  VkDescriptorSetAllocateInfo descriptor_set_alloc_infos{
-      .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool     = descriptor_pool,
-      .descriptorSetCount = 1,
-      .pSetLayouts        = &descriptor_set_layout,
-  };
-  VkDescriptorSet descriptor_set;
-  vkAllocateDescriptorSets(v.device, &descriptor_set_alloc_infos, &descriptor_set);
+  VkDescriptorSet set = vk::DescriptorSetAllocateInfo{
+      pool,
+      {core::array{
+          layout,
+      }}
+  }.allocate(v.device);
+
+  // **
 
   VkBufferCreateInfo buffer_create_info{
       .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -271,22 +246,22 @@ CameraDescriptor CameraDescriptor::init(subsystem::video& v) {
       v.device.allocator, &buffer_create_info, &allocation_create_info, &buffer, &allocation, &allocation_info
   ));
 
-  VkDescriptorBufferInfo buffer_info{
-      .buffer = buffer,
-      .offset = 0,
-      .range  = sizeof(CameraMatrices),
-  };
-  VkWriteDescriptorSet write{
-      .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-      .dstSet          = descriptor_set,
-      .dstBinding      = 0,
-      .dstArrayElement = 0,
-      .descriptorCount = 1,
-      .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-      .pBufferInfo     = &buffer_info,
-  };
-  vkUpdateDescriptorSets(v.device, 1, &write, 0, nullptr);
-  return {descriptor_pool, descriptor_set_layout, descriptor_set, buffer, allocation, allocation_info};
+  vk::DescriptorSetUpdater{
+      core::array{
+          vk::DescriptorSetWriter{
+              .set               = set,
+              .dst_binding       = 0,
+              .dst_array_element = 0,
+              .descriptor_type   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+              .buffer =
+                  {
+                      .buffer_infos = core::array{VkDescriptorBufferInfo{buffer, 0, sizeof(CameraMatrices)}},
+                  }
+          }.vk(),
+      },
+  }
+      .update(v.device);
+  return {pool, layout, set, buffer, allocation, allocation_info};
 }
 
 void CameraDescriptor::update(vk::Device& device, CameraMatrices& matrices) {
