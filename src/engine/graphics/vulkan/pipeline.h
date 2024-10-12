@@ -140,12 +140,13 @@ struct Viewport {
 };
 
 struct Rasterization {
+  bool cull_back = true;
   inline VkPipelineRasterizationStateCreateInfo vk() const {
     return {
         .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
         .depthClampEnable        = false,
         .rasterizerDiscardEnable = false,
-        .cullMode                = VK_CULL_MODE_BACK_BIT,
+        .cullMode                = cull_back ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_NONE,
         .frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE,
         .depthBiasEnable         = false,
         .depthBiasConstantFactor = 0.0,
@@ -193,10 +194,11 @@ inline const DepthStencil DepthStencil::WriteAndCompareDepth{
 
 struct ColorBlendAttachement {
   bool blend_enable;
+  bool premultiplied_alpha = false;
   inline VkPipelineColorBlendAttachmentState vk() const {
     return {
         .blendEnable         = blend_enable,
-        .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+        .srcColorBlendFactor = premultiplied_alpha ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_SRC_ALPHA,
         .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
         .colorBlendOp        = VK_BLEND_OP_ADD,
         .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
@@ -208,9 +210,14 @@ struct ColorBlendAttachement {
   }
   static const ColorBlendAttachement NoBlend;
   static const ColorBlendAttachement AlphaBlend;
+  static const ColorBlendAttachement AlphaBlendPremultiplied;
 };
 inline const ColorBlendAttachement ColorBlendAttachement::NoBlend{.blend_enable = false};
 inline const ColorBlendAttachement ColorBlendAttachement::AlphaBlend{.blend_enable = true};
+inline const ColorBlendAttachement ColorBlendAttachement::AlphaBlendPremultiplied{
+    .blend_enable        = true,
+    .premultiplied_alpha = true
+};
 
 struct ColorBlend {
   core::storage<VkPipelineColorBlendAttachmentState> color_blend_attachements;

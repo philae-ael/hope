@@ -42,9 +42,9 @@ vk::image2D swapchain_image_to_image2D(VkDevice device, vk::Swapchain& swapchain
   VkImageView swapchain_image_view;
   VK_ASSERT(vkCreateImageView(device, &image_view_create_info, nullptr, &swapchain_image_view));
   return vk::image2D{
-      .source     = vk::image2D::Source::Swapchain,
       .image      = swapchain_image,
       .image_view = swapchain_image_view,
+      .source     = vk::image2D::Source::Swapchain,
       .extent     = swapchain.config.extent,
       .sync =
           {

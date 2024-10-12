@@ -4,6 +4,7 @@
 #include "app/mesh.h"
 #include "basic_renderer.h"
 #include "core/core/memory.h"
+#include "engine/graphics/vulkan/rendering.h"
 #include "imgui_renderer.h"
 
 #include <core/core.h>
@@ -47,24 +48,25 @@ MainRenderer MainRenderer::init(subsystem::video& v) {
       .borderColor      = VK_BORDER_COLOR_INT_OPAQUE_WHITE,
   };
   vkCreateSampler(v.device, &sampler_create_info, nullptr, &self.default_sampler);
+  self.swapchain_rebuilt(v);
 
   self.camera_descriptor      = CameraDescriptor::init(v);
   self.gpu_texture_descriptor = GpuTextureDescriptor::init(v);
   self.basic_renderer         = BasicRenderer::init(
-      v, v.swapchain.config.surface_format.format, self.camera_descriptor.layout, self.gpu_texture_descriptor.layout
+      v, v.swapchain.config.surface_format.format, self.depth.format, self.camera_descriptor.layout,
+      self.gpu_texture_descriptor.layout
   );
+  self.grid_renderer =
+      GridRenderer::init(v, v.swapchain.config.surface_format.format, self.depth.format, self.camera_descriptor.layout);
   self.imgui_renderer = ImGuiRenderer::init(v);
 
   self.mesh_loader      = MeshLoader::init(v.device);
   self.first_cmd_buffer = true;
 
-  self.swapchain_rebuilt(v);
-
   return self;
 }
 
 void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuffer cmd, vk::image2D& swapchain_image) {
-  auto triangle_scope = vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "triangle"_hs);
   if (first_cmd_buffer) {
     // TODO: send this in a second thread and voilà
     mesh_loader.queue_mesh(device, cmd, deps[0]);
@@ -98,15 +100,57 @@ void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuff
   auto camera_matrices = app_state->camera.matrices(aspect_ratio);
   camera_descriptor.update(device, camera_matrices);
 
-  basic_renderer.render(
-      app_state, device, cmd, swapchain_image, depth, camera_descriptor, gpu_texture_descriptor, meshes
-  );
+  vk::RenderingInfo{
+      .render_area = {{}, swapchain_image.extent},
+      .color_attachments =
+          core::array{
+              swapchain_image.as_attachment(
+                  vk::image2D::AttachmentLoadOp::Clear{{.color = {.float32 = {0.0, 0.0, 0.0, 0.0}}}},
+                  vk::image2D::AttachmentStoreOp::Store
+              ),
+          },
+      .depth_attachment = depth.as_attachment(
+          vk::image2D::AttachmentLoadOp::Clear{{.depthStencil = {1.0, 0}}}, vk::image2D::AttachmentStoreOp::Store
+      ),
+  }
+      .begin_rendering(cmd);
 
-  vk::timestamp_scope_end(cmd, VK_PIPELINE_STAGE_2_NONE, triangle_scope);
+  // Setup dynamic state
+
+  VkRect2D scissor{{}, swapchain_image.extent};
+  vkCmdSetScissor(cmd, 0, 1, &scissor);
+
+  VkViewport viewport{
+      0, (f32)swapchain_image.extent.height, (f32)swapchain_image.extent.width, -(f32)swapchain_image.extent.height, 0,
+      1
+  };
+  vkCmdSetViewport(cmd, 0, 1, &viewport);
+
+  // render
+
+  auto mesh_scope = vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "mesh"_hs);
+  basic_renderer.render(device, cmd, camera_descriptor, gpu_texture_descriptor, meshes);
+  vk::timestamp_scope_end(cmd, VK_PIPELINE_STAGE_2_NONE, mesh_scope);
+
+  auto grid_scope = vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "grid"_hs);
+  grid_renderer.render(device, cmd, camera_descriptor);
+  vk::timestamp_scope_end(cmd, VK_PIPELINE_STAGE_2_NONE, grid_scope);
+
+  vkCmdEndRendering(cmd);
+
+  vk::pipeline_barrier(cmd, swapchain_image.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}));
+  vk::RenderingInfo{
+      .render_area       = {{}, swapchain_image.extent},
+      .color_attachments = core::array{swapchain_image.as_attachment(
+          vk::image2D::AttachmentLoadOp::Load, vk::image2D::AttachmentStoreOp::Store
+      )}
+  }.begin_rendering(cmd);
 
   auto imgui_scope = vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "imgui"_hs);
-  imgui_renderer.render(cmd, swapchain_image);
+  imgui_renderer.render(cmd);
   vk::timestamp_scope_end(cmd, VK_PIPELINE_STAGE_2_NONE, imgui_scope);
+
+  vkCmdEndRendering(cmd);
 
   vk::pipeline_barrier(
       cmd, swapchain_image.sync_to({
@@ -123,6 +167,7 @@ void MainRenderer::uninit(subsystem::video& v) {
   meshes.deallocate(core::get_named_allocator(core::AllocatorName::General));
 
   basic_renderer.uninit(v.device);
+  grid_renderer.uninit(v.device);
   imgui_renderer.uninit(v);
   camera_descriptor.uninit(v);
   gpu_texture_descriptor.uninit(v);

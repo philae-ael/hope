@@ -51,20 +51,11 @@ void ImGuiRenderer::uninit(subsystem::video& v) {
   descriptor_pool = VK_NULL_HANDLE;
 }
 
-void ImGuiRenderer::render(VkCommandBuffer cmd, vk::image2D& image) {
+void ImGuiRenderer::render(VkCommandBuffer cmd) {
   using namespace core::literals;
   auto imgui_scope = utils::scope_start("imgui"_hs);
   defer { utils::scope_end(imgui_scope); };
 
-  vk::pipeline_barrier(cmd, image.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}));
-  vk::RenderingInfo{
-      .render_area = {{}, image.extent},
-      .color_attachments =
-          core::array{image.as_attachment(vk::image2D::AttachmentLoadOp::Load, vk::image2D::AttachmentStoreOp::Store)}
-  }.begin_rendering(cmd);
-
   ImGui::Render();
   ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
-
-  vkCmdEndRendering(cmd);
 }

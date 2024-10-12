@@ -11,11 +11,12 @@ namespace vk {
 struct Device;
 
 struct image2D {
-  enum class Source { Nop, Swapchain, Created } source = Source::Nop;
   VkImage image;
   VmaAllocation allocation;
   VkImageView image_view;
 
+  enum class Source { Nop, Swapchain, Created } source = Source::Nop;
+  VkFormat format;
   VkExtent extent;
 
   struct Sync {

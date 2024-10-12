@@ -1,5 +1,4 @@
 #include "basic_renderer.h"
-#include "app.h"
 #include "camera.h"
 
 #include <core/core.h>
@@ -26,7 +25,8 @@ core::array deps{
 
 BasicRenderer BasicRenderer::init(
     subsystem::video& v,
-    VkFormat format,
+    VkFormat color_format,
+    VkFormat depth_format,
     VkDescriptorSetLayout camera_descriptor_layout,
     VkDescriptorSetLayout gpu_texture_descriptor_layout
 ) {
@@ -45,7 +45,7 @@ BasicRenderer BasicRenderer::init(
   }.build(v.device);
 
   VkPipeline pipeline = vk::pipeline::PipelineBuilder{
-      .rendering = {.color_attachment_formats = {1, &format}, .depth_attachment_format = VK_FORMAT_D16_UNORM},
+      .rendering = {.color_attachment_formats = {1, &color_format}, .depth_attachment_format = depth_format},
       .shader_stages =
           core::array{
               vk::pipeline::ShaderStage{VK_SHADER_STAGE_VERTEX_BIT, module, "main"}.vk(),
@@ -70,11 +70,8 @@ core::storage<core::str8> BasicRenderer::file_deps() {
 }
 
 void BasicRenderer::render(
-    AppState* app_state,
     VkDevice device,
     VkCommandBuffer cmd,
-    vk::image2D color_target,
-    vk::image2D depth_target,
     VkDescriptorSet camera_descriptor_set,
     VkDescriptorSet gpu_texture_descriptor_set,
     core::storage<GpuMesh> meshes
@@ -82,21 +79,6 @@ void BasicRenderer::render(
   using namespace core::literals;
   auto triangle_scope = utils::scope_start("triangle"_hs);
   defer { utils::scope_end(triangle_scope); };
-
-  vk::RenderingInfo{
-      .render_area = {{}, color_target.extent},
-      .color_attachments =
-          core::array{
-              color_target.as_attachment(
-                  vk::image2D::AttachmentLoadOp::Clear{{.color = {.float32 = {0.0, 0.0, 0.0, 0.0}}}},
-                  vk::image2D::AttachmentStoreOp::Store
-              ),
-          },
-      .depth_attachment = depth_target.as_attachment(
-          vk::image2D::AttachmentLoadOp::Clear{{.depthStencil = {1.0, 0}}}, vk::image2D::AttachmentStoreOp::Store
-      ),
-  }
-      .begin_rendering(cmd);
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
   core::array descriptor_sets{
@@ -106,16 +88,6 @@ void BasicRenderer::render(
   vkCmdBindDescriptorSets(
       cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0, (u32)descriptor_sets.size(), descriptor_sets.data, 0, nullptr
   );
-
-  // Setup dynamic state
-
-  VkRect2D scissor{{}, color_target.extent};
-  vkCmdSetScissor(cmd, 0, 1, &scissor);
-
-  VkViewport viewport{
-      0, (f32)color_target.extent.height, (f32)color_target.extent.width, -(f32)color_target.extent.height, 0, 1
-  };
-  vkCmdSetViewport(cmd, 0, 1, &viewport);
 
   // Do render
 
@@ -132,8 +104,6 @@ void BasicRenderer::render(
     vkCmdBindIndexBuffer(cmd, mesh->index_buffer, 0, VK_INDEX_TYPE_UINT16);
     vkCmdDrawIndexed(cmd, mesh->indice_count, 1, 0, 0, 0);
   }
-
-  vkCmdEndRendering(cmd);
 }
 
 GpuTextureDescriptor GpuTextureDescriptor::init(subsystem::video& v) {

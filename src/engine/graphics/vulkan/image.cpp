@@ -13,6 +13,7 @@ EXPORT image2D image2D::create(
 ) {
   image2D image{
       .source = Source::Created,
+      .format = config.format,
       .sync   = sync,
   };
   VkExtent3D extent{0, 0, 1};

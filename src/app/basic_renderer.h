@@ -9,8 +9,6 @@
 #include <engine/graphics/vulkan/image.h>
 #include <engine/graphics/vulkan/pipeline.h>
 
-struct AppState;
-
 struct CameraDescriptor {
   VkDescriptorPool pool;
   VkDescriptorSetLayout layout;
@@ -60,6 +58,7 @@ struct PushConstant {
   math::Mat4 transform_matrix;
   u32 mesh_idx;
 };
+
 template <>
 struct vk::pipeline::PushConstantDescriptor<PushConstant> {
   static constexpr core::array ranges{
@@ -74,7 +73,8 @@ struct BasicRenderer {
 
   static BasicRenderer init(
       subsystem::video& v,
-      VkFormat format,
+      VkFormat color_format,
+      VkFormat depth_format,
       VkDescriptorSetLayout camera_descriptor_layout,
       VkDescriptorSetLayout gpu_texture_descriptor_layout
   );
@@ -82,11 +82,8 @@ struct BasicRenderer {
   static core::storage<core::str8> file_deps();
 
   void render(
-      AppState* app_state,
       VkDevice device,
       VkCommandBuffer cmd,
-      vk::image2D color_target,
-      vk::image2D depth_target,
       VkDescriptorSet camera_descriptor_set,
       VkDescriptorSet gpu_texture_descriptor_set,
       core::storage<GpuMesh> meshes

@@ -558,6 +558,10 @@ struct storage {
       : size(size)
       , data(data) {}
 
+  storage(S& s)
+      : size(1)
+      , data(&s) {}
+
   template <class T>
   static storage from(unsafe_t, T& t) {
     static_assert(sizeof(T) % sizeof(S) == 0);

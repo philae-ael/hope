@@ -2,6 +2,7 @@
 #define INCLUDE_APP_RENDERER_H_
 
 #include "basic_renderer.h"
+#include "grid_renderer.h"
 #include "imgui_renderer.h"
 #include "loader/app_loader.h"
 #include "mesh.h"
@@ -14,6 +15,7 @@ struct MainRenderer {
   GpuTextureDescriptor gpu_texture_descriptor;
   ImGuiRenderer imgui_renderer;
   BasicRenderer basic_renderer;
+  GridRenderer grid_renderer;
   vk::image2D depth;
   VkSampler default_sampler;
   bool should_update_texture_descriptor;
