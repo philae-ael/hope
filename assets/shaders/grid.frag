@@ -73,7 +73,7 @@ void main() {
 
   drawWidth = max(drawWidth, uvDeriv);
 
-  vec2 gridUV = abs(fract(uv) * 2.0 - 1.0);
+  vec2 gridUV = abs(fract(uv + vec2(0.5, 0.5)) * 2.0 - 1.0);
 
   // This is the filtering step with a filter of radius 1.5 pixels
   vec2 lineAA = 2*uvDeriv;

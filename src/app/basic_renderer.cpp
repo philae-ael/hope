@@ -11,6 +11,7 @@
 #include <engine/graphics/vulkan/pipeline.h>
 #include <engine/graphics/vulkan/rendering.h>
 #include <engine/graphics/vulkan/vulkan.h>
+#include <engine/utils/config.h>
 #include <engine/utils/time.h>
 
 #include <vk_mem_alloc.h>
@@ -74,6 +75,11 @@ void BasicRenderer::render(
   auto triangle_scope = utils::scope_start("triangle"_hs);
   defer { utils::scope_end(triangle_scope); };
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+  static bool enable = true;
+  utils::config_bool("mesh.enable", &enable);
+  if (!enable)
+    return;
 
   core::array descriptor_sets{
       camera_descriptor_set,

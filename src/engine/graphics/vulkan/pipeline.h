@@ -158,10 +158,11 @@ struct Rasterization {
 };
 
 struct Multisample {
+  VkSampleCountFlagBits sample_count = VK_SAMPLE_COUNT_1_BIT;
   inline VkPipelineMultisampleStateCreateInfo vk() const {
     return {
         .sType                 = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-        .rasterizationSamples  = VK_SAMPLE_COUNT_1_BIT,
+        .rasterizationSamples  = sample_count,
         .sampleShadingEnable   = false,
         .alphaToCoverageEnable = false,
         .alphaToOneEnable      = false,
@@ -184,8 +185,13 @@ struct DepthStencil {
         .stencilTestEnable     = false,
     };
   }
+  static const DepthStencil NoDepthTest;
   static const DepthStencil WriteAndCompareDepth;
   static const DepthStencil CompareDepth;
+};
+inline const DepthStencil DepthStencil::NoDepthTest{
+    .depth_test  = false,
+    .depth_write = false,
 };
 inline const DepthStencil DepthStencil::WriteAndCompareDepth{
     .depth_compare_op = VK_COMPARE_OP_LESS,

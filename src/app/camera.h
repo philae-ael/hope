@@ -6,6 +6,8 @@
 struct CameraMatrices {
   math::Mat4 projection_matrix, camera_from_world, world_from_camera;
   f32 half_far_plane_width, half_far_plane_height, near, far;
+  f32 screen_width;
+  f32 screen_height;
 };
 
 struct Camera {
@@ -14,7 +16,8 @@ struct Camera {
   // Vec4 scale    = core::Vec4::One;
   math::Quat rotation = math::Quat::Id;
 
-  CameraMatrices matrices(f32 aspect_ratio) const {
+  CameraMatrices matrices(f32 screen_width, f32 screen_height) const {
+    f32 aspect_ratio           = screen_width / screen_height;
     auto half_far_plane_width  = far * std::tan(hfov / 2);
     auto half_far_plane_height = half_far_plane_width / aspect_ratio;
     return {
@@ -25,6 +28,8 @@ struct Camera {
         half_far_plane_height,
         near,
         far,
+        screen_width,
+        screen_height
     };
   }
 };

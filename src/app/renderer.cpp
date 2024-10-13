@@ -1,6 +1,7 @@
 
 #include "renderer.h"
 #include "app/app.h"
+#include "app/debug_renderer.h"
 #include "app/mesh.h"
 #include "basic_renderer.h"
 #include "core/core/memory.h"
@@ -58,6 +59,9 @@ MainRenderer MainRenderer::init(subsystem::video& v) {
   );
   self.grid_renderer =
       GridRenderer::init(v, v.swapchain.config.surface_format.format, self.depth.format, self.camera_descriptor.layout);
+  self.debug_renderer = DebugRenderer::init(
+      v, v.swapchain.config.surface_format.format, self.depth.format, self.camera_descriptor.layout
+  );
   self.imgui_renderer = ImGuiRenderer::init(v);
 
   self.mesh_loader      = MeshLoader::init(v.device);
@@ -95,9 +99,8 @@ void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuff
     gpu_texture_descriptor.update(device, default_sampler, meshes);
     should_update_texture_descriptor = false;
   }
-
-  f32 aspect_ratio     = (f32)swapchain_image.extent.width / (f32)swapchain_image.extent.height;
-  auto camera_matrices = app_state->camera.matrices(aspect_ratio);
+  auto camera_matrices =
+      app_state->camera.matrices((f32)swapchain_image.extent.width, (f32)swapchain_image.extent.height);
   camera_descriptor.update(device, camera_matrices);
 
   vk::RenderingInfo{
@@ -135,6 +138,13 @@ void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuff
   auto grid_scope = vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "grid"_hs);
   grid_renderer.render(app_state->config.grid, device, cmd, camera_descriptor);
   vk::timestamp_scope_end(cmd, VK_PIPELINE_STAGE_2_NONE, grid_scope);
+
+  debug_renderer.reset();
+  debug_renderer.draw_origin_gizmo(device);
+
+  auto debug_scope = vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "debug"_hs);
+  debug_renderer.render(device, cmd, camera_descriptor);
+  vk::timestamp_scope_end(cmd, VK_PIPELINE_STAGE_2_NONE, debug_scope);
 
   vkCmdEndRendering(cmd);
 
@@ -194,6 +204,7 @@ core::vec<core::str8> MainRenderer::file_deps(core::Arena& arena) {
   return core::vec{core::array{
                        "/assets/shaders/tri.spv"_s,
                        "/assets/shaders/grid.spv"_s,
+                       "/assets/shaders/debug.spv"_s,
                    }
                        .storage()}
       .clone(arena);
