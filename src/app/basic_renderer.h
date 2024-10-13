@@ -79,8 +79,6 @@ struct BasicRenderer {
       VkDescriptorSetLayout gpu_texture_descriptor_layout
   );
 
-  static core::storage<core::str8> file_deps();
-
   void render(
       VkDevice device,
       VkCommandBuffer cmd,

@@ -19,9 +19,7 @@
 using namespace core::literals;
 using math::Mat4;
 
-core::array deps{
-    "/assets/shaders/tri.spv"_s,
-};
+core::str8 shader_src = "/assets/shaders/tri.spv"_s;
 
 BasicRenderer BasicRenderer::init(
     subsystem::video& v,
@@ -34,7 +32,7 @@ BasicRenderer BasicRenderer::init(
   defer { scratch.retire(); };
   core::Allocator alloc = scratch;
 
-  auto code = fs::read_all(alloc, deps[0]);
+  auto code = fs::read_all(alloc, shader_src);
   ASSERT(code.size % sizeof(u32) == 0);
 
   VkShaderModule module = vk::pipeline::ShaderBuilder{code}.build(v.device);
@@ -63,10 +61,6 @@ BasicRenderer BasicRenderer::init(
 
   vkDestroyShaderModule(v.device, module, nullptr);
   return {pipeline, layout};
-}
-
-core::storage<core::str8> BasicRenderer::file_deps() {
-  return deps;
 }
 
 void BasicRenderer::render(

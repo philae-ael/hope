@@ -2,6 +2,7 @@
 #define INCLUDE_APP_APP_H_
 
 #include "app/camera.h"
+#include "app/grid_renderer.h"
 #include "app/renderer.h"
 #include "core/core.h"
 #include <SDL3/SDL_events.h>
@@ -86,11 +87,12 @@ struct AppState {
   struct {
 
     // === DEBUG ===
-
     bool wait_timing_target      = false;
     bool print_frame_report      = false;
     bool print_frame_report_full = true;
     u64 timing_target_usec       = 5500;
+
+    GridConfig grid{};
 
     // === MOVEMENT ===
 

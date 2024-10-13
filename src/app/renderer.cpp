@@ -133,7 +133,7 @@ void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuff
   vk::timestamp_scope_end(cmd, VK_PIPELINE_STAGE_2_NONE, mesh_scope);
 
   auto grid_scope = vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "grid"_hs);
-  grid_renderer.render(device, cmd, camera_descriptor);
+  grid_renderer.render(app_state->config.grid, device, cmd, camera_descriptor);
   vk::timestamp_scope_end(cmd, VK_PIPELINE_STAGE_2_NONE, grid_scope);
 
   vkCmdEndRendering(cmd);
@@ -190,7 +190,13 @@ void MainRenderer::swapchain_rebuilt(subsystem::video& v) {
 }
 
 core::vec<core::str8> MainRenderer::file_deps(core::Arena& arena) {
-  return core::vec{basic_renderer.file_deps()}.clone(arena);
+
+  return core::vec{core::array{
+                       "/assets/shaders/tri.spv"_s,
+                       "/assets/shaders/grid.spv"_s,
+                   }
+                       .storage()}
+      .clone(arena);
 }
 
 void on_dep_file_modified(void* userdata) {

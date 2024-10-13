@@ -1,6 +1,7 @@
 #ifndef INCLUDE_APP_GRID_RENDERER_H_
 #define INCLUDE_APP_GRID_RENDERER_H_
 
+#include "engine/utils/time.h"
 #include <core/core.h>
 #include <core/fs/fs.h>
 #include <core/math/math.h>
@@ -13,10 +14,15 @@
 
 using namespace core::literals;
 
+#define GRID_EXPONENTIAL_FALLOUT 0x1
+#define GRID_PROPORTIONAL_WIDTH 0x2
+
 struct GridPushConstants {
-  math::Vec4 base_color{0.5f, 0.5f, 0.5f, 0.8f};
-  f32 decay = 10.0f;
-  f32 scale = 1.0f;
+  math::Vec4 base_color{1.0f, 1.0f, 1.0f, 0.2f};
+  f32 decay      = 6.0f;
+  f32 scale      = 1.0f;
+  f32 line_width = 2.0f;
+  u32 flags      = 0x0;
 };
 
 template <>
@@ -24,6 +30,11 @@ struct vk::pipeline::PushConstantDescriptor<GridPushConstants> {
   static constexpr core::array ranges{VkPushConstantRange{
       VK_SHADER_STAGE_FRAGMENT_BIT, offsetof(GridPushConstants, base_color), sizeof(GridPushConstants)
   }};
+};
+
+struct GridConfig {
+  bool enable = true;
+  GridPushConstants pc{};
 };
 
 struct GridRenderer {
@@ -71,18 +82,35 @@ struct GridRenderer {
     return {pipeline, layout};
   }
 
-  core::storage<const core::str8> file_deps() {
-    return shader_path;
-  }
+  void render(GridConfig& config, VkDevice device, VkCommandBuffer cmd, VkDescriptorSet camera_descriptor_set) {
+    auto scope = utils::scope_start("grid"_hs);
+    defer { utils::scope_end(scope); };
 
-  void render(VkDevice device, VkCommandBuffer cmd, VkDescriptorSet camera_descriptor_set) {
-    static vk::PushConstantUploader<GridPushConstants> push_constants{{}};
-    utils::config_f32xN("grid.base_color", push_constants.c.base_color._coeffs, 4);
-    utils::config_f32("grid.decay", &push_constants.c.decay);
-    utils::config_f32("grid.scale", &push_constants.c.scale);
+    utils::config_bool("grid.enabled", &config.enable);
+    utils::config_f32xN("grid.base_color", config.pc.base_color._coeffs, 4);
+    utils::config_f32("grid.decay", &config.pc.decay);
+    utils::config_f32("grid.scale", &config.pc.scale);
+    utils::config_f32("grid.linewidth", &config.pc.line_width);
+
+    {
+      static const char* const choices[] = {"linear", "exponential"};
+      static int fallout_mode;
+      utils::config_choice("grid.fallout_mode", &fallout_mode, choices, ARRAY_SIZE(choices));
+      config.pc.flags = (config.pc.flags & ~u32(0x1)) | ((fallout_mode == 1) ? GRID_EXPONENTIAL_FALLOUT : 0);
+    }
+
+    {
+      static const char* const choices[] = {"pixel", "proportional"};
+      static int width_mode;
+      utils::config_choice("grid.width_mode", &width_mode, choices, ARRAY_SIZE(choices));
+      config.pc.flags = (config.pc.flags & ~u32(0x2)) | ((width_mode == 1) ? GRID_PROPORTIONAL_WIDTH : 0);
+    }
+
+    if (!config.enable)
+      return;
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-    push_constants.upload(cmd, layout);
+    vk::PushConstantUploader{config.pc}.upload(cmd, layout);
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0, 1, &camera_descriptor_set, 0, nullptr);
     vkCmdDraw(cmd, 6, 1, 0, 0);
   }

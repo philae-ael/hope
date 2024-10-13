@@ -21,15 +21,20 @@ layout(set = 0, binding=0) uniform camera {
   float far;
 };
 
+#define GRID_EXPONENTIAL_FALLOUT 0x1
+#define GRID_PROPORTIONAL_WIDTH 0x2
+
 layout(push_constant) uniform pc {
   vec4 baseColor;
   float decay;
   float scale;
+  float line_width;
+  uint flags;
 };
 
-
-
 void main() {
+  if(line_width <= 0) discard;
+
   const vec3 planPos = (cameraFromWorld * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
   const vec3 planU = normalize((cameraFromWorld * vec4(0.0, 0.0, -1.0, 0.0)).xyz);
   const vec3 planV = normalize((cameraFromWorld * vec4(1.0, 0.0, 0.0, 0.0)).xyz);
@@ -56,9 +61,15 @@ void main() {
   vec4 uvDDXY = vec4(dFdx(uv), dFdy(uv));
   vec2 uvDeriv = vec2(length(uvDDXY.xz), length(uvDDXY.yw));
 
-  // Either is pixel (with uvDeriv) or based on a proportion of a square
+
+  vec2 baseWidth;
+  if((flags & GRID_PROPORTIONAL_WIDTH) != 0) {
+    baseWidth = vec2(1.0);
+  } else {
+    baseWidth = uvDeriv;
+  }
   // vec2 drawWidth = vec2(0.02);
-  vec2 drawWidth = 1*uvDeriv;
+  vec2 drawWidth = line_width*baseWidth;
 
   drawWidth = max(drawWidth, uvDeriv);
 
@@ -68,8 +79,15 @@ void main() {
   vec2 lineAA = 2*uvDeriv;
   vec2 grid = smoothstep(drawWidth + lineAA, drawWidth - lineAA, gridUV); 
 
+  float fallout = 1.0;
+  if((flags & GRID_EXPONENTIAL_FALLOUT) != 0) {
+    fallout = exp(- distanceFromCenter / decay);
+  } else {
+    fallout = clamp(decay  / distanceFromCenter, 0.0, 1.0);
+  }
+
   // This colors the grid so that the grid disapear in the distance
-  outFragColor = exp(-distanceFromCenter / decay) * (1 - (1 - grid.x)* (1 - grid.y)) * baseColor;
+  outFragColor = fallout * (1 - (1 - grid.x)* (1 - grid.y)) * baseColor;
 
   // Late depth test
   vec4 proj = projMatrix * vec4(intersect, 1.0); 
