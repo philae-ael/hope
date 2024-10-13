@@ -185,11 +185,17 @@ struct DepthStencil {
     };
   }
   static const DepthStencil WriteAndCompareDepth;
+  static const DepthStencil CompareDepth;
 };
 inline const DepthStencil DepthStencil::WriteAndCompareDepth{
     .depth_compare_op = VK_COMPARE_OP_LESS,
     .depth_test       = true,
     .depth_write      = true,
+};
+inline const DepthStencil DepthStencil::CompareDepth{
+    .depth_compare_op = VK_COMPARE_OP_LESS,
+    .depth_test       = true,
+    .depth_write      = false,
 };
 
 struct ColorBlendAttachement {

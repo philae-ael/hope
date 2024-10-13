@@ -10,16 +10,16 @@ layout(location = 1) out vec2 outTexCoord;
 
 layout(set = 0, binding=0) uniform camera {
   mat4 projMatrix;
-  mat4 cameraFromLocal;
+  mat4 cameraFromWorld;
 };
 
 layout(push_constant) uniform pc {
-  mat4 localFromWorld;
+  mat4 WorldFromLocal;
 };
 
 void main() 
 {
-	gl_Position = projMatrix  * cameraFromLocal* localFromWorld* vec4(position.xyz, 1.0f);
+	gl_Position = projMatrix  * cameraFromWorld * WorldFromLocal * vec4(position.xyz, 1.0f);
 	outColor = (0.2 + 0.8*clamp(dot(normal, normalize(vec3(5.0, 5.0, 0.0) - position.xyz)), 0.0, 1.0)) * vec3(1.0,1.0,1.0);
   outTexCoord = texCoord;
 }

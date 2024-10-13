@@ -373,33 +373,35 @@ using Mat4 = Mat4x4;
 inline constexpr Mat4x4 projection_matrix_from_far_plane_size(
     f32 near,
     f32 far,
-    f32 half_far_plane_width,
-    f32 half_far_plane_height
+    f32 half_near_plane_width,
+    f32 half_near_plane_height
 ) {
-  f32 r = half_far_plane_width;
-  f32 t = half_far_plane_height;
+  f32 r = half_near_plane_width;
+  f32 t = half_near_plane_height;
   f32 n = near;
   f32 f = far;
   return {
       row_major,
       // clang-format off
-      {  n/r  ,   0   ,        0       ,        0        },
-      {   0   ,  n/t  ,        0       ,        0        },
-      {   0   ,   0   , -(f+n) / (f-n) , -2*f*n / (f-n)  },
-      {   0   ,   0   ,       -1       ,        0        }
+      {  n/r  ,   0   ,    0       ,      0        },
+      {   0   ,  n/t  ,    0       ,      0        },
+      {   0   ,   0   , -f / (f-n) , -f*n / (f-n)  },
+      {   0   ,   0   ,   -1       ,      0        }
       // clang-format on
   };
 }
 
 // Note: aspect ratio = width / height
 inline constexpr Mat4x4 projection_matrix_from_hfov(f32 near, f32 far, f32 hfov, f32 aspect_ratio) {
-  auto half_far_plane_width = near * std::tan(hfov / 2);
-  return projection_matrix_from_far_plane_size(near, far, half_far_plane_width, half_far_plane_width / aspect_ratio);
+  auto half_near_plane_width = near * std::tan(hfov / 2);
+  return projection_matrix_from_far_plane_size(near, far, half_near_plane_width, half_near_plane_width / aspect_ratio);
 }
 
 inline constexpr Mat4x4 projection_matrix_from_vfov(f32 near, f32 far, f32 vfov, f32 aspect_ratio) {
-  auto half_far_plane_height = near * std::tan(vfov / 2);
-  return projection_matrix_from_far_plane_size(near, far, half_far_plane_height * aspect_ratio, half_far_plane_height);
+  auto half_near_plane_height = near * std::tan(vfov / 2);
+  return projection_matrix_from_far_plane_size(
+      near, far, half_near_plane_height * aspect_ratio, half_near_plane_height
+  );
 }
 
 inline constexpr Mat4x4 translation_matrix(Vec4 translation) {
