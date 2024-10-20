@@ -130,6 +130,7 @@ struct Arena {
   void pop_pos(u64 pos);
   void deallocate(usize size);
 };
+
 inline const AllocatorVTable Arena::vtable{
     .allocate   = [](void* userdata, usize size, usize alignement, const char* src
                 ) { return static_cast<Arena*>(userdata)->allocate(size, alignement, src); },
@@ -147,9 +148,19 @@ struct ArenaTemp {
   Arena* arena_;
   u64 old_pos;
 
-  void retire();
+  inline void check() {
+    DEBUG_ASSERT(arena_ != nullptr);
+  }
+
+  void retire() {
+    if (arena_ != nullptr) {
+      arena_->pop_pos(old_pos);
+      arena_ = nullptr;
+    }
+  }
 
   operator Allocator() {
+    check();
     return *arena_;
   }
   Arena* operator->() {
@@ -160,18 +171,34 @@ struct ArenaTemp {
     check();
     return *arena_;
   }
-  inline void check() {
-    DEBUG_ASSERT(arena_ != nullptr);
+  ~ArenaTemp() {
+    retire();
   }
 };
 
 struct Scratch;
 Scratch scratch_get();
-void scratch_retire(Scratch&);
 
-struct Scratch : ArenaTemp {
-  void retire() {
-    scratch_retire(*this);
+struct Scratch {
+  Arena* arena_;
+  inline void check() {
+    DEBUG_ASSERT(arena_ != nullptr);
+  }
+  void retire();
+  operator Allocator() {
+    check();
+    return *arena_;
+  }
+  Arena* operator->() {
+    check();
+    return arena_;
+  }
+  Arena& operator*() {
+    check();
+    return *arena_;
+  }
+  ~Scratch() {
+    retire();
   }
 };
 

@@ -23,8 +23,7 @@ MeshToken MeshLoader::queue_mesh(vk::Device& device, VkCommandBuffer cmd, core::
   LOG2_INFO("loading mesh from ", src);
   auto alloc = core::get_named_allocator(core::AllocatorName::General);
 
-  auto scratch = core::scratch_get();
-  defer { scratch.retire(); };
+  auto scratch                  = core::scratch_get();
   core::Allocator scratch_alloc = scratch;
 
   MeshToken mesh_token = mesh_job_infos.insert(alloc, {});
@@ -55,6 +54,7 @@ MeshToken MeshLoader::queue_mesh(vk::Device& device, VkCommandBuffer cmd, core::
     core::panic("can't load gltf: %u", result);
   }
   defer { cgltf_free(data); };
+
   result = cgltf_load_buffers(&options, data, path);
   if (result != cgltf_result_success) {
     core::panic("can't load gltf: %u", result);
@@ -78,7 +78,6 @@ MeshToken MeshLoader::queue_mesh(vk::Device& device, VkCommandBuffer cmd, core::
       ASSERT(primitive.type == cgltf_primitive_type_triangles);
 
       auto tmpArena = scratch->make_temp();
-      defer { tmpArena.retire(); };
 
       GpuMesh gpu_mesh{.transform = transform};
 
@@ -210,23 +209,18 @@ MeshToken MeshLoader::queue_mesh(vk::Device& device, VkCommandBuffer cmd, core::
     }
   };
 
-  auto work_on_node = [&](cgltf_node& node) {
-    for (auto& node : core::storage{data->scene->nodes_count, data->scene->nodes}.iter()) {
-      LOG2_TRACE("node start");
-      if (node->mesh != nullptr) {
-        math::Mat4 transform = math::Mat4::Id;
-        cgltf_node_transform_world(node, transform._coeffs);
-
-        work_on_mesh(*node->mesh, transform);
-      }
-      LOG2_TRACE("node end");
-    }
-  };
-
   ASSERT(data->scene != nullptr);
-  for (auto* node : core::storage{data->scene->nodes_count, data->scene->nodes}.iter()) {
-    work_on_node(*node);
+  for (auto& node : core::storage{data->scene->nodes_count, data->scene->nodes}.iter()) {
+    LOG2_TRACE("node start");
+    if (node->mesh != nullptr) {
+      math::Mat4 transform = math::Mat4::Id;
+      cgltf_node_transform_world(node, transform._coeffs);
+
+      work_on_mesh(*node->mesh, transform);
+    }
+    LOG2_TRACE("node end");
   }
+
   staging.close(cmd);
 
   LOG2_INFO("loading of mesh ", src, " is done (still waiting data to copied onto the gpu)");

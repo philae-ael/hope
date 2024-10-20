@@ -9,8 +9,7 @@ TEST(handle map adapter compiles) {
 
 TEST(handle map adapter insert) {
   core::handle_map_adapter im{};
-  auto scratch = core::scratch_get();
-  defer { scratch.retire(); };
+  auto scratch          = core::scratch_get();
   core::Allocator alloc = scratch;
 
   auto h1 = im.new_handle(alloc);
@@ -33,8 +32,7 @@ TEST(handle map adapter insert) {
 
 TEST(handle map adapter free with known last) {
   core::handle_map_adapter im{};
-  auto scratch = core::scratch_get();
-  defer { scratch.retire(); };
+  auto scratch          = core::scratch_get();
   core::Allocator alloc = scratch;
 
   auto h1 = im.new_handle(alloc);
@@ -56,8 +54,7 @@ TEST(handle map adapter free with known last) {
 }
 
 TEST(handle_map) {
-  auto scratch = core::scratch_get();
-  defer { scratch.retire(); };
+  auto scratch          = core::scratch_get();
   core::Allocator alloc = scratch;
 
   core::handle_map<int> a;
@@ -89,8 +86,7 @@ TEST(handle_map) {
   a.destroy(h2);
 }
 TEST(handle_map iter) {
-  auto scratch = core::scratch_get();
-  defer { scratch.retire(); };
+  auto scratch          = core::scratch_get();
   core::Allocator alloc = scratch;
 
   core::handle_map<int> a;

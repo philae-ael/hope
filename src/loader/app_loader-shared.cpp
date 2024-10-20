@@ -76,7 +76,6 @@ static_assert(std::is_same_v<decltype(&uninit_app), PFN_uninit>);
 
 AppPFNs load_app(core::str8 soname_) {
   auto scratch = core::scratch_get();
-  defer { scratch.retire(); };
 
   const char* soname = fs::resolve_path(*scratch, soname_).expect("can't load so").cstring(*scratch);
 

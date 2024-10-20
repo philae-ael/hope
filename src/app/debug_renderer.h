@@ -46,8 +46,7 @@ struct DebugRenderer {
       VkFormat depth_format,
       VkDescriptorSetLayout camera_descriptor_layout
   ) {
-    auto scratch = core::scratch_get();
-    defer { scratch.retire(); };
+    auto scratch          = core::scratch_get();
     core::Allocator alloc = scratch;
 
     auto code = fs::read_all(alloc, shader_path);

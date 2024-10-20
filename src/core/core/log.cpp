@@ -142,7 +142,6 @@ EXPORT void log_builder::emit() {
   if (any(flags & flags_t::stacktrace)) {
     dump_backtrace(2);
   }
-  scratch_retire(arena);
   if (any(flags & flags_t::panic)) {
     ::core::panic("can't continue");
   }

@@ -178,7 +178,6 @@ EXPORT core::vec<VkExtensionProperties> enumerate_instance_extension_properties(
 
 EXPORT Result<Instance> create_default_instance(core::vec<const char*> layers, core::vec<const char*> extensions) {
   auto ar = core::scratch_get();
-  defer { ar.retire(); };
 
   {
     const auto instance_layer_properties = enumerate_instance_layer_properties(*ar);
@@ -390,8 +389,7 @@ EXPORT Result<VkDevice> create_device(
     core::storage<const char*> extensions,
     core::storage<queue_creation_info> queue_create_infos
 ) {
-  core::ArenaTemp ar = ar_.make_temp();
-  defer { ar.retire(); };
+  auto ar               = ar_.make_temp();
   core::Allocator alloc = *ar;
 
   core::vec<VkDeviceQueueCreateInfo> queue_device_create_infos;
@@ -434,7 +432,6 @@ EXPORT Result<Device> create_default_device(
     core::vec<const char*> device_extensions
 ) {
   auto ar = core::scratch_get();
-  defer { ar.retire(); };
 
   queue_request queues[]{
       {
@@ -636,7 +633,6 @@ Result<VkSwapchainKHR> create_swapchain(
 
 EXPORT SwapchainConfig create_default_swapchain_config(const Device& device, VkSurfaceKHR surface) {
   auto ar = core::scratch_get();
-  defer { ar.retire(); };
   VkSurfaceCapabilitiesKHR surface_capabilities;
   VK_ASSERT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device.physical, surface, &surface_capabilities));
 

@@ -29,8 +29,7 @@ BasicRenderer BasicRenderer::init(
     VkDescriptorSetLayout camera_descriptor_layout,
     VkDescriptorSetLayout gpu_texture_descriptor_layout
 ) {
-  auto scratch = core::scratch_get();
-  defer { scratch.retire(); };
+  auto scratch          = core::scratch_get();
   core::Allocator alloc = scratch;
 
   auto code = fs::read_all(alloc, shader_src);
@@ -135,8 +134,7 @@ GpuTextureDescriptor GpuTextureDescriptor::init(subsystem::video& v) {
 }
 
 void GpuTextureDescriptor::update(VkDevice device, VkSampler sampler, core::storage<GpuMesh> meshes) {
-  auto scratch = core::scratch_get();
-  defer { scratch.retire(); };
+  auto scratch          = core::scratch_get();
   core::Allocator alloc = scratch;
   core::vec<VkDescriptorImageInfo> image_infos;
   for (auto& mesh : meshes.iter()) {

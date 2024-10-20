@@ -152,10 +152,6 @@ EXPORT void Arena::pop_pos(u64 old_pos) {
 EXPORT u64 Arena::pos() {
   return (u64)(mem - base);
 }
-EXPORT void ArenaTemp::retire() {
-  arena_->pop_pos(old_pos);
-  arena_ = nullptr;
-}
 EXPORT ArenaTemp Arena::make_temp() {
   return ArenaTemp{
       this,
@@ -207,16 +203,19 @@ EXPORT Scratch scratch_get() {
     if (arena != nullptr) {
       SCRATCH_DEBUG_STMT(printf("Scratch: thread %zu, got scratch %zu at %p\n", sync::thread_id(), j, arena->base));
 
-      return {ArenaTemp{.arena_ = arena, .old_pos = arena->pos()}};
+      return {.arena_ = arena};
     }
   }
   panic("no scratch arena available");
 }
 
-EXPORT void scratch_retire(Scratch& scr) {
-  scr->pop_pos(scr.old_pos);
-  Arena* arena_ = scr.arena_;
-  scr.arena_    = nullptr;
+EXPORT void Scratch::retire() {
+  if (arena_ == nullptr)
+    return;
+
+  Arena* arena = arena_;
+  arena_       = nullptr;
+  arena->pop_pos(0);
 
   for (usize i = 0; i < SCRATCH_ARENA_AMOUNT; i++) {
     if (scratch_storage[i] != nullptr) {
@@ -224,12 +223,12 @@ EXPORT void scratch_retire(Scratch& scr) {
     }
 
     SCRATCH_DEBUG_STMT(printf("Scratch: thread %zu, retire scratch %zu at %p\n", sync::thread_id(), i, arena_->base));
-    SWAP(scratch_storage[i], arena_);
+    SWAP(scratch_storage[i], arena);
 
     return;
   }
 
-  arena_dealloc(*arena_);
+  arena_dealloc(*arena);
 }
 
 EXPORT Arena& get_named_arena(ArenaName name) {

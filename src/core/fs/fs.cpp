@@ -119,7 +119,6 @@ EXPORT core::Maybe<core::str8> resolve_path(core::Allocator alloc, core::str8 pa
 
 EXPORT core::storage<u8> read_all(core::Allocator alloc, core::str8 path) {
   auto scratch = core::scratch_get();
-  defer { scratch.retire(); };
 
   LOG2_TRACE("reading file ", path);
   auto realpath = resolve_path(*scratch, path).expect("can't find path").cstring(*scratch);

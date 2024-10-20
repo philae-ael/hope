@@ -73,7 +73,6 @@ struct string_builder {
 template <class... Args>
 str8 join(core::Allocator alloc, str8 sep, const Args&... args) {
   auto scratch = scratch_get();
-  defer { scratch.retire(); };
   string_builder sb{};
   (sb.push(scratch, args), ...);
   return sb.commit(alloc, sep);

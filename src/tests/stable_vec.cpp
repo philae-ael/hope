@@ -5,7 +5,6 @@
 
 TEST(stable vec) {
   auto scratch = core::scratch_get();
-  defer { scratch.retire(); };
 
   core::stable_vec<int, 32> sv;
   tassert(sv.capacity() == 0, "invalid capacity");
@@ -34,7 +33,6 @@ TEST(stable vec) {
 
 TEST(stable vec index) {
   auto scratch = core::scratch_get();
-  defer { scratch.retire(); };
 
   core::stable_vec<int, 32> sv;
   sv.push(scratch, 0);
@@ -57,7 +55,6 @@ TEST(stable vec index) {
 
 TEST(stable vec iter) {
   auto scratch = core::scratch_get();
-  defer { scratch.retire(); };
 
   core::stable_vec<int, 32> sv;
   sv.push(scratch, 0);

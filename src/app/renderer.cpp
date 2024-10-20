@@ -243,7 +243,6 @@ Renderer* init_renderer(core::Allocator alloc, subsystem::video& v) {
       auto handle = fs::register_modified_file_callback(f, on_dep_file_modified, &rdata);
       rdata.on_file_modified_handles.push(alloc, handle);
     }
-    scratch.retire();
   }
 
   return &rdata;

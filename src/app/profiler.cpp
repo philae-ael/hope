@@ -50,7 +50,6 @@ void render_profiling_graph(
     render_profiling_config& config
 ) {
   auto ar = arena_.make_temp();
-  defer { ar.retire(); };
 
   ImDrawList* drawList = ImGui::GetWindowDrawList();
   auto p               = ImGui::GetCursorScreenPos();
@@ -174,8 +173,7 @@ void profiling_window() {
   auto frame_report_scope = utils::scope_start("frame report"_hs);
   defer { utils::scope_end(frame_report_scope); };
 
-  auto scratch = core::scratch_get();
-  defer { scratch.retire(); };
+  auto scratch            = core::scratch_get();
   auto frame_timing_infos = utils::get_last_frame_timing_infos(*scratch, utils::scope_category::CPU);
 
   if (!freeze) {
