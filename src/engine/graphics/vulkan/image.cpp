@@ -50,6 +50,7 @@ EXPORT image2D image2D::create(
   VK_ASSERT(
       vmaCreateImage(device.allocator, &image_create_info, &alloc_create_info, &image.image, &image.allocation, nullptr)
   );
+  vmaSetAllocationName(device.allocator, image.allocation, "image");
   VkImageViewCreateInfo image_view_create_info{
       .sType      = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
       .image      = image.image,

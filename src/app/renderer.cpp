@@ -178,6 +178,7 @@ void MainRenderer::uninit(subsystem::video& v) {
 
   basic_renderer.uninit(v.device);
   grid_renderer.uninit(v.device);
+  debug_renderer.uninit(v.device);
   imgui_renderer.uninit(v);
   camera_descriptor.uninit(v);
   gpu_texture_descriptor.uninit(v);

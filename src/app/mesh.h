@@ -34,6 +34,7 @@ struct StagingBuffer {
     VkBuffer buffer;
     VmaAllocation allocation;
     vmaCreateBuffer(device.allocator, &buffer_create_info, &allocation_create_info, &buffer, &allocation, nullptr);
+    vmaSetAllocationName(device.allocator, allocation, "staging buffer");
 
     VkEventCreateInfo fence_create_info{
         .sType = VK_STRUCTURE_TYPE_EVENT_CREATE_INFO,

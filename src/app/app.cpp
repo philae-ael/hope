@@ -213,7 +213,7 @@ void update(App& app) {
   input_move              = Vec4::Zero;
   input_move              = app.state->config.speed.x * horizontal_speed_factor * horizontal_dir;
   input_move             += app.state->config.speed.y * app.input_state.y.value() * upward;
-  utils::config_f32xN("input.movement", input_move._coeffs, 3);
+  utils::config_f32xN("input.movement", input_move._coeffs, 3, true);
   //
   app.state->camera.position += dt * input_move;
 
@@ -258,8 +258,8 @@ void debug_stuff(App& app) {
     LOG2_DEBUG("frame low 99: ", core::format{timing_infos.stats.low_99, os::TimeFormat::MMM_UUU_NNN});
   }
 
-  utils::config_f32xN("camera.position", app.state->camera.position._coeffs, 3, true);
-  utils::config_f32xN("camera.rotation", app.state->camera.rotation.v._coeffs, 4, true);
+  utils::config_f32xN("camera.position", app.state->camera.position._coeffs, 3);
+  utils::config_f32xN("camera.rotation", app.state->camera.rotation.v._coeffs, 4);
 
   static int log_level = (int)core::log_get_global_level();
   utils::config_choice("debug.log_level", &log_level, log_level_choices, ARRAY_SIZE(log_level_choices));
