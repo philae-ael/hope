@@ -22,7 +22,7 @@ struct ShaderStage {
 };
 
 struct ShaderBuilder {
-  core::storage<u8> code;
+  core::storage<const u8> code;
   VkShaderModule build(VkDevice device) {
     VkShaderModuleCreateInfo fragment_module_create_info{
         .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -82,8 +82,8 @@ struct VertexInputAttributes {
 };
 
 struct PipelineLayoutBuilder {
-  core::storage<VkDescriptorSetLayout> set_layouts;
-  core::storage<VkPushConstantRange> push_constant_ranges;
+  core::storage<const VkDescriptorSetLayout> set_layouts;
+  core::storage<const VkPushConstantRange> push_constant_ranges;
 
   VkPipelineLayout build(VkDevice device) {
     VkPipelineLayoutCreateInfo pipeline_layout_create_info{
@@ -104,8 +104,8 @@ struct PipelineLayoutBuilder {
 // layout
 
 struct VertexInput {
-  core::storage<VkVertexInputBindingDescription> vertex_input_binding_descriptions;
-  core::storage<VkVertexInputAttributeDescription> vertex_input_attributes_descriptions;
+  core::storage<const VkVertexInputBindingDescription> vertex_input_binding_descriptions;
+  core::storage<const VkVertexInputAttributeDescription> vertex_input_attributes_descriptions;
   inline VkPipelineVertexInputStateCreateInfo vk() const {
     return {
         .sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -232,7 +232,7 @@ inline const ColorBlendAttachement ColorBlendAttachement::AlphaBlendPremultiplie
 };
 
 struct ColorBlend {
-  core::storage<VkPipelineColorBlendAttachmentState> color_blend_attachements;
+  core::storage<const VkPipelineColorBlendAttachmentState> color_blend_attachements;
   inline VkPipelineColorBlendStateCreateInfo vk() const {
     return {
         .sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
@@ -245,7 +245,7 @@ struct ColorBlend {
 };
 
 struct DynamicState {
-  core::storage<VkDynamicState> dynamic_states;
+  core::storage<const VkDynamicState> dynamic_states;
   inline VkPipelineDynamicStateCreateInfo vk() const {
     return {
         .sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
@@ -256,7 +256,7 @@ struct DynamicState {
 };
 
 struct Rendering {
-  core::storage<VkFormat> color_attachment_formats;
+  core::storage<const VkFormat> color_attachment_formats;
   VkFormat depth_attachment_format;
   VkFormat stencil_attachment_format;
   inline VkPipelineRenderingCreateInfo vk() const {
@@ -272,7 +272,7 @@ struct Rendering {
 
 struct PipelineBuilder {
   Rendering rendering{};
-  core::storage<VkPipelineShaderStageCreateInfo> shader_stages{};
+  core::storage<const VkPipelineShaderStageCreateInfo> shader_stages{};
   VertexInput vertex_input{};
   InputAssembly input_assembly{};
   Viewport viewport{};

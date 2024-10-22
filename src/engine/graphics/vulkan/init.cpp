@@ -286,7 +286,7 @@ EXPORT core::Maybe<core::vec<queue_creation_info>> find_physical_device_queue_al
 ) {
   auto queue_family_properties = enumerate_physical_device_queue_family_properties(ar, physical_device);
 
-  auto queue_requests = core::vec{required_features.queues}.clone(ar);
+  auto queue_requests = core::vec<queue_request>{required_features.queues}.clone(ar);
   core::vec<queue_creation_info> queues;
   for (auto [family_index, queue_family_property] : core::enumerate{queue_family_properties.iter()}) {
 

@@ -5,6 +5,7 @@
 
 #include <bit>
 #include <concepts>
+#include <initializer_list>
 #include <stddef.h>
 #include <type_traits>
 #include <utility>
@@ -542,15 +543,13 @@ struct storage {
 
   storage() = default;
 
-  template <usize len>
-  storage(S (&a)[len])
+  template <class T, usize len>
+  storage(T (&a)[len])
       : size(len)
       , data(a) {}
 
-  // HUM... not sure i should allow that without copying... if it bites me i should only blame
-  // myself i guess
-  template <usize len>
-  storage(S (&&a)[len])
+  template <class T, usize len>
+  storage(T (&&a)[len])
       : size(len)
       , data(a) {}
 
@@ -558,9 +557,18 @@ struct storage {
       : size(size)
       , data(data) {}
 
+  storage(std::initializer_list<S> l)
+      : size(l.size())
+      , data(l.begin()) {}
+
   storage(S& s)
       : size(1)
       , data(&s) {}
+
+  template <class T>
+  storage(const storage<T>& s)
+      : size(s.size)
+      , data(s.data) {}
 
   template <class T>
   static storage from(unsafe_t, T& t) {

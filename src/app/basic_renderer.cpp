@@ -38,25 +38,23 @@ BasicRenderer BasicRenderer::init(
   VkShaderModule module = vk::pipeline::ShaderBuilder{code}.build(v.device);
 
   VkPipelineLayout layout = vk::pipeline::PipelineLayoutBuilder{
-      .set_layouts          = {core::array{camera_descriptor_layout, gpu_texture_descriptor_layout}},
+      .set_layouts          = {camera_descriptor_layout, gpu_texture_descriptor_layout},
       .push_constant_ranges = {vk::pipeline::PushConstantRanges<PushConstant>{}.vk()}
   }.build(v.device);
 
   VkPipeline pipeline = vk::pipeline::PipelineBuilder{
       .rendering = {.color_attachment_formats = {1, &color_format}, .depth_attachment_format = depth_format},
       .shader_stages =
-          core::array{
-              vk::pipeline::ShaderStage{VK_SHADER_STAGE_VERTEX_BIT, module, "main"}.vk(),
-              vk::pipeline::ShaderStage{VK_SHADER_STAGE_FRAGMENT_BIT, module, "main"}.vk()
-          },
+          {vk::pipeline::ShaderStage{VK_SHADER_STAGE_VERTEX_BIT, module, "main"}.vk(),
+           vk::pipeline::ShaderStage{VK_SHADER_STAGE_FRAGMENT_BIT, module, "main"}.vk()},
       .vertex_input =
           {
-              core::array{vk::pipeline::VertexBinding<Vertex>{0}.vk()},
+              {vk::pipeline::VertexBinding<Vertex>{0}.vk()},
               vk::pipeline::VertexInputAttributes<Vertex>{0}.vk(),
           },
       .depth_stencil = vk::pipeline::DepthStencil::WriteAndCompareDepth,
-      .color_blend   = {core::array{vk::pipeline::ColorBlendAttachement::NoBlend.vk()}},
-      .dynamic_state = {core::array{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR}}
+      .color_blend   = {vk::pipeline::ColorBlendAttachement::NoBlend.vk()},
+      .dynamic_state = {{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR}}
   }.build(v.device, layout);
 
   vkDestroyShaderModule(v.device, module, nullptr);
@@ -107,24 +105,16 @@ void BasicRenderer::render(
 
 GpuTextureDescriptor GpuTextureDescriptor::init(subsystem::video& v) {
   VkDescriptorPool pool = vk::DescriptorPoolBuilder{
-      .max_sets = 1,
-      .sizes    = {core::array{
-          VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 50},
-      }}
+      .max_sets = 1, .sizes = {VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 50}}
   }.build(v.device);
 
   VkDescriptorSetLayout layout = vk::DescriptorSetLayoutBuilder{
-      .bindings = {core::array{
-          VkDescriptorSetLayoutBinding{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 50, VK_SHADER_STAGE_FRAGMENT_BIT},
+      .bindings = {VkDescriptorSetLayoutBinding{
+          0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 50, VK_SHADER_STAGE_FRAGMENT_BIT
       }}
   }.build(v.device);
 
-  VkDescriptorSet set = vk::DescriptorSetAllocateInfo{
-      pool,
-      {core::array{
-          layout,
-      }}
-  }.allocate(v.device);
+  VkDescriptorSet set = vk::DescriptorSetAllocateInfo{pool, {layout}}.allocate(v.device);
 
   return {
       pool,
@@ -152,16 +142,14 @@ void GpuTextureDescriptor::update(VkDevice device, VkSampler sampler, core::stor
   }
   vk::DescriptorSetUpdater{
       .write_descriptor_set{
-          core::array{
-              vk::DescriptorSetWriter{
-                  .set               = set,
-                  .dst_binding       = 0,
-                  .dst_array_element = 0,
-                  .descriptor_type   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                  .image             = {.image_infos = image_infos},
-              }
-                  .vk(),
-          },
+          vk::DescriptorSetWriter{
+              .set               = set,
+              .dst_binding       = 0,
+              .dst_array_element = 0,
+              .descriptor_type   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+              .image             = {.image_infos = image_infos},
+          }
+              .vk(),
       },
   }
       .update(device);
@@ -174,26 +162,16 @@ void GpuTextureDescriptor::uninit(subsystem::video& v) {
 
 CameraDescriptor CameraDescriptor::init(subsystem::video& v) {
   VkDescriptorPool pool = vk::DescriptorPoolBuilder{
-      .max_sets = 1,
-      .sizes    = {core::array{
-          VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1},
-      }}
+      .max_sets = 1, .sizes = {VkDescriptorPoolSize{.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1}}
   }.build(v.device);
 
   VkDescriptorSetLayout layout = vk::DescriptorSetLayoutBuilder{
-      .bindings = {core::array{
-          VkDescriptorSetLayoutBinding{
-              0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
-          },
+      .bindings = {VkDescriptorSetLayoutBinding{
+          0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
       }}
   }.build(v.device);
 
-  VkDescriptorSet set = vk::DescriptorSetAllocateInfo{
-      pool,
-      {core::array{
-          layout,
-      }}
-  }.allocate(v.device);
+  VkDescriptorSet set = vk::DescriptorSetAllocateInfo{pool, {layout}}.allocate(v.device);
 
   // **
 
@@ -217,18 +195,16 @@ CameraDescriptor CameraDescriptor::init(subsystem::video& v) {
   ));
 
   vk::DescriptorSetUpdater{
-      core::array{
-          vk::DescriptorSetWriter{
-              .set               = set,
-              .dst_binding       = 0,
-              .dst_array_element = 0,
-              .descriptor_type   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-              .buffer =
-                  {
-                      .buffer_infos = core::array{VkDescriptorBufferInfo{buffer, 0, sizeof(CameraMatrices)}},
-                  }
-          }.vk(),
-      },
+      vk::DescriptorSetWriter{
+          .set               = set,
+          .dst_binding       = 0,
+          .dst_array_element = 0,
+          .descriptor_type   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+          .buffer =
+              {
+                  .buffer_infos = VkDescriptorBufferInfo{buffer, 0, sizeof(CameraMatrices)},
+              }
+      }.vk(),
   }
       .update(v.device);
   return {pool, layout, set, buffer, allocation, allocation_info};

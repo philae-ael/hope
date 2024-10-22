@@ -15,7 +15,7 @@ struct scope {
   u64 end;
 };
 static core::array<scope, MAX_TIMESTAMPS / 2> scopes_storage{};
-static core::vec scopes{core::storage<scope>{scopes_storage}};
+static core::vec<scope> scopes{scopes_storage.storage()};
 static usize timestamp_index = 0;
 static bool record           = false;
 static float timestamp_period;

@@ -8,7 +8,7 @@
 namespace vk {
 struct DescriptorPoolBuilder {
   u32 max_sets;
-  core::storage<VkDescriptorPoolSize> sizes;
+  core::storage<const VkDescriptorPoolSize> sizes;
 
   VkDescriptorPool build(VkDevice device) {
     VkDescriptorPoolCreateInfo descriptor_pool_create_info{
@@ -23,7 +23,7 @@ struct DescriptorPoolBuilder {
   }
 };
 struct DescriptorSetLayoutBuilder {
-  core::storage<VkDescriptorSetLayoutBinding> bindings;
+  core::storage<const VkDescriptorSetLayoutBinding> bindings;
   VkDescriptorSetLayout build(VkDevice device) {
     VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info{
         .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -38,7 +38,7 @@ struct DescriptorSetLayoutBuilder {
 
 struct DescriptorSetAllocateInfo {
   VkDescriptorPool pool;
-  core::storage<VkDescriptorSetLayout> layouts;
+  core::storage<const VkDescriptorSetLayout> layouts;
   VkDescriptorSetAllocateInfo vk() {
     return VkDescriptorSetAllocateInfo{
         .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -65,11 +65,11 @@ struct DescriptorSetWriter {
     Tag tag;
     struct {
       Tag tag = Tag::Image;
-      core::storage<VkDescriptorImageInfo> image_infos;
+      core::storage<const VkDescriptorImageInfo> image_infos;
     } image;
     struct {
       Tag tag = Tag::Buffer;
-      core::storage<VkDescriptorBufferInfo> buffer_infos;
+      core::storage<const VkDescriptorBufferInfo> buffer_infos;
     } buffer;
   };
 
@@ -96,8 +96,8 @@ struct DescriptorSetWriter {
 };
 
 struct DescriptorSetUpdater {
-  core::storage<VkWriteDescriptorSet> write_descriptor_set{};
-  core::storage<VkCopyDescriptorSet> copy_descriptor_set{};
+  core::storage<const VkWriteDescriptorSet> write_descriptor_set{};
+  core::storage<const VkCopyDescriptorSet> copy_descriptor_set{};
   void update(VkDevice device) {
     vkUpdateDescriptorSets(
         device, (u32)write_descriptor_set.size, write_descriptor_set.data, (u32)copy_descriptor_set.size,

@@ -5,6 +5,7 @@
 #include "../core/fwd.h"
 #include "../core/memory.h"
 #include <cstring>
+#include <initializer_list>
 
 namespace core {
 template <class T>
@@ -13,19 +14,24 @@ struct vec {
   usize size_{};
 
   vec() {}
-  template <usize len>
-  vec(T (&a)[len])
-      : store(storage{a})
+  template <class S, usize len>
+  vec(S (&a)[len])
+      : store(a)
       , size_(len) {}
 
-  template <usize len>
-  vec(clear_t, T (&a)[len])
-      : store(storage{a})
+  template <class S, usize len>
+  vec(clear_t, S (&a)[len])
+      : store(a)
       , size_(0) {}
 
-  vec(storage<T> s)
+  template <class S>
+  vec(storage<S> s)
       : store(s)
       , size_(s.size) {}
+
+  vec(std::initializer_list<T> s)
+      : store(s)
+      , size_(s.size()) {}
 
   constexpr T pop(noalloc_t) {
     if (size_ == 0) {
@@ -65,7 +71,7 @@ struct vec {
     size_ = new_size;
   }
   void set_capacity(Allocator alloc, usize new_capacity, bool try_grow = true) {
-    if (try_grow && alloc.try_resize(store.data, store.size, new_capacity * sizeof(T), "vec::resize")) {
+    if (try_grow && alloc.try_resize((void*)store.data, store.size, new_capacity * sizeof(T), "vec::resize")) {
       store.size = new_capacity;
       return;
     }
@@ -76,8 +82,8 @@ struct vec {
     }
 
     auto new_store = alloc.allocate_array<T>(new_capacity, "vec::resize");
-    memcpy(new_store.data, store.data, size() * sizeof(T));
-    alloc.deallocate(store.data, store.size);
+    memcpy((void*)new_store.data, store.data, size() * sizeof(T));
+    alloc.deallocate((void*)store.data, store.size);
     store = new_store;
   }
 
@@ -161,6 +167,9 @@ struct vec {
     pop(core::noalloc);
   }
 };
+
+template <class T>
+vec(storage<T>) -> vec<T>;
 
 } // namespace core
 

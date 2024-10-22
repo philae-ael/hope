@@ -60,23 +60,23 @@ struct DebugRenderer {
         }
             .build(v.device);
 
-    VkPipeline pipeline = vk::pipeline::PipelineBuilder{
-        .rendering = {.color_attachment_formats = {1, &color_format}, .depth_attachment_format = depth_format},
-        .shader_stages =
-            core::array{
-                vk::pipeline::ShaderStage{VK_SHADER_STAGE_VERTEX_BIT, module, "main"}.vk(),
-                vk::pipeline::ShaderStage{VK_SHADER_STAGE_FRAGMENT_BIT, module, "main"}.vk()
-            },
-        .vertex_input =
-            {
-                core::array{vk::pipeline::VertexBinding<DebugVertex>{0, VK_VERTEX_INPUT_RATE_INSTANCE}.vk()},
-                vk::pipeline::VertexInputAttributes<DebugVertex>{0}.vk(),
-            },
-        .rasterization = {.cull_back = false},
-        .depth_stencil = vk::pipeline::DepthStencil::CompareDepth,
-        .color_blend   = {core::array{vk::pipeline::ColorBlendAttachement::AlphaBlend.vk()}},
-        .dynamic_state = {core::array{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR}}
-    }.build(v.device, layout);
+    VkPipeline pipeline =
+        vk::pipeline::PipelineBuilder{
+            .rendering = {.color_attachment_formats = {1, &color_format}, .depth_attachment_format = depth_format},
+            .shader_stages =
+                {vk::pipeline::ShaderStage{VK_SHADER_STAGE_VERTEX_BIT, module, "main"}.vk(),
+                 vk::pipeline::ShaderStage{VK_SHADER_STAGE_FRAGMENT_BIT, module, "main"}.vk()},
+            .vertex_input =
+                {
+                    vk::pipeline::VertexBinding<DebugVertex>{0, VK_VERTEX_INPUT_RATE_INSTANCE}.vk(),
+                    vk::pipeline::VertexInputAttributes<DebugVertex>{0}.vk(),
+                },
+            .rasterization = {.cull_back = false},
+            .depth_stencil = vk::pipeline::DepthStencil::CompareDepth,
+            .color_blend   = {vk::pipeline::ColorBlendAttachement::AlphaBlend.vk()},
+            .dynamic_state = {{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR}},
+        }
+            .build(v.device, layout);
 
     vkDestroyShaderModule(v.device, module, nullptr);
 

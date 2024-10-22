@@ -104,15 +104,12 @@ void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuff
   camera_descriptor.update(device, camera_matrices);
 
   vk::RenderingInfo{
-      .render_area = {{}, swapchain_image.extent},
-      .color_attachments =
-          core::array{
-              swapchain_image.as_attachment(
-                  vk::image2D::AttachmentLoadOp::Clear{{.color = {.float32 = {0.0, 0.0, 0.0, 0.0}}}},
-                  vk::image2D::AttachmentStoreOp::Store
-              ),
-          },
-      .depth_attachment = depth.as_attachment(
+      .render_area       = {{}, swapchain_image.extent},
+      .color_attachments = {swapchain_image.as_attachment(
+          vk::image2D::AttachmentLoadOp::Clear{{.color = {.float32 = {0.0, 0.0, 0.0, 0.0}}}},
+          vk::image2D::AttachmentStoreOp::Store
+      )},
+      .depth_attachment  = depth.as_attachment(
           vk::image2D::AttachmentLoadOp::Clear{{.depthStencil = {1.0, 0}}}, vk::image2D::AttachmentStoreOp::Store
       ),
   }
@@ -151,7 +148,7 @@ void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuff
   vk::pipeline_barrier(cmd, swapchain_image.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}));
   vk::RenderingInfo{
       .render_area       = {{}, swapchain_image.extent},
-      .color_attachments = core::array{swapchain_image.as_attachment(
+      .color_attachments = {swapchain_image.as_attachment(
           vk::image2D::AttachmentLoadOp::Load, vk::image2D::AttachmentStoreOp::Store
       )}
   }.begin_rendering(cmd);
@@ -200,14 +197,13 @@ void MainRenderer::swapchain_rebuilt(subsystem::video& v) {
   );
 }
 
-core::vec<core::str8> MainRenderer::file_deps(core::Arena& arena) {
+core::vec<const core::str8> MainRenderer::file_deps(core::Arena& arena) {
 
-  return core::vec{core::array{
-                       "/assets/shaders/tri.spv"_s,
-                       "/assets/shaders/grid.spv"_s,
-                       "/assets/shaders/debug.spv"_s,
-                   }
-                       .storage()}
+  return core::vec<const core::str8>{
+      "/assets/shaders/tri.spv"_s,
+      "/assets/shaders/grid.spv"_s,
+      "/assets/shaders/debug.spv"_s,
+  }
       .clone(arena);
 }
 

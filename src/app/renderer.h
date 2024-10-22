@@ -31,7 +31,7 @@ struct MainRenderer {
 
   void swapchain_rebuilt(subsystem::video& v);
 
-  core::vec<core::str8> file_deps(core::Arena& arena);
+  core::vec<const core::str8> file_deps(core::Arena& arena);
 };
 
 struct Renderer {
