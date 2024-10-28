@@ -7,7 +7,7 @@
 namespace vk {
 struct RenderingInfo {
   VkRect2D render_area;
-  core::storage<VkRenderingAttachmentInfo> color_attachments;
+  core::storage<const VkRenderingAttachmentInfo> color_attachments;
   core::Maybe<VkRenderingAttachmentInfo> depth_attachment;
   inline VkRenderingInfo vk() {
     return VkRenderingInfo{
