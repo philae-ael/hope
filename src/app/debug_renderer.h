@@ -31,7 +31,8 @@ struct vk::pipeline::VertexDescription<DebugVertex> {
 };
 
 struct DebugRenderer {
-  static inline const core::str8 shader_path = "/assets/shaders/debug.spv"_s;
+  static inline const core::str8 shader_frag_path = "/assets/shaders/debug.frag.spv"_s;
+  static inline const core::str8 shader_vert_path = "/assets/shaders/debug.vert.spv"_s;
   VkPipeline pipeline;
   VkPipelineLayout layout;
 
@@ -49,10 +50,17 @@ struct DebugRenderer {
     auto scratch          = core::scratch_get();
     core::Allocator alloc = scratch;
 
-    auto code = fs::read_all(alloc, shader_path);
-    ASSERT(code.size % sizeof(u32) == 0);
+    auto code_frag = fs::read_all(alloc, shader_frag_path);
+    auto code_vert = fs::read_all(alloc, shader_vert_path);
+    ASSERT(code_frag.size % sizeof(u32) == 0);
+    ASSERT(code_frag.size % sizeof(u32) == 0);
 
-    VkShaderModule module = vk::pipeline::ShaderBuilder{code}.build(v.device);
+    VkShaderModule module_vert = vk::pipeline::ShaderBuilder{code_vert}.build(v.device);
+    VkShaderModule module_frag = vk::pipeline::ShaderBuilder{code_frag}.build(v.device);
+    defer {
+      vkDestroyShaderModule(v.device, module_vert, nullptr);
+      vkDestroyShaderModule(v.device, module_frag, nullptr);
+    };
 
     VkPipelineLayout layout =
         vk::pipeline::PipelineLayoutBuilder{
@@ -64,8 +72,8 @@ struct DebugRenderer {
         vk::pipeline::PipelineBuilder{
             .rendering = {.color_attachment_formats = {1, &color_format}, .depth_attachment_format = depth_format},
             .shader_stages =
-                {vk::pipeline::ShaderStage{VK_SHADER_STAGE_VERTEX_BIT, module, "main"}.vk(),
-                 vk::pipeline::ShaderStage{VK_SHADER_STAGE_FRAGMENT_BIT, module, "main"}.vk()},
+                {vk::pipeline::ShaderStage{VK_SHADER_STAGE_VERTEX_BIT, module_vert, "main"}.vk(),
+                 vk::pipeline::ShaderStage{VK_SHADER_STAGE_FRAGMENT_BIT, module_frag, "main"}.vk()},
             .vertex_input =
                 {
                     vk::pipeline::VertexBinding<DebugVertex>{0, VK_VERTEX_INPUT_RATE_INSTANCE}.vk(),
@@ -77,8 +85,6 @@ struct DebugRenderer {
             .dynamic_state = {{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR}},
         }
             .build(v.device, layout);
-
-    vkDestroyShaderModule(v.device, module, nullptr);
 
     VkBufferCreateInfo buffer_create_info{
         .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,

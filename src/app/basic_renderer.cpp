@@ -20,7 +20,8 @@
 using namespace core::literals;
 using math::Mat4;
 
-core::str8 shader_src = "/assets/shaders/tri.spv"_s;
+core::str8 shader_vert_src = "/assets/shaders/tri.vert.spv"_s;
+core::str8 shader_frag_src = "/assets/shaders/tri.frag.spv"_s;
 
 BasicRenderer BasicRenderer::init(
     subsystem::video& v,
@@ -32,10 +33,17 @@ BasicRenderer BasicRenderer::init(
   auto scratch          = core::scratch_get();
   core::Allocator alloc = scratch;
 
-  auto code = fs::read_all(alloc, shader_src);
-  ASSERT(code.size % sizeof(u32) == 0);
+  auto code_vert = fs::read_all(alloc, shader_vert_src);
+  auto code_frag = fs::read_all(alloc, shader_frag_src);
+  ASSERT(code_vert.size % sizeof(u32) == 0);
+  ASSERT(code_frag.size % sizeof(u32) == 0);
 
-  VkShaderModule module = vk::pipeline::ShaderBuilder{code}.build(v.device);
+  VkShaderModule module_vert = vk::pipeline::ShaderBuilder{code_vert}.build(v.device);
+  VkShaderModule module_frag = vk::pipeline::ShaderBuilder{code_frag}.build(v.device);
+  defer {
+    vkDestroyShaderModule(v.device, module_vert, nullptr);
+    vkDestroyShaderModule(v.device, module_frag, nullptr);
+  };
 
   VkPipelineLayout layout = vk::pipeline::PipelineLayoutBuilder{
       .set_layouts          = {camera_descriptor_layout, gpu_texture_descriptor_layout},
@@ -45,8 +53,8 @@ BasicRenderer BasicRenderer::init(
   VkPipeline pipeline = vk::pipeline::PipelineBuilder{
       .rendering = {.color_attachment_formats = {1, &color_format}, .depth_attachment_format = depth_format},
       .shader_stages =
-          {vk::pipeline::ShaderStage{VK_SHADER_STAGE_VERTEX_BIT, module, "main"}.vk(),
-           vk::pipeline::ShaderStage{VK_SHADER_STAGE_FRAGMENT_BIT, module, "main"}.vk()},
+          {vk::pipeline::ShaderStage{VK_SHADER_STAGE_VERTEX_BIT, module_vert, "main"}.vk(),
+           vk::pipeline::ShaderStage{VK_SHADER_STAGE_FRAGMENT_BIT, module_frag, "main"}.vk()},
       .vertex_input =
           {
               {vk::pipeline::VertexBinding<Vertex>{0}.vk()},
@@ -57,7 +65,6 @@ BasicRenderer BasicRenderer::init(
       .dynamic_state = {{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR}}
   }.build(v.device, layout);
 
-  vkDestroyShaderModule(v.device, module, nullptr);
   return {pipeline, layout};
 }
 

@@ -46,6 +46,11 @@ int main(int argc, char* argv[]) {
 
     auto assetdir = core::join(global_alloc, "/"_s, cwd, "assets");
     fs::mount("/assets"_s, assetdir);
+    {
+      auto shaderdir = core::join(global_alloc, "/"_s, assetdir, "shaders-compiled");
+      fs::mount("/assets/shaders"_s, shaderdir);
+      global_alloc.deallocate(shaderdir.data);
+    }
     global_alloc.deallocate(assetdir.data);
 
 #ifdef SHARED

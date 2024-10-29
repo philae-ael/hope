@@ -38,7 +38,8 @@ struct GridConfig {
 };
 
 struct GridRenderer {
-  static inline const core::str8 shader_path = "/assets/shaders/grid.spv"_s;
+  static inline const core::str8 shader_vert_path = "/assets/shaders/grid.vert.spv"_s;
+  static inline const core::str8 shader_frag_path = "/assets/shaders/grid.frag.spv"_s;
   VkPipeline pipeline;
   VkPipelineLayout layout;
 
@@ -51,10 +52,17 @@ struct GridRenderer {
     auto scratch          = core::scratch_get();
     core::Allocator alloc = scratch;
 
-    auto code = fs::read_all(alloc, shader_path);
-    ASSERT(code.size % sizeof(u32) == 0);
+    auto code_vert = fs::read_all(alloc, shader_vert_path);
+    auto code_frag = fs::read_all(alloc, shader_frag_path);
+    ASSERT(code_vert.size % sizeof(u32) == 0);
+    ASSERT(code_frag.size % sizeof(u32) == 0);
 
-    VkShaderModule module = vk::pipeline::ShaderBuilder{code}.build(v.device);
+    VkShaderModule module_vert = vk::pipeline::ShaderBuilder{code_vert}.build(v.device);
+    VkShaderModule module_frag = vk::pipeline::ShaderBuilder{code_frag}.build(v.device);
+    defer {
+      vkDestroyShaderModule(v.device, module_vert, nullptr);
+      vkDestroyShaderModule(v.device, module_frag, nullptr);
+    };
 
     VkPipelineLayout layout =
         vk::pipeline::PipelineLayoutBuilder{
@@ -66,8 +74,8 @@ struct GridRenderer {
     VkPipeline pipeline = vk::pipeline::PipelineBuilder{
         .rendering = {.color_attachment_formats = {1, &color_format}, .depth_attachment_format = depth_format},
         .shader_stages =
-            {vk::pipeline::ShaderStage{VK_SHADER_STAGE_VERTEX_BIT, module, "main"}.vk(),
-             vk::pipeline::ShaderStage{VK_SHADER_STAGE_FRAGMENT_BIT, module, "main"}.vk()},
+            {vk::pipeline::ShaderStage{VK_SHADER_STAGE_VERTEX_BIT, module_vert, "main"}.vk(),
+             vk::pipeline::ShaderStage{VK_SHADER_STAGE_FRAGMENT_BIT, module_frag, "main"}.vk()},
         .vertex_input  = {},
         .rasterization = {.cull_back = false},
         .depth_stencil = vk::pipeline::DepthStencil::CompareDepth,
@@ -75,7 +83,6 @@ struct GridRenderer {
         .dynamic_state = {{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR}}
     }.build(v.device, layout);
 
-    vkDestroyShaderModule(v.device, module, nullptr);
     return {pipeline, layout};
   }
 

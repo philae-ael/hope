@@ -200,9 +200,8 @@ void MainRenderer::swapchain_rebuilt(subsystem::video& v) {
 core::vec<const core::str8> MainRenderer::file_deps(core::Arena& arena) {
 
   return core::vec<const core::str8>{
-      "/assets/shaders/tri.spv"_s,
-      "/assets/shaders/grid.spv"_s,
-      "/assets/shaders/debug.spv"_s,
+      "/assets/shaders/tri.vert.spv"_s,  "/assets/shaders/tri.frag.spv"_s,   "/assets/shaders/grid.vert.spv"_s,
+      "/assets/shaders/grid.frag.spv"_s, "/assets/shaders/debug.vert.spv"_s, "/assets/shaders/debug.frag.spv"_s,
   }
       .clone(arena);
 }

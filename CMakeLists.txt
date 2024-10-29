@@ -1,5 +1,6 @@
 ﻿cmake_minimum_required(VERSION 3.25)
 
+include(cmake/shader.cmake)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -118,7 +119,22 @@ target_sources(app PRIVATE
   src/app/mesh.cpp
 )
 
-target_link_libraries(loader PRIVATE core engine)
+add_library(shaders INTERFACE)
+compile_shader(shaders
+    ENV vulkan1.3
+    FORMAT bin
+    OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders-compiled/
+    ARGS -I src/shaders/include -g
+    SOURCES
+      src/shaders/grid.frag
+      src/shaders/grid.vert
+      src/shaders/debug.frag
+      src/shaders/debug.vert
+      src/shaders/tri.frag
+      src/shaders/tri.vert
+)
+
+target_link_libraries(loader PRIVATE core engine shaders)
 
 add_executable(testcore
   src/tests/tests.cpp
