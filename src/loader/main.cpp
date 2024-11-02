@@ -94,9 +94,13 @@ int main(int argc, char* argv[]) {
     uv_run(uv_default_loop(), UV_RUN_NOWAIT);
 
     /// === Frame Udpate ===
-    auto sev = app_pfns.frame(*app);
+    auto sev = app_pfns.process_events(*app);
 
     /// === Handle system event ===
+
+    if (any(sev & AppEvent::NewFrame)) {
+      sev |= app_pfns.new_frame(*app);
+    }
 
     if (any(sev & AppEvent::Exit)) {
       break;

@@ -58,7 +58,11 @@ EXPORT void timings_init() {
   curs[0].reset();
   lasts[1].reset();
   curs[1].reset();
+
+  // Prevent huge in mean frane at start of app
+  timings_frame_start();
 }
+
 EXPORT void timings_reset() {}
 
 EXPORT void timings_frame_end() {

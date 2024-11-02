@@ -273,29 +273,41 @@ void debug_stuff(App& app) {
   }
 }
 
-EXPORT AppEvent frame(App& app) {
-  AppEvent sev{};
-  SDL_Event ev{};
+EXPORT AppEvent process_events(App& app) {
+  auto poll_event_scope = utils::scope_start("process_events start"_hs);
+  defer { utils::scope_end(poll_event_scope); };
 
+  AppEvent sev{};
+
+  SDL_Event ev{};
+  while (SDL_PollEvent(&ev)) {
+    sev |= handle_events(ev, app.input_state);
+  }
+
+  if (app.video->wait_frame(0)) {
+    // a frame is ready to be rendered to
+    sev |= AppEvent::NewFrame;
+  }
+
+  return sev;
+}
+
+EXPORT AppEvent new_frame(App& app) {
+  utils::timings_frame_end();
+
+  AppEvent sev{};
   core::get_named_arena(core::ArenaName::Frame).reset();
   utils::timings_frame_start();
-  defer { utils::timings_frame_end(); };
+
   ImGui_ImplVulkan_NewFrame();
   ImGui_ImplSDL3_NewFrame();
   ImGui::NewFrame();
-  defer { ImGui::EndFrame(); };
   utils::config_new_frame();
+
+  // Things that happens once a frame are here
 
   profiling_window();
   debug_stuff(app);
-
-  do {
-    auto poll_event_scope = utils::scope_start("poll event start"_hs);
-    while (SDL_PollEvent(&ev)) {
-      sev |= handle_events(ev, app.input_state);
-    }
-    utils::scope_end(poll_event_scope);
-  } while (!app.video->wait_frame(1000));
 
   update(app);
 
@@ -303,6 +315,7 @@ EXPORT AppEvent frame(App& app) {
 
   if (any(sev & AppEvent::SkipRender)) {
     LOG_TRACE("rendering skiped");
+    ImGui::EndFrame();
   }
   if (any(sev & AppEvent::RebuildRenderer)) {
     LOG_INFO("rebuilding renderer");

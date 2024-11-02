@@ -8,10 +8,10 @@
 AppPFNs init_app_stub() {
   LOG_INFO("stub");
   return AppPFNs{
-      .handle = nullptr,
-      .init   = [](AppState* app_state, subsystem ::video*) -> App* { return (App*)app_state; },
-      .uninit = [](App& app_state) -> AppState* { return (AppState*)&app_state; },
-      .frame  = [](App&) -> AppEvent {
+      .handle         = nullptr,
+      .init           = [](AppState* app_state, subsystem ::video*) -> App* { return (App*)app_state; },
+      .uninit         = [](App& app_state) -> AppState* { return (AppState*)&app_state; },
+      .process_events = [](App&) -> AppEvent {
         using namespace core::enum_helpers;
         AppEvent sev{};
         SDL_Event ev{};
@@ -42,6 +42,7 @@ AppPFNs init_app_stub() {
         }
         return sev;
       },
+      .new_frame = [](App&) { return AppEvent{}; },
   };
 }
 
@@ -83,16 +84,18 @@ AppPFNs load_app(core::str8 soname_) {
   LOG_DEBUG("loading app at location %s", soname);
 
   dlerror();
-  const usize max_retry = 5;
-  for (usize retry = 0; retry < max_retry; retry++) {
+  const usize MAX_RETRY = 15;
+  usize wait_time       = MSEC(5);
+  for (usize retry = 0; retry < MAX_RETRY; retry++) {
     libapp_handle   = dlopen(soname, RTLD_LOCAL | RTLD_NOW);
     app.handle      = libapp_handle;
     const char* err = dlerror();
     if (err == nullptr) {
       break;
     }
-    LOG_ERROR("can't load so %s: %s (%zu/%zu)", soname, err, retry, max_retry);
-    os::sleep(MSEC(5));
+    LOG_ERROR("can't load so %s: %s (%zu/%zu)", soname, err, retry, MAX_RETRY);
+    os::sleep(wait_time);
+    wait_time *= 2;
   }
   if (libapp_handle == nullptr) {
     goto failed;
@@ -104,7 +107,10 @@ AppPFNs load_app(core::str8 soname_) {
   app.uninit = (PFN_uninit)dlsym(libapp_handle, "uninit");
   CHECK_DLERROR("can't open uninit");
 
-  app.frame = (PFN_frame)dlsym(libapp_handle, "frame");
+  app.process_events = (PFN_process_events)dlsym(libapp_handle, "process_events");
+  CHECK_DLERROR("can't open process_events");
+
+  app.new_frame = (PFN_new_frame)dlsym(libapp_handle, "new_frame");
   CHECK_DLERROR("can't open frame");
 
   app.uninit = uninit_app;

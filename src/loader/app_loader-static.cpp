@@ -7,15 +7,17 @@ union SDL_Event;
 extern "C" {
 App* init(AppState*, subsystem ::video*);
 AppState* uninit(App&);
-AppEvent frame(App&);
+AppEvent process_events(App&);
+AppEvent new_frame(App&);
 }
 
 void load_app(AppPFNs& app) {
   app = AppPFNs{
-      .handle = nullptr,
-      .init   = init,
-      .uninit = uninit,
-      .frame  = frame,
+      .handle         = nullptr,
+      .init           = init,
+      .uninit         = uninit,
+      .process_events = process_events,
+      .new_frame      = new_frame,
   };
 }
 

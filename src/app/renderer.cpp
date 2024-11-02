@@ -29,6 +29,7 @@ using namespace core::literals;
 
 static core::array deps{
     "/assets/scenes/sponza.glb"_s,
+    "/assets/scenes/bistro.glb"_s,
 };
 
 MainRenderer MainRenderer::init(subsystem::video& v) {
@@ -72,8 +73,17 @@ MainRenderer MainRenderer::init(subsystem::video& v) {
 
 void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuffer cmd, vk::image2D& swapchain_image) {
   if (first_cmd_buffer) {
+    vk::pipeline_barrier(cmd, gpu_texture_descriptor.default_texture.sync_to({VK_IMAGE_LAYOUT_GENERAL}));
+    VkImageSubresourceRange range{
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .levelCount = 1,
+        .layerCount = 1,
+    };
+    VkClearColorValue color{.float32 = {1.0, 0.0, 1.0, 1.0}};
+    vkCmdClearColorImage(cmd, gpu_texture_descriptor.default_texture, VK_IMAGE_LAYOUT_GENERAL, &color, 1, &range);
+
     // TODO: send this in a second thread and voilà
-    mesh_loader.queue_mesh(device, cmd, deps[0]);
+    mesh_loader.queue_mesh(device, cmd, deps[1]);
     first_cmd_buffer = false;
   }
 
@@ -94,7 +104,8 @@ void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuff
 
   if (should_update_texture_descriptor) {
     for (auto& mesh : meshes.iter()) {
-      vk::pipeline_barrier(cmd, mesh.base_color.sync_to({VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}));
+      if (mesh.base_color)
+        vk::pipeline_barrier(cmd, mesh.base_color.sync_to({VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}));
     }
     gpu_texture_descriptor.update(device, default_sampler, meshes);
     should_update_texture_descriptor = false;
@@ -286,6 +297,13 @@ AppEvent render(AppState* app_state, subsystem::video& v, Renderer& renderer) {
 
 void swapchain_rebuilt(subsystem::video& v, Renderer& renderer) {
   LOG_TRACE("swapchain rebuilt");
+
+  // Rather than this, i think that a timeline semaphore + a coroutine, well whatever
+  // Thgs like
+  // on_semaphore_ready([]() {
+  //    uninit_old();
+  // })
+
   vkDeviceWaitIdle(v.device);
   renderer.main_renderer.swapchain_rebuilt(v);
 }

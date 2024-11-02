@@ -1,4 +1,5 @@
 #include "mesh.h"
+#include "core/core/type_info.h"
 #include "engine/graphics/vulkan/sync.h"
 
 #include <engine/graphics/vulkan/image.h>
@@ -68,12 +69,11 @@ MeshToken MeshLoader::queue_mesh(vk::Device& device, VkCommandBuffer cmd, core::
   for (const auto& buffer : core::storage{data->buffers_count, data->buffers}.iter()) {
     staging_buffer_size += buffer.size;
   }
-  for (const auto& texture : core::storage{data->buffers_count, data->buffers}.iter()) {
-    staging_buffer_size += texture.size;
+  for (const auto& texture : core::storage{data->textures_count, data->textures}.iter()) {
+    staging_buffer_size += texture.image->buffer_view->size;
   }
-  auto staging_token =
-      staging_buffers.insert(alloc, StagingBuffer::init(device, usize(1.5 * (f32)staging_buffer_size)));
-  auto& staging = staging_buffers[staging_token].value();
+  auto staging_token = staging_buffers.insert(alloc, StagingBuffer::init(device, usize(4 * (f32)staging_buffer_size)));
+  auto& staging      = staging_buffers[staging_token].value();
 
   auto work_on_mesh = [&](cgltf_mesh& mesh, const math::Mat4& transform) {
     for (auto& primitive : core::storage{mesh.primitives_count, mesh.primitives}.iter()) {
@@ -85,11 +85,21 @@ MeshToken MeshLoader::queue_mesh(vk::Device& device, VkCommandBuffer cmd, core::
 
       // === Index buffer ===
 
-      ASSERT(primitive.indices->component_type == cgltf_component_type_r_16u);
+      core::LayoutInfo component_layout;
+      switch (primitive.indices->component_type) {
+      case cgltf_component_type_r_16u:
+        component_layout = core::default_layout_of<u16>();
+        break;
+      case cgltf_component_type_r_32u:
+        component_layout = core::default_layout_of<u32>();
+        break;
+      default:
+        ASSERTM(false, "Component type not supported");
+      }
       {
-        auto indices = scratch_alloc.allocate_array<u16>(primitive.indices->count);
+        auto indices = scratch_alloc.allocate_array(component_layout, primitive.indices->count);
 
-        ASSERT(cgltf_accessor_unpack_indices(primitive.indices, indices.data, 2, indices.size));
+        ASSERT(cgltf_accessor_unpack_indices(primitive.indices, indices.data, component_layout.size, indices.size));
         VkBufferCreateInfo index_buf_create_info{
             .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
             .size                  = indices.into_bytes().size,
@@ -106,8 +116,11 @@ MeshToken MeshLoader::queue_mesh(vk::Device& device, VkCommandBuffer cmd, core::
             device.allocator, &index_buf_create_info, &alloc_create_info, &gpu_mesh.index_buffer,
             &gpu_mesh.index_buf_allocation, nullptr
         );
-        staging.copyMemoryToBuffer(device, cmd, indices.data, gpu_mesh.index_buffer, 0, indices.into_bytes().size);
-        gpu_mesh.indice_count = (u32)indices.size;
+        vmaCopyMemoryToAllocation(
+            device.allocator, indices.data, gpu_mesh.index_buf_allocation, 0, indices.into_bytes().size
+        );
+        gpu_mesh.indice_count = (u32)indices.size / component_layout.size;
+        gpu_mesh.huge_indices = primitive.indices->component_type == cgltf_component_type_r_32u;
       }
 
       // === Vertex buffer ===
@@ -115,56 +128,67 @@ MeshToken MeshLoader::queue_mesh(vk::Device& device, VkCommandBuffer cmd, core::
       // normal: 3
       // texcoord: 2
 
-      auto vertices = scratch_alloc.allocate_array<f32>(primitive.attributes[0].data->count * (4 + 4 + 2));
+      {
+        usize vertex_size = primitive.attributes[0].data->count * (4 + 4 + 2) * sizeof(f32);
 
-      usize offset = 0;
-      for (auto i : core::range{0zu, primitive.attributes[0].data->count}.iter()) {
-        for (auto& attribute : core::storage{primitive.attributes_count, primitive.attributes}.iter()) {
-          ASSERT(primitive.attributes[0].data->count == attribute.data->count);
+        VkBufferCreateInfo vertex_buf_create_info{
+            .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size                  = vertex_size,
+            .usage                 = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
+            .queueFamilyIndexCount = 1,
+            .pQueueFamilyIndices   = &device.omni_queue_family_index
+        };
+        VmaAllocationCreateInfo alloc_create_info{
+            .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+            .usage = VMA_MEMORY_USAGE_AUTO,
+        };
+        vmaCreateBuffer(
+            device.allocator, &vertex_buf_create_info, &alloc_create_info, &gpu_mesh.vertex_buffer,
+            &gpu_mesh.vertex_buf_allocation, nullptr
+        );
 
-          switch (attribute.type) {
-          case cgltf_attribute_type_position:
-            ASSERT(cgltf_accessor_read_float(attribute.data, i, vertices.data + offset + 0, 3));
-            break;
-          case cgltf_attribute_type_normal:
-            ASSERT(cgltf_accessor_read_float(attribute.data, i, vertices.data + offset + 3, 3));
-            break;
-          case cgltf_attribute_type_texcoord:
-            ASSERT(attribute.index == 0);
-            ASSERT(cgltf_accessor_read_float(attribute.data, i, vertices.data + offset + 6, 2));
-            break;
-          case cgltf_attribute_type_tangent:
-            LOG_WARNING("tangent attribute type not supported");
-            break;
-          case cgltf_attribute_type_color:
-            LOG_WARNING("color attribute type not supported");
-            break;
-          default:
-            LOG_WARNING("<unknown> attribute type not supported");
-            break;
+        void* dst_data = nullptr;
+        VK_ASSERT(vmaMapMemory(device.allocator, gpu_mesh.vertex_buf_allocation, &dst_data));
+
+        auto vertices = core::storage<f32>{vertex_size / sizeof(f32), (f32*)dst_data};
+        usize offset  = 0;
+        for (auto i : core::range{0zu, primitive.attributes[0].data->count}.iter()) {
+          for (auto& attribute : core::storage{primitive.attributes_count, primitive.attributes}.iter()) {
+            ASSERT(primitive.attributes[0].data->count == attribute.data->count);
+
+            switch (attribute.type) {
+            case cgltf_attribute_type_position:
+              ASSERT(cgltf_accessor_read_float(attribute.data, i, vertices.data + offset + 0, 3));
+              break;
+            case cgltf_attribute_type_normal:
+              ASSERT(cgltf_accessor_read_float(attribute.data, i, vertices.data + offset + 3, 3));
+              break;
+            case cgltf_attribute_type_texcoord:
+              ASSERT(cgltf_accessor_read_float(attribute.data, i, vertices.data + offset + 6, 2));
+              break;
+            case cgltf_attribute_type_tangent:
+              LOG_WARNING("tangent attribute type not supported");
+              break;
+            case cgltf_attribute_type_color:
+              LOG_WARNING("color attribute type not supported");
+              break;
+            default:
+              LOG_WARNING("<unknown> attribute type not supported");
+              break;
+            }
           }
+          offset += 3 + 3 + 2;
         }
-        offset += 3 + 3 + 2;
+
+        {
+          vmaUnmapMemory(device.allocator, gpu_mesh.vertex_buf_allocation);
+          usize local_offset = 0;
+          VK_ASSERT(
+              vmaFlushAllocations(device.allocator, 1, &gpu_mesh.vertex_buf_allocation, &local_offset, &vertex_size)
+          );
+        }
       }
-
-      VkBufferCreateInfo vertex_buf_create_info{
-          .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-          .size                  = vertices.into_bytes().size,
-          .usage                 = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-          .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
-          .queueFamilyIndexCount = 1,
-          .pQueueFamilyIndices   = &device.omni_queue_family_index
-      };
-      VmaAllocationCreateInfo alloc_create_info{
-          .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-          .usage = VMA_MEMORY_USAGE_AUTO,
-      };
-      vmaCreateBuffer(
-          device.allocator, &vertex_buf_create_info, &alloc_create_info, &gpu_mesh.vertex_buffer,
-          &gpu_mesh.vertex_buf_allocation, nullptr
-      );
-
-      staging.copyMemoryToBuffer(device, cmd, vertices.data, gpu_mesh.vertex_buffer, 0, vertices.into_bytes().size);
 
       // === Materials ===
       if (primitive.material != nullptr) {
@@ -179,23 +203,26 @@ MeshToken MeshLoader::queue_mesh(vk::Device& device, VkCommandBuffer cmd, core::
         u8* mem = stbi_load_from_memory(
             (const stbi_uc*)buf_view->buffer->data + buf_view->offset, (int)buf_view->size, &x, &y, &channels, 4
         );
-        // LOG2_TRACE("decode image end");
-        ASSERTM(mem != 0, "can't load texture: %s", stbi_failure_reason());
+        if (staging.image_enough_memory(sizeof(u8) * 4, (u32)x, (u32)y)) {
+          ASSERTM(mem != 0, "can't load texture: %s", stbi_failure_reason());
 
-        vk::image2D::ConfigExtentValues config_extent_values{};
-        gpu_mesh.base_color = vk::image2D::create(
-            device, config_extent_values,
-            vk::image2D::Config{
-                .format = VK_FORMAT_R8G8B8A8_UNORM,
-                .extent = {.constant{.width = (u32)x, .height = (u32)y}},
-                .tiling = VK_IMAGE_TILING_OPTIMAL,
-                .usage  = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-            },
-            {}
-        );
+          vk::image2D::ConfigExtentValues config_extent_values{};
+          gpu_mesh.base_color = vk::image2D::create(
+              device, config_extent_values,
+              vk::image2D::Config{
+                  .format = VK_FORMAT_R8G8B8A8_UNORM,
+                  .extent = {.constant{.width = (u32)x, .height = (u32)y}},
+                  .tiling = VK_IMAGE_TILING_OPTIMAL,
+                  .usage  = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+              },
+              {}
+          );
 
-        vk::pipeline_barrier(cmd, gpu_mesh.base_color.sync_to({VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL}));
-        staging.copyMemoryToImage(device, cmd, mem, gpu_mesh.base_color, sizeof(u8) * 4, {}, (u32)x, (u32)y);
+          vk::pipeline_barrier(cmd, gpu_mesh.base_color.sync_to({VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL}));
+          staging.copyMemoryToImage(device, cmd, mem, gpu_mesh.base_color, sizeof(u8) * 4, {}, (u32)x, (u32)y);
+        } else {
+          LOG2_TRACE("staging full");
+        }
         stbi_image_free(mem);
       }
 
@@ -211,17 +238,28 @@ MeshToken MeshLoader::queue_mesh(vk::Device& device, VkCommandBuffer cmd, core::
     }
   };
 
-  ASSERT(data->scene != nullptr);
-  for (auto& node : core::storage{data->scene->nodes_count, data->scene->nodes}.iter()) {
-    LOG2_TRACE("node start");
+  auto work_on_node = [&](this auto self, cgltf_node* node) -> void {
+    math::Mat4 transform = math::Mat4::Id;
+    cgltf_node_transform_world(node, transform._coeffs);
+    LOG2_TRACE("node: ", node->name);
     if (node->mesh != nullptr) {
-      math::Mat4 transform = math::Mat4::Id;
-      cgltf_node_transform_world(node, transform._coeffs);
-
       work_on_mesh(*node->mesh, transform);
     }
-    LOG2_TRACE("node end");
+
+    for (cgltf_node* child : core::storage{node->children_count, node->children}.iter()) {
+      self(child);
+    }
+  };
+
+  ASSERT(data->scene != nullptr);
+  LOG2_TRACE("scenes start");
+  for (auto scene : core::storage{data->scenes_count, data->scenes}.iter()) {
+    LOG2_TRACE("scene: ", scene.name);
+    for (cgltf_node* node : core::storage{scene.nodes_count, scene.nodes}.iter()) {
+      work_on_node(node);
+    }
   }
+  LOG2_TRACE("scene end");
 
   staging.close(cmd);
 

@@ -24,7 +24,11 @@ struct Frame {
   VkFence render_done_fence;
 };
 
+// This has the same semantics as VkWaitForFence: timeout is in ns and 0 means no wait
 bool wait_frame(VkDevice device, FrameSynchro& sync, u64 timeout = 0);
+
+// Requires that a frame is ready to be begin
+// This can be checked by using wait_frame
 core::tuple<core::Maybe<Frame>, bool> begin_frame(VkDevice device, VkSwapchainKHR swapchain, FrameSynchro& sync);
 
 VkResult end_frame(VkDevice device, VkQueue present_queue, VkSwapchainKHR swapchain, Frame frame);

@@ -105,28 +105,38 @@ void BasicRenderer::render(
     }
         .upload(cmd, layout);
 
-    vkCmdBindIndexBuffer(cmd, mesh->index_buffer, 0, VK_INDEX_TYPE_UINT16);
+    vkCmdBindIndexBuffer(cmd, mesh->index_buffer, 0, mesh->huge_indices ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
     vkCmdDrawIndexed(cmd, mesh->indice_count, 1, 0, 0, 0);
   }
 }
 
 GpuTextureDescriptor GpuTextureDescriptor::init(subsystem::video& v) {
   VkDescriptorPool pool = vk::DescriptorPoolBuilder{
-      .max_sets = 1, .sizes = {VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 50}}
+      .max_sets = 1, .sizes = {VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2000}}
   }.build(v.device);
 
   VkDescriptorSetLayout layout = vk::DescriptorSetLayoutBuilder{
       .bindings = {VkDescriptorSetLayoutBinding{
-          0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 50, VK_SHADER_STAGE_FRAGMENT_BIT
+          0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2000, VK_SHADER_STAGE_FRAGMENT_BIT
       }}
   }.build(v.device);
 
   VkDescriptorSet set = vk::DescriptorSetAllocateInfo{pool, {layout}}.allocate(v.device);
 
+  auto default_texture = v.create_image2D(
+      vk::image2D::Config{
+          .format = VK_FORMAT_R8G8B8A8_UNORM,
+          .extent = {.constant = {.width = 1, .height = 1}},
+          .usage  = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+      },
+      {}
+  );
+
   return {
       pool,
       layout,
       set,
+      default_texture,
   };
 }
 
@@ -135,16 +145,28 @@ void GpuTextureDescriptor::update(VkDevice device, VkSampler sampler, core::stor
   core::Allocator alloc = scratch;
   core::vec<VkDescriptorImageInfo> image_infos;
   for (auto& mesh : meshes.iter()) {
-    image_infos.push(
-        alloc,
-        VkDescriptorImageInfo{
-            .sampler     = sampler,
-            .imageView   = mesh.base_color.image_view,
-            .imageLayout = mesh.base_color.sync.layout,
-        }
-    );
+    if (mesh.base_color.image_view == VK_NULL_HANDLE) {
+      image_infos.push(
+          alloc,
+          VkDescriptorImageInfo{
+              .sampler     = sampler,
+              .imageView   = default_texture.image_view,
+              .imageLayout = default_texture.sync.layout,
+          }
+      );
+    } else {
+      image_infos.push(
+          alloc,
+          VkDescriptorImageInfo{
+              .sampler     = sampler,
+              .imageView   = mesh.base_color.image_view,
+              .imageLayout = mesh.base_color.sync.layout,
+          }
+      );
+    }
   }
   if (image_infos.size() == 0) {
+
     return;
   }
   vk::DescriptorSetUpdater{
@@ -165,6 +187,7 @@ void GpuTextureDescriptor::update(VkDevice device, VkSampler sampler, core::stor
 void GpuTextureDescriptor::uninit(subsystem::video& v) {
   vkDestroyDescriptorSetLayout(v.device, layout, nullptr);
   vkDestroyDescriptorPool(v.device, pool, nullptr);
+  default_texture.destroy(v.device);
 }
 
 CameraDescriptor CameraDescriptor::init(subsystem::video& v) {

@@ -52,7 +52,7 @@ struct StagingBuffer {
       VkDeviceSize dst_offset,
       VkDeviceSize dst_size
   ) {
-    ASSERT(offset + dst_size < size);
+    ASSERT(enough_memory(dst_size));
     vmaCopyMemoryToAllocation(device.allocator, src, allocation, offset, dst_size);
 
     VkBufferCopy region{
@@ -64,6 +64,14 @@ struct StagingBuffer {
 
     offset += dst_size;
   }
+  bool enough_memory(VkDeviceSize dst_size) const {
+    return offset + dst_size < size;
+  }
+  bool image_enough_memory(usize texel_size, u32 image_width, u32 image_height) const {
+    usize dst_size = image_width * image_height * texel_size;
+    usize offset_  = ALIGN_UP(offset, texel_size);
+    return offset_ + dst_size < size;
+  }
 
   void copyMemoryToImage(
       vk::Device& device,
@@ -73,13 +81,13 @@ struct StagingBuffer {
       VkImageLayout dst_image_layout,
       VkExtent3D dst_image_extent3,
       usize texel_size,
-      VkOffset3D dst_image_offset = {},
-      u32 image_width             = 0,
-      u32 image_height            = 0
+      VkOffset3D dst_image_offset,
+      u32 image_width,
+      u32 image_height
   ) {
     usize dst_size = image_width * image_height * texel_size;
     offset         = ALIGN_UP(offset, texel_size);
-    ASSERT(offset + dst_size < size);
+    ASSERT(image_enough_memory(texel_size, image_width, image_height));
     vmaCopyMemoryToAllocation(device.allocator, src, allocation, offset, dst_size);
 
     VkBufferImageCopy region{
@@ -107,9 +115,9 @@ struct StagingBuffer {
       void* src,
       vk::image2D& dst,
       usize texel_size,
-      VkOffset3D dst_image_offset = {},
-      u32 image_width             = 0,
-      u32 image_height            = 0
+      VkOffset3D dst_image_offset,
+      u32 image_width,
+      u32 image_height
   ) {
     copyMemoryToImage(
         device, cmd, src, dst.image, dst.sync.layout, dst.extent.extent3, texel_size, dst_image_offset, image_width,
@@ -144,6 +152,9 @@ struct GpuMesh {
 
   math::Mat4 transform = math::Mat4::Id;
   u32 indice_count;
+
+  // if true, indices are u32
+  bool huge_indices;
 };
 
 void unload_mesh(subsystem::video&, GpuMesh);

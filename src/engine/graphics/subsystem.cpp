@@ -113,8 +113,8 @@ EXPORT void video_rebuild_swapchain(video& v) {
   }
 }
 
-EXPORT bool video::wait_frame(u64 timeout) {
-  return vk::wait_frame(device, sync, timeout);
+EXPORT bool video::wait_frame(u64 timeout_ns) {
+  return vk::wait_frame(device, sync, timeout_ns);
 }
 
 EXPORT core::tuple<core::Maybe<VideoFrame>, bool> video::begin_frame() {

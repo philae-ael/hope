@@ -36,7 +36,7 @@ EXPORT core::tuple<core::Maybe<Frame>, bool> begin_frame(
   auto frame_id = (sync.frame_id + 1) % sync.inflight;
 
   u32 swapchain_image_index;
-  wait_frame(device, sync, 0);
+  ASSERT(wait_frame(device, sync, 0));
 
   VkResult res = vkAcquireNextImageKHR(
       device, swapchain, 0, sync.acquire_semaphores[frame_id], VK_NULL_HANDLE, &swapchain_image_index

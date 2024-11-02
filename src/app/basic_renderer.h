@@ -29,6 +29,7 @@ struct GpuTextureDescriptor {
   VkDescriptorPool pool;
   VkDescriptorSetLayout layout;
   VkDescriptorSet set;
+  vk::image2D default_texture;
 
   static GpuTextureDescriptor init(subsystem::video& v);
   void update(VkDevice device, VkSampler sampler, core::storage<GpuMesh> meshes);
