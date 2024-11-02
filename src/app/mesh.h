@@ -131,6 +131,10 @@ struct StagingBuffer {
   }
 };
 
+struct Uploader {
+  StagingBuffer staging_buffer;
+};
+
 struct GpuMesh {
   VkBuffer vertex_buffer;
   VkBuffer index_buffer;

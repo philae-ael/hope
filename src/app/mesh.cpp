@@ -19,6 +19,8 @@ void unload_mesh(subsystem::video& v, GpuMesh mesh) {
   mesh.base_color.destroy(v.device);
 }
 
+// WARN: This code will crash on a non rebar system!
+// THIS IS TRASH!
 MeshToken MeshLoader::queue_mesh(vk::Device& device, VkCommandBuffer cmd, core::str8 src) {
   LOG2_INFO("loading mesh from ", src);
   auto alloc = core::get_named_allocator(core::AllocatorName::General);

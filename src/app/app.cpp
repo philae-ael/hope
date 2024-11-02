@@ -277,6 +277,9 @@ EXPORT AppEvent frame(App& app) {
   AppEvent sev{};
   SDL_Event ev{};
 
+  core::get_named_arena(core::ArenaName::Frame).reset();
+  utils::timings_frame_start();
+  defer { utils::timings_frame_end(); };
   ImGui_ImplVulkan_NewFrame();
   ImGui_ImplSDL3_NewFrame();
   ImGui::NewFrame();

@@ -11,6 +11,7 @@ set(SDL_SENSOR OFF)
 set(SDL_DIALOG OFF)
 add_subdirectory(SDL)
 add_subdirectory(VulkanMemoryAllocator)
+add_subdirectory(libuv)
 
 add_library(imgui STATIC
   imgui/imgui.cpp

@@ -91,7 +91,7 @@ add_library(engine
   src/engine/utils/config.cpp
   src/engine/utils/time.cpp
 )
-target_link_libraries(engine PUBLIC core SDL3::SDL3 Vulkan::Vulkan imgui GPUOpen::VulkanMemoryAllocator misc)
+target_link_libraries(engine PUBLIC core SDL3::SDL3 Vulkan::Vulkan imgui GPUOpen::VulkanMemoryAllocator libuv::libuv misc)
 set_property(TARGET engine PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_include_directories(engine PUBLIC src)
 

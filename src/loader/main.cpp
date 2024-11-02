@@ -1,5 +1,6 @@
 
 #include "app_loader.h"
+#include "core/core/memory.h"
 #include "core/os/fs.h"
 
 #include <backends/imgui_impl_sdl3.h>
@@ -15,6 +16,7 @@
 #include <SDL3/SDL_events.h>
 #include <cstdlib>
 #include <imgui.h>
+#include <uv.h>
 
 struct Renderer;
 
@@ -31,36 +33,36 @@ log_entry timed_formatter(void* u, Allocator alloc, core::log_entry entry) {
   return entry;
 }
 
+void mount_paths() {
+  auto scratch = core::scratch_get();
+
+  auto cwd = os::getcwd(scratch);
+  // fs::mount("/"_s, cwd);
+
+  auto assetdir = core::join(scratch, "/"_s, cwd, "assets");
+  fs::mount("/assets"_s, assetdir);
+  auto shaderdir = core::join(scratch, "/"_s, assetdir, "shaders-compiled");
+  fs::mount("/assets/shaders"_s, shaderdir);
+
+#ifdef SHARED
+  auto libdir = core::join(scratch, "/"_s, cwd, "build");
+  fs::mount("/lib"_s, libdir);
+#endif
+}
+
 int main(int argc, char* argv[]) {
   /// === Env setup and globals initializations  ===
   setup_crash_handler();
   log_register_global_formatter(log_timed_formatter, nullptr);
   log_set_global_level(core::LogLevel::Trace);
+
+  uv_loop_init(uv_default_loop());
+  fs::init(uv_default_loop());
+  mount_paths();
+
   utils::timings_init();
-  fs::init();
 
   auto global_alloc = core::get_named_allocator(core::AllocatorName::General);
-  {
-    auto cwd = os::getcwd(global_alloc);
-    // fs::mount("/"_s, cwd);
-
-    auto assetdir = core::join(global_alloc, "/"_s, cwd, "assets");
-    fs::mount("/assets"_s, assetdir);
-    {
-      auto shaderdir = core::join(global_alloc, "/"_s, assetdir, "shaders-compiled");
-      fs::mount("/assets/shaders"_s, shaderdir);
-      global_alloc.deallocate(shaderdir.data);
-    }
-    global_alloc.deallocate(assetdir.data);
-
-#ifdef SHARED
-    auto libdir = core::join(global_alloc, "/"_s, cwd, "build");
-    fs::mount("/lib"_s, libdir);
-    global_alloc.deallocate(libdir.data);
-#endif
-
-    global_alloc.deallocate(cwd.data);
-  }
 
   /// === Load App ===
 
@@ -83,15 +85,13 @@ int main(int argc, char* argv[]) {
   LOG_INFO("App fully initialized");
 
   /// === Main loop ===
+  /// Note: frame start and end are not directly dictated by the loop
   while (!false) {
-    core::get_named_arena(core::ArenaName::Frame).reset();
-    utils::timings_frame_start();
-    defer { utils::timings_frame_end(); };
-
     /// === Frame Callbacks ===
-    auto fs_process_scope = utils::scope_start("fs process"_hs);
-    fs::process_modified_file_callbacks();
-    utils::scope_end(fs_process_scope);
+
+    // Note: lib uv is not thread safe...
+    // TODO: Use a circular buffer to send data to libuv, in another thread
+    uv_run(uv_default_loop(), UV_RUN_NOWAIT);
 
     /// === Frame Udpate ===
     auto sev = app_pfns.frame(*app);
@@ -122,5 +122,8 @@ int main(int argc, char* argv[]) {
   ImGui::DestroyContext();
   subsystem::uninit_video(video);
   SDL_Quit();
+
+  uv_loop_close(uv_default_loop());
+
   LOG_INFO("Bye");
 }

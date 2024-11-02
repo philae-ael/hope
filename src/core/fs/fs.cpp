@@ -11,6 +11,7 @@
 
 #include <cerrno>
 #include <filesystem>
+#include <uv.h>
 
 namespace std {
 namespace fs = std::filesystem;
@@ -43,22 +44,25 @@ namespace fs {
 struct watch {
   usize id;
   const char* path;
-  std::fs::file_time_type last_modified_time;
   void* userdata;
   on_file_modified_t callback;
+  uv_fs_event_t ev;
 };
 
 struct {
   core::Arena* arena;
   fstree root;
-  core::vec<watch> watchs;
+  core::pool<watch> watchs;
   usize watch_id;
+
+  uv_loop_t* event_loop;
 } fs;
 
 using namespace core::literals;
 
-EXPORT void init() {
-  fs.arena = &core::arena_alloc();
+EXPORT void init(uv_loop_t* event_loop) {
+  fs.event_loop = event_loop;
+  fs.arena      = &core::arena_alloc();
 }
 
 EXPORT void mount(core::str8 path, core::str8 target) {
@@ -117,7 +121,7 @@ EXPORT core::Maybe<core::str8> resolve_path(core::Allocator alloc, core::str8 pa
   return s;
 }
 
-EXPORT core::storage<u8> read_all(core::Allocator alloc, core::str8 path) {
+EXPORT core::storage<u8> read_all(core::Allocator alloc, virtualpath path) {
   auto scratch = core::scratch_get();
 
   LOG2_TRACE("reading file ", path);
@@ -154,52 +158,41 @@ register_modified_file_callback(core::str8 path, on_file_modified_t callback, vo
     ftime = std::fs::file_time_type::min();
   }
 
-  fs.watchs.push(
-      *fs.arena,
-      watch{
-          fs.watch_id++,
-          cpath,
-          ftime,
-          userdata,
-          callback,
-      }
+  watch* w = &fs.watchs.allocate(*fs.arena);
+  new (w) watch{
+      fs.watch_id++,
+      cpath,
+      userdata,
+      callback,
+      // This requires the memory to be pinned! The memory in a pool is pinned so ok
+      uv_fs_event_t{.data = w},
+  };
+
+  uv_fs_event_init(fs.event_loop, &w->ev);
+  uv_fs_event_start(
+      &w->ev,
+      [](uv_fs_event_t* handle, const char* filename, int events, int status) {
+        if ((events & UV_CHANGE) != 0) {
+          LOG_TRACE("path %s changed!", filename);
+
+          watch* w = (watch*)handle->data;
+          w->callback(w->userdata);
+        }
+      },
+      cpath, 0
   );
 
-  return on_file_modified_handle{fs.watchs.last().value().id};
-}
-
-EXPORT void process_modified_file_callbacks() {
-  for (auto& w : fs.watchs.iter()) {
-    bool dirty = false;
-    std::error_code ec;
-    auto ftime = std::fs::last_write_time(w.path, ec);
-    if (ec) {
-      LOG_WARNING("error on file %s ", w.path);
-      ftime = std::fs::file_time_type::min();
-    } else if (w.last_modified_time < ftime) {
-      dirty = true;
-    }
-
-    w.last_modified_time = ftime;
-
-    if (dirty) {
-      LOG_TRACE("path %s changed!", w.path);
-      w.callback(w.userdata);
-    }
-  }
+  return on_file_modified_handle{(usize)w};
 }
 
 // A lot of memory can be leaked un register/unregister are called too often...
 EXPORT void unregister_modified_file_callback(on_file_modified_handle h) {
-  for (auto& w : fs.watchs.iter()) {
-    if (w.id == (usize)h) {
-      LOG_TRACE("unregistering path %s to be watched", w.path);
-      SWAP(w, fs.watchs[fs.watchs.size() - 1]);
-      fs.watchs.pop(core::noalloc);
-      return;
-    }
-  }
-  LOG_WARNING("on file modified handle not found!");
+  watch* w = (watch*)h;
+  LOG_TRACE("unregistering path %s to be watched", w->path);
+
+  uv_fs_event_stop(&w->ev);
+  fs.watchs.deallocate(*fs.arena, *w);
+  return;
 }
 
 } // namespace fs
