@@ -46,9 +46,9 @@ struct pool {
     if (n->next)
       n->next->prev = n->prev;
 
-    if (alloc.try_resize(n, sizeof(node), 0)) {
-      return;
-    }
+    // if (alloc.try_resize(n, sizeof(node), 0)) {
+    //   return;
+    // }
 
     n->next       = freelist_head;
     freelist_head = n;

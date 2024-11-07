@@ -146,7 +146,7 @@ struct Rasterization {
         .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
         .depthClampEnable        = false,
         .rasterizerDiscardEnable = false,
-        .cullMode                = cull_back ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_NONE,
+        .cullMode                = VkCullModeFlags(cull_back ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_NONE),
         .frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE,
         .depthBiasEnable         = false,
         .depthBiasConstantFactor = 0.0,

@@ -25,6 +25,12 @@ char (&_ArraySizeHelper(T (&arr)[N]))[N];
   #error platform not supported
 #endif
 
+#if WINDOWS
+  #define NO_UNIQUE_ADDRESS
+#else
+  #define NO_UNIQUE_ADDRESS [[no_unique_address]]
+#endif
+
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define SWAP(a, b)  \

@@ -83,7 +83,7 @@ void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuff
     vkCmdClearColorImage(cmd, gpu_texture_descriptor.default_texture, VK_IMAGE_LAYOUT_GENERAL, &color, 1, &range);
 
     // TODO: send this in a second thread and voilà
-    mesh_loader.queue_mesh(device, cmd, deps[1]);
+    mesh_loader.queue_mesh(device, cmd, deps[0]);
     first_cmd_buffer = false;
   }
 

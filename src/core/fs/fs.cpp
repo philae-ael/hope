@@ -4,9 +4,6 @@
 #include <core/containers/vec.h>
 #include <core/core.h>
 
-#if WINDOWS
-  #define _CRT_SECURE_NO_WARNINGS
-#endif
 #include <cstdio>
 
 #include <cerrno>
@@ -165,33 +162,40 @@ register_modified_file_callback(core::str8 path, on_file_modified_t callback, vo
       userdata,
       callback,
       // This requires the memory to be pinned! The memory in a pool is pinned so ok
-      uv_fs_event_t{.data = w},
+      uv_fs_event_t{},
   };
 
-  uv_fs_event_init(fs.event_loop, &w->ev);
-  uv_fs_event_start(
-      &w->ev,
-      [](uv_fs_event_t* handle, const char* filename, int events, int status) {
-        if ((events & UV_CHANGE) != 0) {
-          LOG_TRACE("path %s changed!", filename);
+  if (uv_handle_get_data((uv_handle_t*)&w->ev) == nullptr) {
+    ASSERT(uv_fs_event_init(fs.event_loop, &w->ev) == 0);
+  }
+  uv_handle_set_data((uv_handle_t*)&w->ev, w);
+  ASSERT(
+      uv_fs_event_start(
+          &w->ev,
+          [](uv_fs_event_t* handle, const char* filename, int events, int status) {
+            if ((events & UV_CHANGE) != 0) {
+              LOG_TRACE("path %s changed!", filename);
 
-          watch* w = (watch*)handle->data;
-          w->callback(w->userdata);
-        }
-      },
-      cpath, 0
+              watch* w = (watch*)handle->data;
+              w->callback(w->userdata);
+            }
+          },
+          cpath, 0
+      ) == 0
   );
 
   return on_file_modified_handle{(usize)w};
 }
 
-// A lot of memory can be leaked un register/unregister are called too often...
 EXPORT void unregister_modified_file_callback(on_file_modified_handle h) {
   watch* w = (watch*)h;
   LOG_TRACE("unregistering path %s to be watched", w->path);
 
-  uv_fs_event_stop(&w->ev);
-  fs.watchs.deallocate(*fs.arena, *w);
+  ASSERT(uv_fs_event_stop(&w->ev) == 0);
+  uv_close((uv_handle_t*)&w->ev, [](uv_handle_t* handle) {
+    watch* w = (watch*)handle->data;
+    fs.watchs.deallocate(*fs.arena, *w);
+  });
   return;
 }
 

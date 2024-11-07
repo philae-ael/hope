@@ -233,8 +233,8 @@ struct tuple<> {};
 
 template <class T, class... Args>
 struct tuple<T, Args...> {
-  [[no_unique_address]] T head;
-  [[no_unique_address]] tuple<Args...> tail;
+  NO_UNIQUE_ADDRESS T head;
+  NO_UNIQUE_ADDRESS tuple<Args...> tail;
 };
 
 template <class... Args>

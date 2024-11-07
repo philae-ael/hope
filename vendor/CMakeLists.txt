@@ -1,3 +1,4 @@
+set(SDL_STATIC ON)
 set(SDL_AUDIO OFF)
 set(SDL_VIDEO   ON)
 set(SDL_GPU ON)

@@ -73,12 +73,17 @@ else()
   # target_compile_definitions(core PRIVATE -DSCRATCH_DEBUG )
 endif()
 
+if(WIN32) 
+  target_compile_definitions(core PUBLIC -D_CRT_SECURE_NO_WARNINGS -DNOMINMAX )
+endif()
+
 set_property(TARGET core PROPERTY POSITION_INDEPENDENT_CODE ON)
 # set_property(TARGET core PROPERTY UNITY_BUILD ON)
 
 if (UNIX)
   target_link_libraries(core PUBLIC stdc++exp)
 endif()
+  target_link_libraries(core PUBLIC libuv::libuv)
 
 add_library(engine
   src/engine/graphics/subsystem.cpp
@@ -91,7 +96,7 @@ add_library(engine
   src/engine/utils/config.cpp
   src/engine/utils/time.cpp
 )
-target_link_libraries(engine PUBLIC core SDL3::SDL3 Vulkan::Vulkan imgui GPUOpen::VulkanMemoryAllocator libuv::libuv misc)
+target_link_libraries(engine PUBLIC core SDL3::SDL3-static Vulkan::Vulkan imgui GPUOpen::VulkanMemoryAllocator misc)
 set_property(TARGET engine PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_include_directories(engine PUBLIC src)
 
