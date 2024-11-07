@@ -110,9 +110,9 @@ EXPORT core::Maybe<core::str8> resolve_path(core::Allocator alloc, core::str8 pa
 
   core::str8 s;
   if (parts.rest.len == 0) {
-    s = core::join(alloc, "/"_s, *t->target, cur_part);
+    s = core::join(alloc, PATH_SEPARATOR_S, *t->target, cur_part);
   } else {
-    s = core::join(alloc, "/"_s, *t->target, cur_part, parts.rest);
+    s = core::join(alloc, PATH_SEPARATOR_S, *t->target, cur_part, parts.rest);
   }
   LOG2_TRACE("path ", path, " has been resolved to ", s);
   return s;

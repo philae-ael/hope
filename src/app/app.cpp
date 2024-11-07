@@ -260,6 +260,9 @@ void debug_stuff(App& app) {
 
   utils::config_f32xN("camera.position", app.state->camera.position._coeffs, 3);
   utils::config_f32xN("camera.rotation", app.state->camera.rotation.v._coeffs, 4);
+  utils::config_f32("camera.fov", &app.state->camera.hfov);
+  utils::config_f32("camera.near_plane", &app.state->camera.near);
+  utils::config_f32("camera.far_plane", &app.state->camera.far);
 
   static int log_level = (int)core::log_get_global_level();
   utils::config_choice("debug.log_level", &log_level, log_level_choices, ARRAY_SIZE(log_level_choices));

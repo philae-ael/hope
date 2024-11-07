@@ -14,7 +14,6 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_events.h>
-#include <cstdlib>
 #include <imgui.h>
 #include <uv.h>
 
@@ -39,9 +38,9 @@ void mount_paths() {
   auto cwd = os::getcwd(scratch);
   // fs::mount("/"_s, cwd);
 
-  auto assetdir = core::join(scratch, "/"_s, cwd, "assets");
+  auto assetdir = core::join(scratch, PATH_SEPARATOR_S, cwd, "assets");
   fs::mount("/assets"_s, assetdir);
-  auto shaderdir = core::join(scratch, "/"_s, assetdir, "shaders-compiled");
+  auto shaderdir = core::join(scratch, PATH_SEPARATOR_S, assetdir, "shaders-compiled");
   fs::mount("/assets/shaders"_s, shaderdir);
 
 #ifdef SHARED

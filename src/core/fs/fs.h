@@ -3,6 +3,14 @@
 
 #include <core/core.h>
 
+#if WINDOWS
+  #define PATH_SEPARATOR_S "\\"_s
+  #define PATH_SEPARATOR_C '\\'
+#else
+  #define PATH_SEPARATOR_S "/"_s
+  #define PATH_SEPARATOR_C '/'
+#endif
+
 typedef struct uv_loop_s uv_loop_t;
 
 namespace fs {

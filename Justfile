@@ -10,13 +10,13 @@ CXXFLAGS:=""
 
 default: build-all
 
-build-loader: configure
-	ninja -C{{OUTPUT_DIR}} loader app
+build-loader:
+  ninja -C{{OUTPUT_DIR}} loader app
 
-build-all : configure
+build-all:
 	ninja -C{{OUTPUT_DIR}}
 
-build-tests: configure
+build-tests:
 	ninja -C{{OUTPUT_DIR}} testcore
 
 run:  build-loader

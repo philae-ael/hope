@@ -79,8 +79,8 @@ struct AppState {
   usize version                  = CUR_VERSION;
   Camera camera{
       .hfov     = DEGREE(60),
-      .near     = 0.1f,
-      .far      = 50,
+      .near     = 1.f,
+      .far      = 50.f,
       .position = 1.5f * math::Vec4::Z,
       .rotation = math::Quat::Id,
   };
