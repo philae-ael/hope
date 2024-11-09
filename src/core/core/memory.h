@@ -203,7 +203,12 @@ struct Scratch {
 };
 
 inline constexpr AllocatorVTable MallocVtable{
-    .allocate   = [](void*, usize size, usize alignement, const char* src) { return calloc(size, 1); },
+    .allocate =
+        [](void*, usize size, usize alignement, const char* src) {
+          void* mem = calloc(size, 1);
+          ASSERT(mem);
+          return mem;
+        },
     .deallocate = [](void* userdata, void* alloc_base_ptr, usize size, const char* src
                   ) { return free(alloc_base_ptr); },
     .try_resize = [](void* userdata, void* ptr, usize cur_size, usize new_size, const char* src) { return false; },

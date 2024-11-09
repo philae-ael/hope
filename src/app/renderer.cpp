@@ -30,6 +30,7 @@ using namespace core::literals;
 static core::array deps{
     "/assets/scenes/sponza.glb"_s,
     "/assets/scenes/bistro.glb"_s,
+    "/assets/scenes/san miguel.glb"_s,
 };
 
 MainRenderer MainRenderer::init(subsystem::video& v) {
@@ -65,8 +66,11 @@ MainRenderer MainRenderer::init(subsystem::video& v) {
   );
   self.imgui_renderer = ImGuiRenderer::init(v);
 
-  self.mesh_loader      = MeshLoader::init(v.device);
+  self.mesh_loader      = core::get_named_allocator(core::AllocatorName::General).allocate<MeshLoader>();
+  self.mesh_loader      = new (self.mesh_loader) MeshLoader{MeshLoader::init(v.device)};
   self.first_cmd_buffer = true;
+
+  self.mesh_loader->queue_mesh(v.device, deps[2]);
 
   return self;
 }
@@ -81,10 +85,6 @@ void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuff
     };
     VkClearColorValue color{.float32 = {1.0, 0.0, 1.0, 1.0}};
     vkCmdClearColorImage(cmd, gpu_texture_descriptor.default_texture, VK_IMAGE_LAYOUT_GENERAL, &color, 1, &range);
-
-    // TODO: send this in a second thread and voilà
-    mesh_loader.queue_mesh(device, cmd, deps[0]);
-    first_cmd_buffer = false;
   }
 
   vk::pipeline_barrier(
@@ -92,7 +92,7 @@ void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuff
       depth.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}, VK_IMAGE_ASPECT_DEPTH_BIT)
   );
 
-  mesh_loader.work(
+  mesh_loader->work(
       device,
       [](void* u, vk::Device& device, MeshToken, GpuMesh mesh, bool) {
         auto* self = static_cast<MainRenderer*>(u);
@@ -183,6 +183,9 @@ void MainRenderer::uninit(subsystem::video& v) {
   for (auto& mesh : meshes.iter())
     unload_mesh(v, mesh);
   meshes.deallocate(core::get_named_allocator(core::AllocatorName::General));
+  mesh_loader->uninit(v.device);
+  core::get_named_allocator(core::AllocatorName::General).deallocate(mesh_loader);
+  mesh_loader = nullptr;
 
   basic_renderer.uninit(v.device);
   grid_renderer.uninit(v.device);
@@ -191,6 +194,7 @@ void MainRenderer::uninit(subsystem::video& v) {
   camera_descriptor.uninit(v);
   gpu_texture_descriptor.uninit(v);
   depth.destroy(v.device);
+
   vkDestroySampler(v.device, default_sampler, nullptr);
 
   return;

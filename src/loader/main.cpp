@@ -1,19 +1,20 @@
 
 #include "app_loader.h"
-#include "core/core/memory.h"
-#include "core/os/fs.h"
 
-#include <backends/imgui_impl_sdl3.h>
 #include <core/core.h>
+#include <core/core/memory.h>
+#include <core/core/sched.h>
 #include <core/fs/fs.h>
 #include <core/os.h>
-#include <core/os/time.h>
+
 #include <engine/graphics/subsystem.h>
 #include <engine/utils/config.h>
 #include <engine/utils/time.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_events.h>
+#include <backends/imgui_impl_sdl3.h>
+#include <cstdlib>
 #include <imgui.h>
 #include <uv.h>
 
@@ -55,7 +56,18 @@ int main(int argc, char* argv[]) {
   log_register_global_formatter(log_timed_formatter, nullptr);
   log_set_global_level(core::LogLevel::Trace);
 
-  uv_loop_init(uv_default_loop());
+  {
+    uv_loop_t* loop = uv_default_loop();
+    uv_loop_init(loop);
+    *core::default_task_queue()->allocate_job() = core::Task::from(
+        +[](uv_loop_t* loop, core::TaskQueue*) {
+          uv_run((uv_loop_t*)loop, UV_RUN_NOWAIT);
+          return core::TaskReturn::Yield;
+        },
+        loop
+    );
+  }
+
   fs::init(uv_default_loop());
   mount_paths();
 
@@ -86,11 +98,7 @@ int main(int argc, char* argv[]) {
   /// === Main loop ===
   /// Note: frame start and end are not directly dictated by the loop
   while (!false) {
-    /// === Frame Callbacks ===
-
-    // Note: lib uv is not thread safe...
-    // TODO: Use a circular buffer to send data to libuv, in another thread
-    uv_run(uv_default_loop(), UV_RUN_NOWAIT);
+    core::default_task_queue()->run();
 
     /// === Frame Udpate ===
     auto sev = app_pfns.process_events(*app);

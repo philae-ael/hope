@@ -161,9 +161,9 @@ struct handle_map {
 
   // There are 2 vec! Be careful with arenas
   // It allows for O(1) delete in exchange for O(N) additional storage added
-  core::vec<handle> handles;
-  core::vec<T> data;
-  handle_map_adapter hma;
+  core::vec<handle> handles{};
+  core::vec<T> data{};
+  handle_map_adapter hma{};
 
   handle insert(core::Allocator alloc, T&& t) {
     auto handle = hma.new_handle(alloc);

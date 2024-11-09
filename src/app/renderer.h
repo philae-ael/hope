@@ -22,7 +22,9 @@ struct MainRenderer {
   VkSampler default_sampler;
   bool should_update_texture_descriptor;
   bool first_cmd_buffer;
-  MeshLoader mesh_loader;
+
+  // requires to be pinned
+  MeshLoader* mesh_loader;
   core::vec<GpuMesh> meshes;
 
   static MainRenderer init(subsystem::video& v);

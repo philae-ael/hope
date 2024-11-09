@@ -28,6 +28,7 @@ add_library(core
   src/core/core/platform.cpp
   src/core/core/string.cpp
   src/core/core/type_info.cpp
+  src/core/core/sched.cpp
   src/core/fs/fs.cpp
   src/core/math/math.cpp
   src/core/os/memory.cpp

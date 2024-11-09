@@ -18,7 +18,9 @@ struct StagingBuffer {
   VkDeviceSize offset;
   VkDeviceSize size;
 
-  static StagingBuffer init(vk::Device& device, VkDeviceSize size) {
+  VkCommandBuffer cmd;
+
+  static StagingBuffer init(vk::Device& device, VkDeviceSize size, VkCommandBuffer cmd) {
     VkBufferCreateInfo buffer_create_info{
         .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .size                  = size,
@@ -41,12 +43,11 @@ struct StagingBuffer {
     };
     VkEvent event;
     vkCreateEvent(device, &fence_create_info, nullptr, &event);
-    return {buffer, allocation, event, 0, size};
+    return {buffer, allocation, event, 0, size, cmd};
   }
 
   void copyMemoryToBuffer(
       vk::Device& device,
-      VkCommandBuffer cmd,
       void* src,
       VkBuffer dst_buffer,
       VkDeviceSize dst_offset,
@@ -75,7 +76,6 @@ struct StagingBuffer {
 
   void copyMemoryToImage(
       vk::Device& device,
-      VkCommandBuffer cmd,
       void* src,
       VkImage dst_image,
       VkImageLayout dst_image_layout,
@@ -111,7 +111,6 @@ struct StagingBuffer {
 
   void copyMemoryToImage(
       vk::Device& device,
-      VkCommandBuffer cmd,
       void* src,
       vk::image2D& dst,
       usize texel_size,
@@ -120,13 +119,13 @@ struct StagingBuffer {
       u32 image_height
   ) {
     copyMemoryToImage(
-        device, cmd, src, dst.image, dst.sync.layout, dst.extent.extent3, texel_size, dst_image_offset, image_width,
+        device, src, dst.image, dst.sync.layout, dst.extent.extent3, texel_size, dst_image_offset, image_width,
         image_height
     );
   }
 
   // Call this one after the data has been fully queued to upload
-  void close(VkCommandBuffer cmd) {
+  void close() {
     vkCmdSetEvent(cmd, event, VK_PIPELINE_STAGE_TRANSFER_BIT);
   }
 
@@ -175,7 +174,7 @@ struct Job {
 class MeshLoader {
 public:
   using Callback = void (*)(void*, vk::Device& device, MeshToken, GpuMesh, bool mesh_fully_loaded);
-  MeshToken queue_mesh(vk::Device& device, VkCommandBuffer cmd, core::str8 src);
+  MeshToken queue_mesh(vk::Device& device, core::str8 src);
   void work(vk::Device& device, Callback callback, void* userdata) {
     // Do work
     for (auto t : staging_buffers.iter_rev_enumerate()) {
@@ -213,7 +212,16 @@ public:
   }
 
   static MeshLoader init(vk::Device& device) {
-    return {};
+    MeshLoader self{};
+
+    VkCommandPoolCreateInfo command_pool_create_info{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+    };
+    VK_ASSERT(vkCreateCommandPool(device, &command_pool_create_info, nullptr, &self.pool));
+    return self;
+  }
+  void uninit(vk::Device& device) {
+    vkDestroyCommandPool(device, pool, nullptr);
   }
 
 private:
@@ -221,9 +229,11 @@ private:
     VkCommandBuffer buf;
     usize counter;
   };
+  VkCommandPool pool;
   core::vec<Job> jobs;
-  core::handle_map<MeshJobInfo, MeshToken> mesh_job_infos;
-  core::handle_map<StagingBuffer, StagingBufferToken> staging_buffers;
+  core::handle_map<MeshJobInfo, MeshToken> mesh_job_infos{};
+  core::handle_map<StagingBuffer, StagingBufferToken> staging_buffers{};
+  friend struct LoadMeshTask;
 };
 
 #endif // INCLUDE_APP_MESH_LOADER_H_

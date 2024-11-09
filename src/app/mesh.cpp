@@ -1,12 +1,12 @@
 #include "mesh.h"
-#include "core/core/type_info.h"
-#include "engine/graphics/vulkan/sync.h"
 
 #include <engine/graphics/vulkan/image.h>
+#include <engine/graphics/vulkan/sync.h>
 #include <engine/graphics/vulkan/vulkan.h>
 
 #include <core/containers/vec.h>
 #include <core/core.h>
+#include <core/core/sched.h>
 #include <core/fs/fs.h>
 
 #include <cgltf.h>
@@ -20,66 +20,69 @@ void unload_mesh(subsystem::video& v, GpuMesh mesh) {
   mesh.base_color.destroy(v.device);
 }
 
-// WARN: This code will crash on a non rebar system!
-// THIS IS TRASH!
-MeshToken MeshLoader::queue_mesh(vk::Device& device, VkCommandBuffer cmd, core::str8 src) {
-  LOG2_INFO("loading mesh from ", src);
-  auto alloc = core::get_named_allocator(core::AllocatorName::General);
+struct LoadMeshTask {
+  core::Arena* arena;
 
-  auto scratch                  = core::scratch_get();
-  core::Allocator scratch_alloc = scratch;
+  core::Task* task;
+  vk::Device& device;
+  VkCommandBuffer cmd;
+  cgltf_data* data;
+  MeshToken mesh_token;
+  StagingBufferToken staging_token;
+  StagingBuffer* staging;
+  MeshLoader* mesh_loader;
 
-  MeshToken mesh_token = mesh_job_infos.insert(alloc, {});
-  auto& infos          = mesh_job_infos[mesh_token].value();
+  core::TaskReturn operator()(core::TaskQueue*) {
+    VkCommandBufferBeginInfo begin_info{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+    };
+    vkBeginCommandBuffer(cmd, &begin_info);
 
-  const char* path      = fs::resolve_path(*scratch, src).expect("can't find mesh").cstring(scratch);
-  cgltf_options options = {
-      .type   = cgltf_file_type_glb,
-      .memory = {
-          .alloc_func =
-              [](void* arena, usize size) {
-                core::Allocator alloc = *(core::Arena*)arena;
-                return alloc.allocate(size);
-              },
-          .free_func =
-              [](void* arena, void* ptr) {
-                core::Allocator alloc = *(core::Arena*)arena;
-                return alloc.deallocate(ptr, 0);
-              },
-          .user_data = scratch.arena_,
-      },
-  };
+    ASSERT(data->scene != nullptr);
+    LOG2_TRACE("scenes start");
+    for (auto scene : core::storage{data->scenes_count, data->scenes}.iter()) {
+      LOG2_TRACE("scene: ", scene.name);
+      for (cgltf_node* node : core::storage{scene.nodes_count, scene.nodes}.iter()) {
+        work_on_node(node);
+      }
+    }
+    LOG2_TRACE("scene end");
 
-  LOG2_TRACE("loading into memory ", src);
-  cgltf_data* data    = NULL;
-  cgltf_result result = cgltf_parse_file(&options, path, &data);
-  if (result != cgltf_result_success) {
-    core::panic("can't load gltf: %u", result);
+    staging->close();
+    vkEndCommandBuffer(cmd);
+    VkCommandBufferSubmitInfo command_buffer_info{
+        .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .commandBuffer = cmd,
+    };
+    VkSubmitInfo2 submit{
+        .sType                  = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+        .commandBufferInfoCount = 1,
+        .pCommandBufferInfos    = &command_buffer_info,
+    };
+    vkQueueSubmit2(device.omni_queue, 1, &submit, VK_NULL_HANDLE);
+
+    return core::TaskReturn::Stop;
   }
-  defer { cgltf_free(data); };
 
-  result = cgltf_load_buffers(&options, data, path);
-  if (result != cgltf_result_success) {
-    core::panic("can't load gltf: %u", result);
+  void work_on_node(cgltf_node* node) {
+    math::Mat4 transform = math::Mat4::Id;
+    cgltf_node_transform_world(node, transform._coeffs);
+    LOG2_TRACE("node: ", node->name);
+    if (node->mesh != nullptr) {
+      work_on_mesh(*node->mesh, transform);
+    }
+
+    for (cgltf_node* child : core::storage{node->children_count, node->children}.iter()) {
+      work_on_node(child);
+    }
   }
 
-  LOG2_TRACE("loaded into memory ", src);
-
-  usize staging_buffer_size = 0;
-  for (const auto& buffer : core::storage{data->buffers_count, data->buffers}.iter()) {
-    staging_buffer_size += buffer.size;
-  }
-  for (const auto& texture : core::storage{data->textures_count, data->textures}.iter()) {
-    staging_buffer_size += texture.image->buffer_view->size;
-  }
-  auto staging_token = staging_buffers.insert(alloc, StagingBuffer::init(device, usize(4 * (f32)staging_buffer_size)));
-  auto& staging      = staging_buffers[staging_token].value();
-
-  auto work_on_mesh = [&](cgltf_mesh& mesh, const math::Mat4& transform) {
+  void work_on_mesh(cgltf_mesh& mesh, const math::Mat4& transform) {
     for (auto& primitive : core::storage{mesh.primitives_count, mesh.primitives}.iter()) {
       ASSERT(primitive.type == cgltf_primitive_type_triangles);
 
-      auto tmpArena = scratch->make_temp();
+      auto tmp_arena            = arena->make_temp();
+      core::Allocator tmp_alloc = tmp_arena;
 
       GpuMesh gpu_mesh{.transform = transform};
 
@@ -97,7 +100,7 @@ MeshToken MeshLoader::queue_mesh(vk::Device& device, VkCommandBuffer cmd, core::
         ASSERTM(false, "Component type not supported");
       }
       {
-        auto indices = scratch_alloc.allocate_array(component_layout, primitive.indices->count);
+        auto indices = tmp_alloc.allocate_array(component_layout, primitive.indices->count);
 
         ASSERT(cgltf_accessor_unpack_indices(primitive.indices, indices.data, component_layout.size, indices.size));
         VkBufferCreateInfo index_buf_create_info{
@@ -193,76 +196,134 @@ MeshToken MeshLoader::queue_mesh(vk::Device& device, VkCommandBuffer cmd, core::
       // === Materials ===
       if (primitive.material != nullptr) {
         auto& material = *primitive.material;
-        ASSERT(material.has_pbr_metallic_roughness);
+        if (material.has_pbr_metallic_roughness &&
+            material.pbr_metallic_roughness.base_color_texture.texture != nullptr) {
 
-        auto buf_view = material.pbr_metallic_roughness.base_color_texture.texture->image->buffer_view;
-        int x, y, channels;
+          auto buf_view = material.pbr_metallic_roughness.base_color_texture.texture->image->buffer_view;
+          int x, y, channels;
 
-        // This is the slow part of loading a mesh so maybe... do  it on another thread
-        // LOG2_TRACE("decode image start");
-        u8* mem = stbi_load_from_memory(
-            (const stbi_uc*)buf_view->buffer->data + buf_view->offset, (int)buf_view->size, &x, &y, &channels, 4
-        );
-        if (staging.image_enough_memory(sizeof(u8) * 4, (u32)x, (u32)y)) {
-          ASSERTM(mem != 0, "can't load texture: %s", stbi_failure_reason());
-
-          vk::image2D::ConfigExtentValues config_extent_values{};
-          gpu_mesh.base_color = vk::image2D::create(
-              device, config_extent_values,
-              vk::image2D::Config{
-                  .format = VK_FORMAT_R8G8B8A8_UNORM,
-                  .extent = {.constant{.width = (u32)x, .height = (u32)y}},
-                  .tiling = VK_IMAGE_TILING_OPTIMAL,
-                  .usage  = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-              },
-              {}
+          // This is the slow part of loading a mesh so maybe... do  it on another thread
+          // LOG2_TRACE("decode image start");
+          u8* mem = stbi_load_from_memory(
+              (const stbi_uc*)buf_view->buffer->data + buf_view->offset, (int)buf_view->size, &x, &y, &channels, 4
           );
+          if (staging->image_enough_memory(sizeof(u8) * 4, (u32)x, (u32)y)) {
+            ASSERTM(mem != 0, "can't load texture: %s", stbi_failure_reason());
 
-          vk::pipeline_barrier(cmd, gpu_mesh.base_color.sync_to({VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL}));
-          staging.copyMemoryToImage(device, cmd, mem, gpu_mesh.base_color, sizeof(u8) * 4, {}, (u32)x, (u32)y);
-        } else {
-          LOG2_TRACE("staging full");
+            vk::image2D::ConfigExtentValues config_extent_values{};
+            gpu_mesh.base_color = vk::image2D::create(
+                device, config_extent_values,
+                vk::image2D::Config{
+                    .format = VK_FORMAT_R8G8B8A8_UNORM,
+                    .extent = {.constant{.width = (u32)x, .height = (u32)y}},
+                    .tiling = VK_IMAGE_TILING_OPTIMAL,
+                    .usage  = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                },
+                {}
+            );
+
+            vk::pipeline_barrier(cmd, gpu_mesh.base_color.sync_to({VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL}));
+            staging->copyMemoryToImage(device, mem, gpu_mesh.base_color, sizeof(u8) * 4, {}, (u32)x, (u32)y);
+          } else {
+            LOG2_TRACE("staging full");
+          }
+          stbi_image_free(mem);
         }
-        stbi_image_free(mem);
       }
 
-      infos.counter += 1;
-      jobs.push(
-          alloc,
-          {
+      mesh_loader->mesh_job_infos[mesh_token].value().counter += 1;
+      mesh_loader->jobs.push(
+          core::get_named_allocator(core::AllocatorName::General),
+          Job{
               mesh_token,
               staging_token,
               gpu_mesh,
           }
       );
     }
-  };
-
-  auto work_on_node = [&](this auto self, cgltf_node* node) -> void {
-    math::Mat4 transform = math::Mat4::Id;
-    cgltf_node_transform_world(node, transform._coeffs);
-    LOG2_TRACE("node: ", node->name);
-    if (node->mesh != nullptr) {
-      work_on_mesh(*node->mesh, transform);
-    }
-
-    for (cgltf_node* child : core::storage{node->children_count, node->children}.iter()) {
-      self(child);
-    }
-  };
-
-  ASSERT(data->scene != nullptr);
-  LOG2_TRACE("scenes start");
-  for (auto scene : core::storage{data->scenes_count, data->scenes}.iter()) {
-    LOG2_TRACE("scene: ", scene.name);
-    for (cgltf_node* node : core::storage{scene.nodes_count, scene.nodes}.iter()) {
-      work_on_node(node);
-    }
   }
-  LOG2_TRACE("scene end");
+  ~LoadMeshTask() {
+    cgltf_free(data);
+    core::arena_dealloc(*arena); // ? should Probably be done externally by mesh loader
+  }
+};
 
-  staging.close(cmd);
+// WARN: This code will crash on a non rebar system!
+// THIS IS TRASH!
+MeshToken MeshLoader::queue_mesh(vk::Device& device, core::str8 src) {
+  LOG2_INFO("loading mesh from ", src);
+  auto alloc = core::get_named_allocator(core::AllocatorName::General);
 
-  LOG2_INFO("loading of mesh ", src, " is done (still waiting data to copied onto the gpu)");
+  auto& arena                 = core::arena_alloc();
+  core::Allocator arena_alloc = arena;
+
+  MeshToken mesh_token  = mesh_job_infos.insert(alloc, {});
+  const char* path      = fs::resolve_path(arena_alloc, src).expect("can't find mesh").cstring(arena_alloc);
+  cgltf_options options = {
+      .type   = cgltf_file_type_glb,
+      .memory = {
+          .alloc_func =
+              [](void* arena, usize size) {
+                core::Allocator alloc = *(core::Arena*)arena;
+                return alloc.allocate(size);
+              },
+          .free_func =
+              [](void* arena, void* ptr) {
+                core::Allocator alloc = *(core::Arena*)arena;
+                return alloc.deallocate(ptr, 0);
+              },
+          .user_data = &arena,
+      },
+  };
+
+  LOG2_TRACE("loading into memory ", src);
+  cgltf_data* data    = NULL;
+  cgltf_result result = cgltf_parse_file(&options, path, &data);
+  if (result != cgltf_result_success) {
+    core::panic("can't load gltf: %u", result);
+  }
+  result = cgltf_load_buffers(&options, data, path);
+  if (result != cgltf_result_success) {
+    core::panic("can't load gltf: %u", result);
+  }
+
+  usize staging_buffer_size = 0;
+  for (const auto& buffer : core::storage{data->buffers_count, data->buffers}.iter()) {
+    staging_buffer_size += buffer.size;
+  }
+  for (const auto& texture : core::storage{data->textures_count, data->textures}.iter()) {
+    staging_buffer_size += texture.image->buffer_view->size;
+  }
+
+  VkCommandBuffer cmd;
+  VkCommandBufferAllocateInfo allocate_info{
+      .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+      .commandPool        = pool,
+      .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+      .commandBufferCount = 1,
+  };
+  vkAllocateCommandBuffers(device, &allocate_info, &cmd);
+
+  auto staging_token =
+      staging_buffers.insert(alloc, StagingBuffer::init(device, usize(4 * (f32)staging_buffer_size), cmd));
+  auto& staging = staging_buffers[staging_token].value();
+
+  auto* task = core::default_task_queue()->allocate_job();
+  *task      = core::Task::from(
+      [](LoadMeshTask* async_mesh_loader, core::TaskQueue* q) { return (*async_mesh_loader)(q); },
+      new (arena_alloc.allocate<LoadMeshTask>()) LoadMeshTask{
+          &arena,
+          task,
+          device,
+          cmd,
+          data,
+          mesh_token,
+          staging_token,
+          &staging,
+          this,
+      }
+  );
+
+  LOG2_INFO("loading of mesh ", src, " has been launched");
   return mesh_token;
 }

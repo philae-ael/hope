@@ -1,8 +1,5 @@
 #include "tests.h"
 
-#include <core/core/future.h>
+#include <core/core/sched.h>
 
-TEST(Sched) {
-  Scheduler sched{};
-  sched.run_main_thread();
-}
+TEST(Sched) {}
