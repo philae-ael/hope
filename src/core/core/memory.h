@@ -211,8 +211,15 @@ inline constexpr AllocatorVTable MallocVtable{
         },
     .deallocate = [](void* userdata, void* alloc_base_ptr, usize size, const char* src
                   ) { return free(alloc_base_ptr); },
-    .try_resize = [](void* userdata, void* ptr, usize cur_size, usize new_size, const char* src) { return false; },
-    .owns       = [](void* userdata, void* ptr) { return false; },
+    .try_resize =
+        [](void* userdata, void* ptr, usize cur_size, usize new_size, const char* src) {
+          if (new_size == 0) {
+            free(ptr);
+            return true;
+          };
+          return false;
+        },
+    .owns = [](void* userdata, void* ptr) { return false; },
 };
 
 enum class AllocatorName {

@@ -25,8 +25,10 @@ TEST(handle map adapter insert) {
 
   auto h3 = im.new_handle(alloc);
   tassert(im.resolve(h3) == core::Some<u32>(1), "invalid 3nd handle");
+  auto h4 = im.new_handle(alloc);
+  tassert(im.resolve(h4) == core::Some<u32>(2), "invalid 4nd handle");
 
-  command = im.free_handle(h3);
+  command = im.free_handle(h4);
   tassert(command.tag == decltype(command)::Tag::DeleteLast, "invalid command after free");
 }
 

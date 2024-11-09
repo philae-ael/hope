@@ -18,9 +18,7 @@ struct StagingBuffer {
   VkDeviceSize offset;
   VkDeviceSize size;
 
-  VkCommandBuffer cmd;
-
-  static StagingBuffer init(vk::Device& device, VkDeviceSize size, VkCommandBuffer cmd) {
+  static core::Maybe<StagingBuffer> init(vk::Device& device, VkDeviceSize size, VkCommandBuffer cmd) {
     VkBufferCreateInfo buffer_create_info{
         .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .size                  = size,
@@ -35,7 +33,11 @@ struct StagingBuffer {
     };
     VkBuffer buffer;
     VmaAllocation allocation;
-    vmaCreateBuffer(device.allocator, &buffer_create_info, &allocation_create_info, &buffer, &allocation, nullptr);
+    VkResult res =
+        vmaCreateBuffer(device.allocator, &buffer_create_info, &allocation_create_info, &buffer, &allocation, nullptr);
+    if (res < 0) {
+      return {};
+    }
     vmaSetAllocationName(device.allocator, allocation, "staging buffer");
 
     VkEventCreateInfo fence_create_info{
@@ -43,11 +45,12 @@ struct StagingBuffer {
     };
     VkEvent event;
     vkCreateEvent(device, &fence_create_info, nullptr, &event);
-    return {buffer, allocation, event, 0, size, cmd};
+    return StagingBuffer{buffer, allocation, event, 0, size};
   }
 
-  void copyMemoryToBuffer(
+  void cmdCopyMemoryToBuffer(
       vk::Device& device,
+      VkCommandBuffer cmd,
       void* src,
       VkBuffer dst_buffer,
       VkDeviceSize dst_offset,
@@ -74,8 +77,9 @@ struct StagingBuffer {
     return offset_ + dst_size < size;
   }
 
-  void copyMemoryToImage(
+  void cmdCopyMemoryToImage(
       vk::Device& device,
+      VkCommandBuffer cmd,
       void* src,
       VkImage dst_image,
       VkImageLayout dst_image_layout,
@@ -109,8 +113,9 @@ struct StagingBuffer {
     offset += dst_size;
   }
 
-  void copyMemoryToImage(
+  void cmdCopyMemoryToImage(
       vk::Device& device,
+      VkCommandBuffer cmd,
       void* src,
       vk::image2D& dst,
       usize texel_size,
@@ -118,14 +123,14 @@ struct StagingBuffer {
       u32 image_width,
       u32 image_height
   ) {
-    copyMemoryToImage(
-        device, src, dst.image, dst.sync.layout, dst.extent.extent3, texel_size, dst_image_offset, image_width,
+    cmdCopyMemoryToImage(
+        device, cmd, src, dst.image, dst.sync.layout, dst.extent.extent3, texel_size, dst_image_offset, image_width,
         image_height
     );
   }
 
   // Call this one after the data has been fully queued to upload
-  void close() {
+  void cmdClose(VkCommandBuffer cmd) {
     vkCmdSetEvent(cmd, event, VK_PIPELINE_STAGE_TRANSFER_BIT);
   }
 
@@ -170,7 +175,6 @@ struct Job {
   GpuMesh mesh;
 };
 
-// TODO: this is a coroutine... I should dive into c++ coroutines... I guess... maybe...
 class MeshLoader {
 public:
   using Callback = void (*)(void*, vk::Device& device, MeshToken, GpuMesh, bool mesh_fully_loaded);
@@ -181,6 +185,8 @@ public:
       StagingBufferToken staging_token = *core::get<0>(t);
       StagingBuffer& buffer            = *core::get<1>(t);
 
+      // TODO: Should wait on CommandBuffer ! Not on staging Buffer!
+      // Then recycle the command buffer
       if (!buffer.done(device)) {
         continue;
       }
@@ -189,16 +195,19 @@ public:
       for (auto& job : jobs.iter_rev()) {
         idx -= 1;
         if (job.staging_token == staging_token) {
-          bool mesh_fully_loaded  = false;
-          auto& infos             = mesh_job_infos[job.mesh_token].expect("counter does not exist!");
-          infos.counter          -= 1;
-          if (infos.counter == 0) {
+          bool mesh_fully_loaded = false;
+          auto& infos            = mesh_job_infos[job.mesh_token].expect("counter does not exist!");
+          infos.inflight--;
+
+          if (infos.staging_done && infos.inflight == 0) {
             mesh_fully_loaded = true;
             mesh_job_infos.destroy(job.mesh_token);
           }
 
           callback(userdata, device, job.mesh_token, job.mesh, mesh_fully_loaded);
           jobs.swap_last_pop(idx);
+
+          // TODO: store command buffers here in a core::pool<VkCommandBuffer>
         }
       }
 
@@ -226,8 +235,8 @@ public:
 
 private:
   struct MeshJobInfo {
-    VkCommandBuffer buf;
-    usize counter;
+    usize inflight    = 0;
+    bool staging_done = false;
   };
   VkCommandPool pool;
   core::vec<Job> jobs;

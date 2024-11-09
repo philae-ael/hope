@@ -74,6 +74,24 @@ struct pool {
   auto iter() {
     return queue_iter{head};
   }
+
+  void reset(core::Allocator alloc) {
+    node* ptr = head;
+    while (ptr != nullptr) {
+      auto tmp = ptr;
+      ptr      = ptr->next;
+      alloc.deallocate(tmp);
+    }
+
+    ptr = freelist_head;
+    while (ptr != nullptr) {
+      auto tmp = ptr;
+      ptr      = ptr->next;
+      alloc.deallocate(tmp);
+    }
+
+    head = freelist_head = nullptr;
+  }
 };
 
 }; // namespace core

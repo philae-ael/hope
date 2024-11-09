@@ -70,7 +70,7 @@ MainRenderer MainRenderer::init(subsystem::video& v) {
   self.mesh_loader      = new (self.mesh_loader) MeshLoader{MeshLoader::init(v.device)};
   self.first_cmd_buffer = true;
 
-  self.mesh_loader->queue_mesh(v.device, deps[2]);
+  self.mesh_loader->queue_mesh(v.device, deps[1]);
 
   return self;
 }

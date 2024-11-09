@@ -29,22 +29,17 @@ public:
   };
 
   handle new_handle(core::Allocator alloc) {
-    if (freelist_tail == free_list_dangling) {
-      ASSERTM((max_handle_idx & 0x00FFFFFF) != 0x00FFFFFF, "bip bip too many indices (max supported is 16'777'215)");
-      handles.push(alloc, handle_inner{0, max_handle_idx++});
-      return handle_inner{0, u32(handles.size() - 1)}.into();
-    }
+    ASSERTM((max_handle_idx & 0x00FFFFFF) != 0x00FFFFFF, "bip bip too many indices (max supported is 16'777'215)");
 
-    u32 idx       = freelist_tail.idx();
-    u8 generation = handles[idx].generation();
-    if (idx != (u32(-1) & 0xFFFFFF)) {
-      freelist_tail = freelist_node{handles[idx]};
-    } else {
-      freelist_tail = free_list_dangling;
+    // WARN: O(n) BAD! use a free list!
+    for (auto [idx, h] : core::enumerate{handles.iter()}) {
+      if (h->idx() == (u32(-1) & 0x00FFFFFF)) {
+        h->set_idx(max_handle_idx++);
+        return handle_inner{h->generation(), static_cast<u32>(idx)}.into();
+      }
     }
-    handles[idx].set_idx(max_handle_idx++);
-
-    return handle_inner{generation, idx}.into();
+    handles.push(alloc, handle_inner{0, max_handle_idx++});
+    return handle_inner{0, u32(handles.size() - 1)}.into();
   }
 
   // This is O(n) if last handle is not given!
@@ -55,16 +50,10 @@ public:
       return {};
     }
 
-    handles[handle.idx()].set_generation(handles[handle.idx()].generation() + 1);
-
     u32 idx = handles[handle.idx()].idx();
 
-    if (freelist_tail == free_list_dangling) {
-      handles[handle.idx()].set_idx(u32(-1));
-      freelist_tail = freelist_head = freelist_node{handle};
-    } else {
-      freelist_head.set_idx(handle.idx());
-    }
+    handles[handle.idx()].set_generation(handle.generation() + 1);
+    handles[handle.idx()].set_idx(u32(-1));
 
     max_handle_idx -= 1;
     if (idx == max_handle_idx) {
@@ -99,7 +88,7 @@ public:
   void deallocate(core::Allocator alloc) {
     handles.deallocate(alloc);
     max_handle_idx = 0;
-    freelist_tail = freelist_head = free_list_dangling;
+    freelist_tail  = free_list_dangling;
   }
 
 private:
@@ -137,12 +126,12 @@ private:
   static_assert(sizeof(handle) >= sizeof(freelist_node));
 
   static constexpr freelist_node free_list_dangling{{(u8)-1, (u32)-1}};
-  freelist_node freelist_head{free_list_dangling};
   freelist_node freelist_tail{free_list_dangling};
 
   core::vec<handle_inner> handles;
   u32 max_handle_idx = 0;
 };
+template class handle_map_adapter<>;
 
 // A struct that maps handles to elements of T
 // Implemented using index_map
@@ -199,6 +188,7 @@ struct handle_map {
     switch (command.tag) {
     case handle_map_adapter::Command::Tag::SwapDeleteLast:
       data.swap_last_pop(command.swap_delete_last.idx);
+      handles.swap_last_pop(command.swap_delete_last.idx);
       break;
     case handle_map_adapter::Command::Tag::DeleteLast:
       data.pop(noalloc);

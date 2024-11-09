@@ -1,4 +1,7 @@
-set(SDL_STATIC ON)
+if(WIN32)
+  set(SDL_STATIC ON)
+endif()
+
 set(SDL_AUDIO OFF)
 set(SDL_VIDEO   ON)
 set(SDL_GPU ON)
