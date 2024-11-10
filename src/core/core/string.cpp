@@ -151,7 +151,6 @@ EXPORT hstr8 unintern(u64 hash) {
   if (it == interned.m.end()) {
     LOG_WARNING("trying to unintern an unknown string");
     TRAP;
-    using namespace core::literals;
     return "<unknown>"_hs;
   }
 

@@ -6,7 +6,6 @@
 
 #include <core/core.h>
 
-using namespace core::literals;
 namespace core {
 
 /* FORMATTERS */

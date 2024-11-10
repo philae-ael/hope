@@ -4,7 +4,6 @@
 // IWYU pragma: begin_exports
 #include "base.h"
 #include "platform.h"
-#include "types.h"
 // IWYU pragma: end_exports
 
 namespace core {

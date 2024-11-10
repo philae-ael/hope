@@ -8,7 +8,45 @@
 #include "base.h"
 #include "fwd.h"
 #include "memory.h"
-#include "types.h"
+
+namespace detail {
+template <usize l>
+struct StringArr {
+  static constexpr usize size = l - 1;
+  // -1 for null terminator
+  core::array<const char, size> value;
+
+  constexpr StringArr(const char (&d)[l])
+      : value{([&]<usize... i>(std::index_sequence<i...>) {
+        return core::array<const char, size>{d[i]...};
+      })(std::make_index_sequence<size>{})} {}
+  auto operator<=>(const StringArr& other) const = default;
+};
+
+template <StringArr a>
+struct str8FromStringArr {
+  static constexpr core::array<u8, decltype(a)::size> s{
+      (decltype(a)::size == 0) ? core::array<u8, decltype(a)::size>{}
+                               : std::bit_cast<core::array<u8, decltype(a)::size>>(a.value)
+  };
+  static constexpr core::str8 str = core::str8::from(s.data, decltype(a)::size);
+};
+
+} // namespace detail
+template <detail::StringArr a>
+consteval core::str8 operator""_s() {
+  return detail::str8FromStringArr<a>::str;
+}
+
+template <detail::StringArr a>
+consteval core::hstr8 operator""_hs() {
+  return detail::str8FromStringArr<a>::str.hash();
+}
+
+template <detail::StringArr a>
+consteval inline u64 operator""_h() {
+  return detail::str8FromStringArr<a>::str.hash().hash;
+}
 
 namespace core {
 // For ADL purpose!
@@ -78,24 +116,10 @@ str8 join(core::Allocator alloc, str8 sep, const Args&... args) {
   return sb.commit(alloc, sep);
 }
 
-namespace literals {
-inline str8 operator""_s(const char* s, std::size_t len) {
-  return str8::from(s, len);
-}
-
-inline hstr8 operator""_hs(const char* s, std::size_t len) {
-  return {core::hash(s, len), len, reinterpret_cast<const u8*>(s)};
-}
-constexpr inline u64 operator""_h(const char* s, std::size_t len) {
-  return hash(s, len);
-}
-} // namespace literals
-
 template <class T>
 str8 to_str8(Allocator alloc, Maybe<T> m)
   requires Str8ifiable<T> || Str8ifiableDyn<T>
 {
-  using namespace literals;
   if (m.is_some()) {
     return string_builder{}.push(alloc, "Some(").push(alloc, m.value()).push(alloc, ")").commit(alloc);
   } else {

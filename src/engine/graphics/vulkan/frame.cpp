@@ -4,8 +4,6 @@
 
 #include <core/core.h>
 
-using namespace core::literals;
-
 namespace vk {
 EXPORT void destroy_frame_synchro(VkDevice device, FrameSynchro& frame_synchro) {
   for (usize idx : core::range<u32>{0, frame_synchro.inflight}.iter()) {

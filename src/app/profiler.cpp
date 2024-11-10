@@ -5,7 +5,6 @@
 
 #include <imgui.h>
 
-using namespace core::literals;
 using math::Vec2;
 
 struct Color {

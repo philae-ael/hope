@@ -55,8 +55,6 @@ struct {
   uv_loop_t* event_loop;
 } fs;
 
-using namespace core::literals;
-
 EXPORT void init(uv_loop_t* event_loop) {
   fs.event_loop = event_loop;
   fs.arena      = &core::arena_alloc();

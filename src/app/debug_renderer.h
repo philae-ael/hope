@@ -9,7 +9,6 @@
 #include <engine/graphics/vulkan/rendering.h>
 #include <engine/utils/time.h>
 #include <vulkan/vulkan_core.h>
-using namespace core::literals;
 
 struct DebugVertex {
   f32 color[4];

@@ -1,7 +1,6 @@
 #ifndef INCLUDE_CONTAINERS_VEC_H_
 #define INCLUDE_CONTAINERS_VEC_H_
 
-#include "../core/debug.h"
 #include "../core/fwd.h"
 #include "../core/memory.h"
 #include <cstring>

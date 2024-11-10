@@ -6,7 +6,6 @@
 #include "os/os.h"
 
 using namespace core;
-using namespace core::literals;
 // IWYU pragma: end_exports
 
 #endif // INCLUDE_PRELUDE_H_

@@ -12,8 +12,6 @@
 #include <engine/utils/config.h>
 #include <vulkan/vulkan_core.h>
 
-using namespace core::literals;
-
 #define GRID_EXPONENTIAL_FALLOUT 0x1
 #define GRID_PROPORTIONAL_WIDTH 0x2
 

@@ -1,7 +1,6 @@
 #ifndef INCLUDE_VULKAN_VULKAN_H_
 #define INCLUDE_VULKAN_VULKAN_H_
 
-#include "core/core/debug.h"
 #include <core/core/log.h>
 
 // IWYU pragma: begin_exports

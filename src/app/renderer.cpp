@@ -25,7 +25,6 @@
 #include <imgui.h>
 
 using namespace core::enum_helpers;
-using namespace core::literals;
 
 static core::array deps{
     "/assets/scenes/sponza.glb"_s,
@@ -282,7 +281,6 @@ AppEvent render(AppState* app_state, subsystem::video& v, Renderer& renderer) {
   vkBeginCommandBuffer(renderer.cmd, &command_buffer_begin_info);
   renderer.main_renderer.render(app_state, v.device, renderer.cmd, frame->swapchain_image);
 
-  using namespace core::literals;
   auto render_scope = utils::scope_start("end cmd buffer"_hs);
   vkEndCommandBuffer(renderer.cmd);
   utils::scope_end(render_scope);

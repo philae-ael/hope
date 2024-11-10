@@ -5,11 +5,34 @@
 #include "debug_renderer.h"
 #include "grid_renderer.h"
 #include "imgui_renderer.h"
-#include "loader/app_loader.h"
 #include "mesh.h"
-#include <engine/graphics/vulkan/image.h>
 
 #include <core/fs/fs.h>
+#include <engine/graphics/vulkan/image.h>
+#include <loader/app_loader.h>
+#include <unordered_map>
+
+struct TextureKey {
+  core::str8 src;
+  usize texture_index;
+
+  auto operator<=>(const TextureKey& other) const = default;
+};
+
+template <>
+class std::hash<TextureKey> {
+  std::size_t operator()(const TextureKey& k) const noexcept {
+    core::hasher h{};
+    h.hash(k.src.data, k.src.len);
+    h.hash(k.texture_index);
+    return h.value();
+  }
+};
+
+struct TextureCache {
+  // TODO: Roll my own
+  std::unordered_map<TextureKey, vk::image2D> textures;
+};
 
 struct MainRenderer {
   CameraDescriptor camera_descriptor;

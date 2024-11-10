@@ -136,7 +136,6 @@ EXPORT core::tuple<core::Maybe<VideoFrame>, bool> video::begin_frame() {
   };
 }
 
-using namespace core::literals;
 EXPORT VkResult video::end_frame(VideoFrame vframe, VkCommandBuffer cmd) {
   auto submit = utils::scope_start("submit"_hs);
   VkSemaphoreSubmitInfo wait_semaphore_submit_info{

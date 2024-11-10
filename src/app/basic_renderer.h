@@ -25,6 +25,7 @@ struct CameraDescriptor {
     return set;
   }
 };
+
 struct GpuTextureDescriptor {
   VkDescriptorPool pool;
   VkDescriptorSetLayout layout;

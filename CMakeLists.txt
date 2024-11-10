@@ -148,6 +148,7 @@ add_executable(testcore
   src/tests/indexmap.cpp
   src/tests/tuple.cpp
   src/tests/stable_vec.cpp
+  src/tests/base.cpp
 )
 target_link_libraries(testcore PRIVATE core engine)
 target_compile_options(testcore PRIVATE -Wno-format-zero-length -Wno-format-security)

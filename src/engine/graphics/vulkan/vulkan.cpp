@@ -3,8 +3,6 @@
 
 #include <core/core.h>
 
-using namespace core::literals;
-
 #define CASE_STR(x) \
   case x:           \
     return STRINGIFY(x) ""_s;

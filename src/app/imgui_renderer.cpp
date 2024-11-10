@@ -1,5 +1,4 @@
 #include "imgui_renderer.h"
-#include "engine/graphics/vulkan/rendering.h"
 
 #include <engine/graphics/subsystem.h>
 #include <engine/graphics/vulkan/sync.h>
@@ -52,7 +51,6 @@ void ImGuiRenderer::uninit(subsystem::video& v) {
 }
 
 void ImGuiRenderer::render(VkCommandBuffer cmd) {
-  using namespace core::literals;
   auto imgui_scope = utils::scope_start("imgui"_hs);
   defer { utils::scope_end(imgui_scope); };
 

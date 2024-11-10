@@ -21,7 +21,6 @@
 struct Renderer;
 
 using namespace core;
-using namespace core::literals;
 using namespace core::enum_helpers;
 
 log_entry timed_formatter(void* u, Allocator alloc, core::log_entry entry) {

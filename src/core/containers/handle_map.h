@@ -3,7 +3,6 @@
 
 #include <core/containers/vec.h>
 #include <core/core.h>
-#include <core/core/types.h>
 
 #include <bit>
 

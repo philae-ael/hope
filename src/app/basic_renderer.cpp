@@ -17,7 +17,6 @@
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan_core.h>
 
-using namespace core::literals;
 using math::Mat4;
 
 core::str8 shader_vert_src = "/assets/shaders/tri.vert.spv"_s;
@@ -75,7 +74,6 @@ void BasicRenderer::render(
     VkDescriptorSet gpu_texture_descriptor_set,
     core::storage<GpuMesh> meshes
 ) {
-  using namespace core::literals;
   auto triangle_scope = utils::scope_start("triangle"_hs);
   defer { utils::scope_end(triangle_scope); };
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);

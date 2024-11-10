@@ -191,8 +191,6 @@ EXPORT AppState* uninit(App& app) {
 }
 static_assert(std::is_same_v<decltype(&uninit), PFN_uninit>);
 
-using namespace core::literals;
-
 void update(App& app) {
   utils::config_f32xN("input.speed", app.state->config.speed._coeffs, 2);
   utils::config_f32xN("input.rot_speed", (f32*)&app.state->config.rot_speed, 2);

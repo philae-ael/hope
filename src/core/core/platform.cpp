@@ -1,7 +1,5 @@
 #include <core/core.h>
 
-using namespace core::literals;
-
 namespace core {
 str8 to_str8(Os os) {
   str8 data[]{

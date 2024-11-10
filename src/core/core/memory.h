@@ -2,10 +2,8 @@
 #ifndef INCLUDE_CORE_MEMORY_H_
 #define INCLUDE_CORE_MEMORY_H_
 
-#include "debug.h"
 #include "fwd.h"
 #include "type_info.h"
-#include "types.h"
 #include <cstdlib>
 
 #ifndef SCRATCH_ARENA_AMOUNT

@@ -63,12 +63,13 @@ struct LoadMeshTask {
     };
 
     LOG_TRACE("UPLOAD WORKER %zu", stack_depth);
+    auto& scene = *data->scene;
+
     if (stack_depth == 0) {
       stack_depth++;
       stack[0] = 0;
     }
 
-    auto& scene = *data->scene;
     upload_node(cmd, scene.nodes[stack[0]], 1);
 
     if (stack_depth == 1) {
@@ -147,6 +148,10 @@ struct LoadMeshTask {
           stbi_info_from_memory(
               (const stbi_uc*)buf_view->buffer->data + buf_view->offset, (int)buf_view->size, &x, &y, &comp
           );
+
+          auto texture_index = INDEX_OF(material.pbr_metallic_roughness.base_color_texture.texture, data->textures);
+          ASSERT(texture_index >= 0);
+          ASSERT(usize(texture_index) < data->textures_count);
 
           staging_buffer_size += TEXEL_SIZE * usize(x) * usize(y);
         }

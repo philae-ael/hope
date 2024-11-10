@@ -6,7 +6,6 @@
 #include <cstdarg>
 #include <utility>
 
-#include "debug.h"
 #include "memory.h"
 #include "string.h"
 
