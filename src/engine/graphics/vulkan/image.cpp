@@ -43,13 +43,9 @@ EXPORT image2D image2D::create(
       .pQueueFamilyIndices   = &device.omni_queue_family_index,
       .initialLayout         = sync.layout,
   };
-  VmaAllocationCreateInfo alloc_create_info{
-      .flags = config.alloc_flags,
-      .usage = VMA_MEMORY_USAGE_AUTO,
-  };
-  VK_ASSERT(
-      vmaCreateImage(device.allocator, &image_create_info, &alloc_create_info, &image.image, &image.allocation, nullptr)
-  );
+  VK_ASSERT(vmaCreateImage(
+      device.allocator, &image_create_info, &config.alloc_create_info, &image.image, &image.allocation, nullptr
+  ));
   vmaSetAllocationName(device.allocator, image.allocation, "image");
   VkImageViewCreateInfo image_view_create_info{
       .sType      = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,

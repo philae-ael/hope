@@ -1,4 +1,6 @@
 #include "frame.h"
+#include "engine/graphics/vulkan/image.h"
+#include "engine/graphics/vulkan/init.h"
 #include "vulkan.h"
 #include <engine/utils/time.h>
 
@@ -27,7 +29,7 @@ EXPORT bool wait_frame(VkDevice device, FrameSynchro& sync, u64 timeout) {
 }
 
 EXPORT core::tuple<core::Maybe<Frame>, bool> begin_frame(
-    VkDevice device,
+    vk::Device& device,
     VkSwapchainKHR swapchain,
     FrameSynchro& sync
 ) {
@@ -55,6 +57,8 @@ EXPORT core::tuple<core::Maybe<Frame>, bool> begin_frame(
   default:
     VK_ASSERT(res);
   }
+
+  vmaSetCurrentFrameIndex(device.allocator, frame_id);
   vkResetFences(device, 1, &sync.render_done_fences[frame_id]);
   sync.frame_id = frame_id;
   return {

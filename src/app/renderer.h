@@ -2,6 +2,7 @@
 #define INCLUDE_APP_RENDERER_H_
 
 #include "basic_renderer.h"
+#include "core/core.h"
 #include "debug_renderer.h"
 #include "grid_renderer.h"
 #include "imgui_renderer.h"
@@ -10,7 +11,10 @@
 #include <core/fs/fs.h>
 #include <engine/graphics/vulkan/image.h>
 #include <loader/app_loader.h>
+#include <type_traits>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 struct TextureKey {
   core::str8 src;
@@ -21,6 +25,7 @@ struct TextureKey {
 
 template <>
 class std::hash<TextureKey> {
+public:
   std::size_t operator()(const TextureKey& k) const noexcept {
     core::hasher h{};
     h.hash(k.src.data, k.src.len);
@@ -31,7 +36,57 @@ class std::hash<TextureKey> {
 
 struct TextureCache {
   // TODO: Roll my own
-  std::unordered_map<TextureKey, vk::image2D> textures;
+  std::vector<vk::image2D> textures{};
+  std::unordered_map<TextureKey, usize> textures_idx{};
+
+  union entry_t {
+    enum class Tag { Occupied, Empty } tag;
+    struct {
+      Tag tag = Tag::Occupied;
+      usize entry;
+    } occupied;
+    struct {
+      Tag tag = Tag::Empty;
+      core::ref_wrapper<TextureCache> self;
+      TextureKey key;
+    } empty;
+
+    usize or_create(auto f)
+      requires std::is_invocable_r_v<vk::image2D, decltype(f)>
+    {
+      switch (tag) {
+      case Tag::Occupied:
+        return occupied.entry;
+      case Tag::Empty:
+        empty.self->textures.push_back(f());
+        usize idx = empty.self->textures.size() - 1;
+        empty.self->textures_idx.emplace(empty.key, idx);
+        return idx;
+      }
+    }
+    bool is_empty() const {
+      return tag == Tag::Empty;
+    }
+  };
+  entry_t entry(TextureKey key) {
+    auto it = textures_idx.find(key);
+    if (it != textures_idx.end()) {
+      return entry_t{.occupied = {.entry = it->second}};
+    } else {
+      return entry_t{.empty = {.self = *this, .key = key}};
+    }
+  }
+  void uninit(vk::Device& device) {
+    for (auto& v : textures) {
+      v.destroy(device);
+    }
+    textures_idx.clear();
+    textures.clear();
+  }
+
+  vk::image2D& at(usize idx) {
+    return textures[idx];
+  }
 };
 
 struct MainRenderer {
@@ -45,6 +100,7 @@ struct MainRenderer {
   VkSampler default_sampler;
   bool should_update_texture_descriptor;
   bool first_cmd_buffer;
+  TextureCache texture_cache{};
 
   // requires to be pinned
   MeshLoader* mesh_loader;

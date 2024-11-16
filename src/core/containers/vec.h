@@ -3,6 +3,7 @@
 
 #include "../core/fwd.h"
 #include "../core/memory.h"
+#include "core/core.h"
 #include <cstring>
 #include <initializer_list>
 
@@ -37,9 +38,8 @@ struct vec {
       panic("Trying to pop empty vec");
     }
 
-    T t    = store[size_ - 1];
-    size_ -= 1;
-    return t;
+    size_--;
+    return store[size_];
   }
 
   constexpr T pop(Allocator alloc) {
@@ -92,10 +92,6 @@ struct vec {
   void reset(Allocator alloc) {
     reset(noalloc);
     set_capacity(alloc, 0);
-  }
-
-  void deallocate(Allocator alloc) {
-    reset(alloc);
   }
 
   vec clone(Allocator alloc) {
@@ -161,9 +157,15 @@ struct vec {
 
   // Does not invalidate a reverse iterator!
   // Useful to delete elements from a vector while iterating it backward
-  void swap_last_pop(usize idx) {
-    SWAP((*this)[idx], (*this)[size() - 1]);
-    pop(core::noalloc);
+  T swap_last_pop(usize idx) {
+    if (idx != size() - 1) {
+      auto t       = (*this)[idx];
+      (*this)[idx] = (*this)[size() - 1];
+      DEBUG_STMT(memset(&(*this)[size() - 1], 0, sizeof(T)));
+      pop(core::noalloc);
+      return t;
+    }
+    return pop(core::noalloc);
   }
 };
 

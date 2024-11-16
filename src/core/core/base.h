@@ -410,8 +410,9 @@ struct storage {
       , data(data) {}
 
   storage(std::initializer_list<S> l)
+      // requires std::is_const_v<S> // it's unsound to
       : size(l.size())
-      , data(l.begin()) {}
+      , data(const_cast<S*>(std::begin(l))) {}
 
   storage(S& s)
       : size(1)
@@ -474,6 +475,11 @@ struct storage {
   }
   auto iter_rev() const {
     return storage_iter{data, range{0zu, size}.iter_rev()};
+  }
+
+  storage slice(usize len, usize offset = 0) {
+    ASSERT(len + offset <= size);
+    return {len, data + offset};
   }
 };
 
@@ -914,6 +920,26 @@ struct enumerate : cpp_iter<EnumerateItem<Idx, It>, enumerate<It, Idx>> {
     auto n = it.next();
     if (n.is_some()) {
       return {inplace, count++, n.value()};
+    }
+    return {};
+  }
+};
+
+template <iterable It, class Idx = usize>
+struct enumerate_rev : cpp_iter<EnumerateItem<Idx, It>, enumerate_rev<It, Idx>> {
+  It it;
+  Idx count;
+
+  enumerate_rev(It it, Idx count)
+      : it(it)
+      , count(count) {}
+
+  using Item = EnumerateItem<Idx, It>;
+
+  Maybe<Item> next() {
+    auto n = it.next();
+    if (n.is_some()) {
+      return {inplace, count--, n.value()};
     }
     return {};
   }

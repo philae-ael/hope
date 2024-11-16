@@ -150,7 +150,6 @@ EXPORT hstr8 unintern(u64 hash) {
   auto it = interned.m.find(hash);
   if (it == interned.m.end()) {
     LOG_WARNING("trying to unintern an unknown string");
-    TRAP;
     return "<unknown>"_hs;
   }
 

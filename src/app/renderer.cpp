@@ -33,7 +33,7 @@ static core::array deps{
 };
 
 MainRenderer MainRenderer::init(subsystem::video& v) {
-  MainRenderer self;
+  MainRenderer self{};
 
   VkSamplerCreateInfo sampler_create_info{
       .sType            = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -69,13 +69,12 @@ MainRenderer MainRenderer::init(subsystem::video& v) {
   self.mesh_loader      = new (self.mesh_loader) MeshLoader{MeshLoader::init(v.device)};
   self.first_cmd_buffer = true;
 
-  self.mesh_loader->queue_mesh(v.device, deps[1]);
-
   return self;
 }
 
 void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuffer cmd, vk::image2D& swapchain_image) {
   if (first_cmd_buffer) {
+    mesh_loader->queue_mesh(device, deps[1], texture_cache);
     vk::pipeline_barrier(cmd, gpu_texture_descriptor.default_texture.sync_to({VK_IMAGE_LAYOUT_GENERAL}));
     VkImageSubresourceRange range{
         .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -84,6 +83,7 @@ void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuff
     };
     VkClearColorValue color{.float32 = {1.0, 0.0, 1.0, 1.0}};
     vkCmdClearColorImage(cmd, gpu_texture_descriptor.default_texture, VK_IMAGE_LAYOUT_GENERAL, &color, 1, &range);
+    first_cmd_buffer = false;
   }
 
   vk::pipeline_barrier(
@@ -102,11 +102,7 @@ void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuff
   );
 
   if (should_update_texture_descriptor) {
-    for (auto& mesh : meshes.iter()) {
-      if (mesh.base_color)
-        vk::pipeline_barrier(cmd, mesh.base_color.sync_to({VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}));
-    }
-    gpu_texture_descriptor.update(device, default_sampler, meshes);
+    gpu_texture_descriptor.update(device, default_sampler, texture_cache);
     should_update_texture_descriptor = false;
   }
   auto camera_matrices =
@@ -181,8 +177,8 @@ void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuff
 void MainRenderer::uninit(subsystem::video& v) {
   for (auto& mesh : meshes.iter())
     unload_mesh(v, mesh);
-  meshes.deallocate(core::get_named_allocator(core::AllocatorName::General));
-  mesh_loader->uninit(v.device);
+  meshes.reset(core::get_named_allocator(core::AllocatorName::General));
+  mesh_loader->uninit(v);
   core::get_named_allocator(core::AllocatorName::General).deallocate(mesh_loader);
   mesh_loader = nullptr;
 
@@ -193,6 +189,7 @@ void MainRenderer::uninit(subsystem::video& v) {
   camera_descriptor.uninit(v);
   gpu_texture_descriptor.uninit(v);
   depth.destroy(v.device);
+  texture_cache.uninit(v.device);
 
   vkDestroySampler(v.device, default_sampler, nullptr);
 

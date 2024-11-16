@@ -1,4 +1,5 @@
 #include "basic_renderer.h"
+#include "app/renderer.h"
 #include "camera.h"
 
 #include <core/core.h>
@@ -93,18 +94,14 @@ void BasicRenderer::render(
 
   // Do render
 
-  for (auto [mesh_idx, mesh] : core::enumerate{meshes.iter()}) {
+  for (auto& mesh : meshes.iter()) {
     VkDeviceSize offset = 0;
-    vkCmdBindVertexBuffers(cmd, 0, 1, &mesh->vertex_buffer, &offset);
+    vkCmdBindVertexBuffers(cmd, 0, 1, &mesh.vertex_buffer, &offset);
 
-    vk::PushConstantUploader<PushConstant>{
-        mesh->transform,
-        u32(mesh_idx),
-    }
-        .upload(cmd, layout);
+    vk::PushConstantUploader<PushConstant>{mesh.transform, 1 + u32(mesh.base_color_texture_idx)}.upload(cmd, layout);
 
-    vkCmdBindIndexBuffer(cmd, mesh->index_buffer, 0, mesh->huge_indices ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
-    vkCmdDrawIndexed(cmd, mesh->indice_count, 1, 0, 0, 0);
+    vkCmdBindIndexBuffer(cmd, mesh.index_buffer, 0, mesh.huge_indices ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
+    vkCmdDrawIndexed(cmd, mesh.indice_count, 1, 0, 0, 0);
   }
 }
 
@@ -138,34 +135,28 @@ GpuTextureDescriptor GpuTextureDescriptor::init(subsystem::video& v) {
   };
 }
 
-void GpuTextureDescriptor::update(VkDevice device, VkSampler sampler, core::storage<GpuMesh> meshes) {
+void GpuTextureDescriptor::update(VkDevice device, VkSampler sampler, const TextureCache& texture_cache) {
   auto scratch          = core::scratch_get();
   core::Allocator alloc = scratch;
   core::vec<VkDescriptorImageInfo> image_infos;
-  for (auto& mesh : meshes.iter()) {
-    if (mesh.base_color.image_view == VK_NULL_HANDLE) {
-      image_infos.push(
-          alloc,
-          VkDescriptorImageInfo{
-              .sampler     = sampler,
-              .imageView   = default_texture.image_view,
-              .imageLayout = default_texture.sync.layout,
-          }
-      );
-    } else {
-      image_infos.push(
-          alloc,
-          VkDescriptorImageInfo{
-              .sampler     = sampler,
-              .imageView   = mesh.base_color.image_view,
-              .imageLayout = mesh.base_color.sync.layout,
-          }
-      );
-    }
-  }
-  if (image_infos.size() == 0) {
-
-    return;
+  image_infos.set_capacity(alloc, 1 + texture_cache.textures.size());
+  image_infos.push(
+      alloc,
+      VkDescriptorImageInfo{
+          .sampler     = sampler,
+          .imageView   = default_texture.image_view,
+          .imageLayout = default_texture.sync.layout,
+      }
+  );
+  for (auto& tex : texture_cache.textures) {
+    image_infos.push(
+        alloc,
+        VkDescriptorImageInfo{
+            .sampler     = sampler,
+            .imageView   = tex.image_view,
+            .imageLayout = tex.sync.layout,
+        }
+    );
   }
   vk::DescriptorSetUpdater{
       .write_descriptor_set{

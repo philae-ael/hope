@@ -36,6 +36,7 @@ struct Device {
   VmaAllocator allocator;
 
   VkPhysicalDeviceProperties properties;
+  VkPhysicalDeviceMemoryProperties memory_properties;
 
   u32 omni_queue_family_index;
   VkQueue omni_queue;

@@ -2,6 +2,7 @@
 #define INCLUDE_APP_MESH_LOADER_H_
 
 #include "core/core.h"
+#include "core/core/sched.h"
 #include <core/containers/handle_map.h>
 #include <core/containers/vec.h>
 #include <core/math/math.h>
@@ -14,11 +15,13 @@
 struct StagingBuffer {
   VkBuffer buffer;
   VmaAllocation allocation;
-  VkEvent event;
   VkDeviceSize offset;
   VkDeviceSize size;
 
   static core::Maybe<StagingBuffer> init(vk::Device& device, VkDeviceSize size, VkCommandBuffer cmd) {
+    if (size == 0)
+      return {};
+
     VkBufferCreateInfo buffer_create_info{
         .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .size                  = size,
@@ -28,24 +31,20 @@ struct StagingBuffer {
         .pQueueFamilyIndices   = &device.omni_queue_family_index,
     };
     VmaAllocationCreateInfo allocation_create_info{
-        .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
+        .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_WITHIN_BUDGET_BIT,
         .usage = VMA_MEMORY_USAGE_AUTO,
     };
     VkBuffer buffer;
     VmaAllocation allocation;
     VkResult res =
         vmaCreateBuffer(device.allocator, &buffer_create_info, &allocation_create_info, &buffer, &allocation, nullptr);
-    if (res < 0) {
-      return {};
+    if (res != VK_SUCCESS) {
+      LOG2_TRACE(res);
+      return core::None<StagingBuffer>();
     }
     vmaSetAllocationName(device.allocator, allocation, "staging buffer");
 
-    VkEventCreateInfo fence_create_info{
-        .sType = VK_STRUCTURE_TYPE_EVENT_CREATE_INFO,
-    };
-    VkEvent event;
-    vkCreateEvent(device, &fence_create_info, nullptr, &event);
-    return StagingBuffer{buffer, allocation, event, 0, size};
+    return StagingBuffer{buffer, allocation, 0, size};
   }
 
   void cmdCopyMemoryToBuffer(
@@ -129,22 +128,9 @@ struct StagingBuffer {
     );
   }
 
-  // Call this one after the data has been fully queued to upload
-  void cmdClose(VkCommandBuffer cmd) {
-    vkCmdSetEvent(cmd, event, VK_PIPELINE_STAGE_TRANSFER_BIT);
-  }
-
   void uninit(vk::Device& device) {
     vmaDestroyBuffer(device.allocator, buffer, allocation);
-    vkDestroyEvent(device, event, nullptr);
   }
-  bool done(VkDevice device) {
-    return vkGetEventStatus(device, event) == VK_EVENT_SET;
-  }
-};
-
-struct Uploader {
-  StagingBuffer staging_buffer;
 };
 
 struct GpuMesh {
@@ -152,7 +138,7 @@ struct GpuMesh {
   VkBuffer index_buffer;
   VmaAllocation vertex_buf_allocation;
   VmaAllocation index_buf_allocation;
-  vk::image2D base_color;
+  usize base_color_texture_idx;
 
   math::Mat4 transform = math::Mat4::Id;
   u32 indice_count;
@@ -163,56 +149,107 @@ struct GpuMesh {
 
 void unload_mesh(subsystem::video&, GpuMesh);
 
-struct _StagingBufferToken {};
-using StagingBufferToken = core::handle_t<_StagingBufferToken, u32>;
+struct CommandBuffer {
+  VkCommandBuffer cmd;
+  VkFence fence;
+  bool done(VkDevice device) {
+    return vkGetFenceStatus(device, fence) == VK_SUCCESS;
+  }
 
-struct _MeshToken {};
-using MeshToken = core::handle_t<_MeshToken, u32>;
+  static CommandBuffer init(VkDevice device, VkCommandPool pool) {
+    VkCommandBuffer cmd;
+    VkCommandBufferAllocateInfo allocate_info{
+        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool        = pool,
+        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1,
+    };
+
+    vkAllocateCommandBuffers(device, &allocate_info, &cmd);
+
+    VkFence fence;
+    VkFenceCreateInfo fence_create_info{
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+    };
+    vkCreateFence(device, &fence_create_info, nullptr, &fence);
+    return {cmd, fence};
+  }
+  void submit(VkQueue queue) {
+    VkCommandBufferSubmitInfo command_buffer_info{
+        .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .commandBuffer = cmd,
+    };
+    VkSubmitInfo2 submit{
+        .sType                  = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+        .commandBufferInfoCount = 1,
+        .pCommandBufferInfos    = &command_buffer_info,
+    };
+    vkQueueSubmit2(queue, 1, &submit, fence);
+  }
+
+  void uninit(VkDevice device, VkCommandPool pool) {
+    vkFreeCommandBuffers(device, pool, 1, &cmd);
+    vkDestroyFence(device, fence, nullptr);
+  }
+};
+
+using CommandBufferToken = core::handle_t<CommandBuffer, u32>;
+using StagingBufferToken = core::handle_t<struct _StagingBuffer, u32>;
+using MeshToken          = core::handle_t<struct _MeshToken, u32>;
 
 struct Job {
   MeshToken mesh_token;
-  StagingBufferToken staging_token;
+  StagingBufferToken staging_buffer_token;
   GpuMesh mesh;
+  CommandBufferToken command_buffer_token;
 };
+
+struct RefCountedStagingBuffer {
+  usize inflight;
+  StagingBuffer buffer;
+};
+
+struct TextureCache;
 
 class MeshLoader {
 public:
   using Callback = void (*)(void*, vk::Device& device, MeshToken, GpuMesh, bool mesh_fully_loaded);
-  MeshToken queue_mesh(vk::Device& device, core::str8 src);
+  MeshToken queue_mesh(vk::Device& device, core::str8 src, TextureCache& texture_cache);
   void work(vk::Device& device, Callback callback, void* userdata) {
-    // Do work
-    for (auto t : staging_buffers.iter_rev_enumerate()) {
-      StagingBufferToken staging_token = *core::get<0>(t);
-      StagingBuffer& buffer            = *core::get<1>(t);
+    for (auto t : command_buffers.iter_rev_enumerate()) {
+      CommandBufferToken command_buffer_token = *core::get<0>(t);
+      CommandBuffer& buffer                   = *core::get<1>(t);
 
-      // TODO: Should wait on CommandBuffer ! Not on staging Buffer!
-      // Then recycle the command buffer
       if (!buffer.done(device)) {
         continue;
       }
 
-      usize idx = jobs.size();
-      for (auto& job : jobs.iter_rev()) {
-        idx -= 1;
-        if (job.staging_token == staging_token) {
-          bool mesh_fully_loaded = false;
-          auto& infos            = mesh_job_infos[job.mesh_token].expect("counter does not exist!");
+      for (auto [idx, job] : core::enumerate_rev{jobs.iter_rev(), jobs.size() - 1}) {
+        if (job->command_buffer_token == command_buffer_token) {
+          // check if mesh is done after this job
+          auto& infos = mesh_job_infos[job->mesh_token].expect("counter does not exist!");
           infos.inflight--;
 
-          if (infos.staging_done && infos.inflight == 0) {
-            mesh_fully_loaded = true;
-            mesh_job_infos.destroy(job.mesh_token);
+          bool mesh_fully_loaded = infos.staging_done && infos.inflight == 0;
+
+          callback(userdata, device, job->mesh_token, job->mesh, mesh_fully_loaded);
+
+          if (mesh_fully_loaded) {
+            mesh_job_infos.destroy(job->mesh_token);
           }
 
-          callback(userdata, device, job.mesh_token, job.mesh, mesh_fully_loaded);
-          jobs.swap_last_pop(idx);
-
-          // TODO: store command buffers here in a core::pool<VkCommandBuffer>
+          auto job             = jobs.swap_last_pop(idx);
+          auto& staging_buffer = staging_buffers.get(job.staging_buffer_token).expect("huhu");
+          staging_buffer.inflight--;
+          if (staging_buffer.inflight == 0) {
+            staging_buffer.buffer.uninit(device);
+            staging_buffers.destroy(job.staging_buffer_token);
+          };
         }
       }
 
-      buffer.uninit(device);
-      staging_buffers.destroy(staging_token);
+      buffer.uninit(device, pool);
+      command_buffers.destroy(command_buffer_token);
     }
   }
 
@@ -229,19 +266,40 @@ public:
     VK_ASSERT(vkCreateCommandPool(device, &command_pool_create_info, nullptr, &self.pool));
     return self;
   }
-  void uninit(vk::Device& device) {
-    vkDestroyCommandPool(device, pool, nullptr);
+  void uninit(subsystem::video& v) {
+    vkDeviceWaitIdle(v.device);
+
+    for (auto cmd : command_buffers.iter()) {
+      cmd.uninit(v.device, pool);
+    }
+    for (auto job : jobs.iter()) {
+      unload_mesh(v, job.mesh);
+    }
+    for (auto staging_buffer : staging_buffers.iter()) {
+      staging_buffer.buffer.uninit(v.device);
+    }
+    for (auto job : mesh_job_infos.iter()) {
+      job.task->status = core::TaskStatus::Stopped;
+    }
+
+    jobs.reset(core::get_named_allocator(core::AllocatorName::General));
+    command_buffers.reset(core::get_named_allocator(core::AllocatorName::General));
+    mesh_job_infos.reset(core::get_named_allocator(core::AllocatorName::General));
+
+    vkDestroyCommandPool(v.device, pool, nullptr);
   }
 
 private:
   struct MeshJobInfo {
     usize inflight    = 0;
     bool staging_done = false;
+    core::Task* task;
   };
   VkCommandPool pool;
   core::vec<Job> jobs;
   core::handle_map<MeshJobInfo, MeshToken> mesh_job_infos{};
-  core::handle_map<StagingBuffer, StagingBufferToken> staging_buffers{};
+  core::handle_map<CommandBuffer, CommandBufferToken> command_buffers{};
+  core::handle_map<RefCountedStagingBuffer, StagingBufferToken> staging_buffers{};
   friend struct LoadMeshTask;
 };
 

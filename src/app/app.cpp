@@ -19,6 +19,7 @@
 #include <engine/utils/time.h>
 #include <loader/app_loader.h>
 #include <type_traits>
+#include <vulkan/vulkan_core.h>
 
 using namespace core::enum_helpers;
 using math::Quat;
@@ -240,6 +241,8 @@ void debug_stuff(App& app) {
 
   utils::config_bool("debug.frame_report", &appconf.print_frame_report);
   utils::config_bool("debug.frame_report.full", &appconf.print_frame_report_full);
+  utils::config_bool("debug.frame_report.gpu_budget", &appconf.print_frame_report_gpu_budget);
+  utils::config_bool("debug.frame_report.crash_on_out_of_memory_budget", &appconf.crash_on_out_of_memory_budget);
   if (app.state->config.print_frame_report) {
     auto frame_report_scope = utils::scope_start("frame report"_hs);
     defer { utils::scope_end(frame_report_scope); };
@@ -254,6 +257,48 @@ void debug_stuff(App& app) {
     LOG2_DEBUG("frame mean: ", core::format{timing_infos.stats.mean_frame_time, os::TimeFormat::MMM_UUU_NNN});
     LOG2_DEBUG("frame low 98: ", core::format{timing_infos.stats.low_95, os::TimeFormat::MMM_UUU_NNN});
     LOG2_DEBUG("frame low 99: ", core::format{timing_infos.stats.low_99, os::TimeFormat::MMM_UUU_NNN});
+  }
+
+  if (appconf.print_frame_report_gpu_budget | appconf.crash_on_out_of_memory_budget) {
+    VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
+    vmaGetHeapBudgets(app.video->device.allocator, budgets);
+
+    if (appconf.print_frame_report_gpu_budget) {
+      struct formatted {
+        float size;
+        const char* unit;
+      };
+      auto format_budget = [](float t) -> formatted {
+        ASSERT(t >= 0);
+
+        core::storage<const char*> suffixes{"", "K", "M", "G"};
+        for (auto suffix : suffixes.slice(suffixes.size - 1).iter()) {
+          if (t < 1000.0f) {
+            return {t, suffix};
+          }
+          t /= 1000.0f;
+        }
+        return {t, suffixes[suffixes.size - 1]};
+      };
+      for (auto [i, budget] :
+           core::enumerate{core::storage{app.video->device.memory_properties.memoryHeapCount, budgets}.iter()}) {
+        auto [usage_size, usage_unit]   = format_budget(f32(budget->usage));
+        auto [budget_size, budget_unit] = format_budget(f32(budget->budget));
+
+        const char* src = "CPU";
+        if (app.video->device.memory_properties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) {
+          src = "GPU";
+        }
+
+        LOG_DEBUG("budget %s (%zu): %.2f%s/%.2f%s", src, i, usage_size, usage_unit, budget_size, budget_unit);
+      }
+    }
+
+    if (appconf.crash_on_out_of_memory_budget) {
+      for (auto budget : core::storage{app.video->device.memory_properties.memoryHeapCount, budgets}.iter()) {
+        ASSERT(budget.budget > budget.usage);
+      }
+    }
   }
 
   utils::config_f32xN("camera.position", app.state->camera.position._coeffs, 3);
@@ -295,10 +340,10 @@ EXPORT AppEvent process_events(App& app) {
 
 EXPORT AppEvent new_frame(App& app) {
   utils::timings_frame_end();
+  utils::timings_frame_start();
 
   AppEvent sev{};
   core::get_named_arena(core::ArenaName::Frame).reset();
-  utils::timings_frame_start();
 
   ImGui_ImplVulkan_NewFrame();
   ImGui_ImplSDL3_NewFrame();

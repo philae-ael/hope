@@ -26,6 +26,8 @@ struct CameraDescriptor {
   }
 };
 
+struct TextureCache;
+
 struct GpuTextureDescriptor {
   VkDescriptorPool pool;
   VkDescriptorSetLayout layout;
@@ -33,7 +35,7 @@ struct GpuTextureDescriptor {
   vk::image2D default_texture;
 
   static GpuTextureDescriptor init(subsystem::video& v);
-  void update(VkDevice device, VkSampler sampler, core::storage<GpuMesh> meshes);
+  void update(VkDevice device, VkSampler sampler, const TextureCache&);
   void uninit(subsystem::video& v);
 
   operator VkDescriptorSet() const {
@@ -58,14 +60,14 @@ struct vk::pipeline::VertexDescription<Vertex> {
 
 struct PushConstant {
   math::Mat4 transform_matrix;
-  u32 mesh_idx;
+  u32 base_color_texture_idx;
 };
 
 template <>
 struct vk::pipeline::PushConstantDescriptor<PushConstant> {
   static constexpr core::array ranges{
       VkPushConstantRange{VK_SHADER_STAGE_VERTEX_BIT, offsetof(PushConstant, transform_matrix), sizeof(math::Mat4)},
-      VkPushConstantRange{VK_SHADER_STAGE_FRAGMENT_BIT, offsetof(PushConstant, mesh_idx), sizeof(u32)}
+      VkPushConstantRange{VK_SHADER_STAGE_FRAGMENT_BIT, offsetof(PushConstant, base_color_texture_idx), sizeof(u32)},
   };
 };
 

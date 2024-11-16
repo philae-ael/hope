@@ -46,7 +46,10 @@ struct image2D {
     VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
     VkImageUsageFlags usage;
     VkImageAspectFlags image_view_aspect = VK_IMAGE_ASPECT_COLOR_BIT;
-    VmaAllocationCreateFlags alloc_flags{};
+    VmaAllocationCreateInfo alloc_create_info{
+        .flags = 0,
+        .usage = VMA_MEMORY_USAGE_AUTO,
+    };
   };
   struct ConfigExtentValues {
     VkExtent swapchain;

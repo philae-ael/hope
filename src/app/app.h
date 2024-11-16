@@ -87,10 +87,13 @@ struct AppState {
   struct {
 
     // === DEBUG ===
-    bool wait_timing_target      = false;
-    bool print_frame_report      = false;
-    bool print_frame_report_full = true;
-    u64 timing_target_usec       = 5500;
+    bool wait_timing_target            = false;
+    bool print_frame_report            = false;
+    bool print_frame_report_full       = false;
+    bool print_frame_report_gpu_budget = false;
+    bool crash_on_out_of_memory_budget = true;
+
+    u64 timing_target_usec = 5500;
 
     GridConfig grid{};
 

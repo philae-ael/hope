@@ -82,6 +82,9 @@ void render_profiling_graph(
                           2 * config.margin_vertical));
     }
 
+    if (max != max) { /*NaN*/
+      max = 0;
+    }
     max = dt * config.max_decay * max_s + max * (1.f - dt * config.max_decay);
     max = max_s  = MAX(max, max_s);
     max_s       *= 1.01f;
@@ -152,12 +155,12 @@ void render_profiling_graph(
 #define PROFILER_MAX_FRAME 150
 #define PROFILER_MAX_FRAME_ENTRY 150
 
-static frame_datum::entry cpu_frame_data_entries[PROFILER_MAX_FRAME][PROFILER_MAX_FRAME_ENTRY];
-static frame_datum cpu_frame_data[PROFILER_MAX_FRAME];
+static frame_datum::entry cpu_frame_data_entries[PROFILER_MAX_FRAME][PROFILER_MAX_FRAME_ENTRY]{};
+static frame_datum cpu_frame_data[PROFILER_MAX_FRAME]{};
 static f32 cpu_max = 0;
 
-static frame_datum::entry gpu_frame_data_entries[PROFILER_MAX_FRAME][PROFILER_MAX_FRAME_ENTRY];
-static frame_datum gpu_frame_data[PROFILER_MAX_FRAME];
+static frame_datum::entry gpu_frame_data_entries[PROFILER_MAX_FRAME][PROFILER_MAX_FRAME_ENTRY]{};
+static frame_datum gpu_frame_data[PROFILER_MAX_FRAME]{};
 static f32 gpu_max = 0;
 
 static usize cur_frame_idx = 0;

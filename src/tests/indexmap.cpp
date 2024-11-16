@@ -30,6 +30,12 @@ TEST(handle map adapter insert) {
 
   command = im.free_handle(h4);
   tassert(command.tag == decltype(command)::Tag::DeleteLast, "invalid command after free");
+
+  auto h5 = im.new_handle(alloc);
+  command = im.free_handle(h3);
+  auto h6 = im.new_handle(alloc);
+  tassert(im.resolve(h5) == core::Some<u32>(1), "invalid reallocation of handle");
+  tassert(im.resolve(h6) == core::Some<u32>(2), "invalid reallocation of handle");
 }
 
 TEST(handle map adapter free with known last) {

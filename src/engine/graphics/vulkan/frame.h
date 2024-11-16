@@ -1,6 +1,7 @@
 #ifndef INCLUDE_VULKAN_FRAME_H_
 #define INCLUDE_VULKAN_FRAME_H_
 
+#include "init.h"
 #include "vulkan.h"
 #include <core/core/fwd.h>
 
@@ -29,7 +30,7 @@ bool wait_frame(VkDevice device, FrameSynchro& sync, u64 timeout = 0);
 
 // Requires that a frame is ready to be begin
 // This can be checked by using wait_frame
-core::tuple<core::Maybe<Frame>, bool> begin_frame(VkDevice device, VkSwapchainKHR swapchain, FrameSynchro& sync);
+core::tuple<core::Maybe<Frame>, bool> begin_frame(Device& device, VkSwapchainKHR swapchain, FrameSynchro& sync);
 
 VkResult end_frame(VkDevice device, VkQueue present_queue, VkSwapchainKHR swapchain, Frame frame);
 

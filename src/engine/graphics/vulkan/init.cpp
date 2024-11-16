@@ -64,6 +64,10 @@ VkBool32 debug_utils_messenger_callback(
         .emit();
   }
 
+  if (level >= core::LogLevel::Warning) {
+    core::dump_backtrace();
+  }
+
   return VK_FALSE;
 }
 
@@ -457,6 +461,7 @@ EXPORT Result<Device> create_default_device(
 
   device_extensions.push(*ar, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
   device_extensions.push(*ar, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
+  device_extensions.push(*ar, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
   auto device_extension_properties = enumerate_device_extension_properties(*ar, physical_device);
   for (auto& extension : device_extensions.iter()) {
     bool found = false;
@@ -476,12 +481,15 @@ EXPORT Result<Device> create_default_device(
   VkPhysicalDeviceProperties properties{};
   vkGetPhysicalDeviceProperties(physical_device, &properties);
 
+  VkPhysicalDeviceMemoryProperties memory_properties{};
+  vkGetPhysicalDeviceMemoryProperties(physical_device, &memory_properties);
+
   VkQueue omniQueue;
   u32 omniQueueFamilyIndex = queues_creation_infos[0].family_index;
   vkGetDeviceQueue(*device, omniQueueFamilyIndex, 0, &omniQueue);
 
   VmaAllocatorCreateInfo allocator_create_info = {
-      // .flags            = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT,
+      .flags            = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT,
       .physicalDevice   = physical_device,
       .device           = device.value(),
       .instance         = instance,
@@ -490,7 +498,7 @@ EXPORT Result<Device> create_default_device(
   VmaAllocator allocator;
   VK_ASSERT(vmaCreateAllocator(&allocator_create_info, &allocator));
   return Device{
-      physical_device, device.value(), allocator, properties, omniQueueFamilyIndex, omniQueue,
+      physical_device, device.value(), allocator, properties, memory_properties, omniQueueFamilyIndex, omniQueue,
 
   };
 }
