@@ -2,6 +2,6 @@
 
 TEST(str8) {
   auto a{"A bigger test"_s};
-  core::array<u8, 14> b{"a bigger test"};
-  tassert(a == core::str8{1, b.data}, "huhuh");
+  core::array<u8, 14> b{"A bigger test"};
+  tassert(a == core::str8{14, b.data}, "huhuh");
 }

@@ -6,12 +6,10 @@
 
 #include <algorithm>
 #include <bit>
-#include <limits.h>
-
-#include <cstring>
-
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
+#include <limits.h>
 #include <new>
 #include <type_traits>
 #include <utility>
@@ -35,7 +33,7 @@ char (&_ArraySizeHelper(T (&arr)[N]))[N];
 #endif
 
 #if WINDOWS
-  #define NO_UNIQUE_ADDRESS
+  #define NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
 #else
   #define NO_UNIQUE_ADDRESS [[no_unique_address]]
 #endif
@@ -669,106 +667,95 @@ private:
 };
 
 // === Tuple Definition ===
+// Hand made tuples is way easier and should compile way faster also, but's it a bit of code, either generate them or
 
-template <class... Args>
+template <class... T>
 struct tuple;
+
+template <usize N, class... Args>
+  requires(N < sizeof...(Args))
+decltype(auto) get(tuple<Args...>& t) {
+  return t.template get<N>();
+}
+
+template <usize N, class... Args>
+  requires(N < sizeof...(Args))
+decltype(auto) get(const tuple<Args...>& t) {
+  return t.template get<N>();
+}
+
+template <usize N, class... Args>
+  requires(N < sizeof...(Args))
+decltype(auto) get(tuple<Args...>&& t) {
+  return t.template get<N>();
+}
 
 template <>
 struct tuple<> {};
 
-template <class T, class... Args>
-struct tuple<T, Args...> {
-  NO_UNIQUE_ADDRESS T head;
-  NO_UNIQUE_ADDRESS tuple<Args...> tail;
-};
+#define _TUPLE_REPEAT_0(D, J)
+#define _TUPLE_REPEAT_1(D, J) D(0)
+#define _TUPLE_REPEAT_2(D, J) _TUPLE_REPEAT_1(D, J) J() D(1)
+#define _TUPLE_REPEAT_3(D, J) _TUPLE_REPEAT_2(D, J) J() D(2)
+#define _TUPLE_REPEAT_4(D, J) _TUPLE_REPEAT_3(D, J) J() D(3)
+#define _TUPLE_REPEAT_5(D, J) _TUPLE_REPEAT_4(D, J) J() D(4)
+#define _TUPLE_REPEAT_6(D, J) _TUPLE_REPEAT_5(D, J) J() D(5)
+#define _TUPLE_REPEAT_7(D, J) _TUPLE_REPEAT_6(D, J) J() D(6)
+#define _TUPLE_REPEAT_8(D, J) _TUPLE_REPEAT_7(D, J) J() D(7)
+#define _TUPLE_REPEAT_9(D, J) _TUPLE_REPEAT_8(D, J) J() D(8)
 
-template <class... Args>
-tuple(Args...) -> tuple<Args...>;
+#define _TUPLE_COMMA_ID() ,
+#define _TUPLE_SEMICOLON_ID() ;
 
-// === Typle helpers ===
+#define _TUPLE_REPEAT(N, ...) _TUPLE_REPEAT_##N(__VA_ARGS__)
 
-namespace details {
-template <class... Args>
-struct all_types_are_unique;
+#define _TUPLE_DEFINE_TEMPLATE_DEF(k) class T##k
+#define _TUPLE_DEFINE_TEMPLATE(k) T##k
+#define _TUPLE_DEFINE_FIELD(k) NO_UNIQUE_ADDRESS T##k _##k
+#define _TUPLE_DEFINE_GET_INDEX(k) \
+  if constexpr (N == k)            \
+  return self._##k
 
-template <class T>
-struct all_types_are_unique<T> {
-  static constexpr bool value = true;
-};
+#define _TUPLE_DEFINE(k)                                                    \
+  template <_TUPLE_REPEAT(k, _TUPLE_DEFINE_TEMPLATE_DEF, _TUPLE_COMMA_ID)>  \
+  struct tuple<_TUPLE_REPEAT(k, _TUPLE_DEFINE_TEMPLATE, _TUPLE_COMMA_ID)> { \
+    _TUPLE_REPEAT(k, _TUPLE_DEFINE_FIELD, _TUPLE_SEMICOLON_ID);             \
+    template <usize N>                                                      \
+      requires(N < k)                                                       \
+    auto& get(this auto& self) {                                            \
+      _TUPLE_REPEAT(k, _TUPLE_DEFINE_GET_INDEX, _TUPLE_SEMICOLON_ID);       \
+    }                                                                       \
+    auto operator<=>(const tuple& other) const noexcept = default;          \
+  };
 
-template <class T, class... Args>
-struct all_types_are_unique<T, Args...> {
-  static constexpr bool value = !(std::is_same_v<T, Args> || ...) && all_types_are_unique<Args...>::value;
-};
+_TUPLE_DEFINE(1)
+_TUPLE_DEFINE(2)
+_TUPLE_DEFINE(3)
+_TUPLE_DEFINE(4)
+_TUPLE_DEFINE(5)
+_TUPLE_DEFINE(6)
+_TUPLE_DEFINE(7)
+_TUPLE_DEFINE(8)
+_TUPLE_DEFINE(9)
 
-template <class... Args>
-constexpr bool all_types_are_unique_v = all_types_are_unique<Args...>::value;
-} // namespace details
-
-// === Accessors ===
-template <usize N, class... Args>
-auto& get(tuple<Args...>& t) {
-  static_assert(N < sizeof...(Args), "out of index");
-  if constexpr (N == 0) {
-    return t.head;
-  } else {
-    return get<N - 1>(t.tail);
-  }
-}
-
-template <usize N, class... Args>
-auto& get(const tuple<Args...>& t) {
-  static_assert(N < sizeof...(Args), "out of index");
-
-  if constexpr (N == 0) {
-    return t.head;
-  } else {
-    return get<N - 1>(t.tail);
-  }
-}
-
-template <usize N, class... Args>
-auto&& get(tuple<Args...>&& t) {
-  static_assert(N < sizeof...(Args), "out of index");
-  if constexpr (N == 0) {
-    return t.head;
-  } else {
-    return get<N - 1>(t.tail);
-  }
-}
-
-template <usize N, class... Args>
-auto&& get(const tuple<Args...>&& t) {
-  static_assert(N < sizeof...(Args), "out of index");
-
-  if constexpr (N == 0) {
-    return t.head;
-  } else {
-    return get<N - 1>(t.tail);
-  }
-}
-
-template <class T, class... Args>
-auto& get_by_type(tuple<Args...>& t)
-  requires details::all_types_are_unique<Args...>::value
-{
-  if constexpr (std::is_same_v<decltype(t.head), T>) {
-    return t.head;
-  } else {
-    return get_by_type<T>(t.tail);
-  }
-}
-
-template <class T, class... Args>
-const auto& get_by_type(const tuple<Args...>& t)
-  requires details::all_types_are_unique<Args...>::value
-{
-  if constexpr (std::is_same_v<decltype(t.head), T>) {
-    return t.head;
-  } else {
-    return get_by_type<T>(t.tail);
-  }
-}
+#undef _TUPLE_DEFINE_TEMPLATE_DEF
+#undef _TUPLE_DEFINE_TEMPLATE
+#undef _TUPLE_DEFINE_FIELD
+#undef _TUPLE_DEFINE_GET_INDEX
+#undef _TUPLE_COMMA_ID
+#undef _TUPLE_SEMICOLON_ID
+#undef _TUPLE_DEFINE
+#undef _TUPLE_REPEAT
+#undef _TUPLE_REPEAT_0
+#undef _TUPLE_REPEAT_1
+#undef _TUPLE_REPEAT_2
+#undef _TUPLE_REPEAT_3
+#undef _TUPLE_REPEAT_4
+#undef _TUPLE_REPEAT_5
+#undef _TUPLE_REPEAT_6
+#undef _TUPLE_REPEAT_7
+#undef _TUPLE_REPEAT_8
+#undef _TUPLE_REPEAT_9
 
 template <class T, class F, class... Args>
 T map_construct(tuple<Args...>& t, F f) {
@@ -898,11 +885,10 @@ constexpr bool any(T t) {
 }
 
 } // namespace enum_helpers
+//
 template <class Idx, iterable It>
-struct EnumerateItem {
-  usize _1;
-  typename detail_::storage_traits<typename It::Item>::type _2;
-};
+struct EnumerateItem : tuple<usize, typename detail_::storage_traits<typename It::Item>::type> {};
+
 template <iterable It, class Idx = usize>
 struct enumerate : cpp_iter<EnumerateItem<Idx, It>, enumerate<It, Idx>> {
   It it;

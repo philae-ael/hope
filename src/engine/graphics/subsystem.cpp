@@ -118,10 +118,8 @@ EXPORT bool video::wait_frame(u64 timeout_ns) {
 }
 
 EXPORT core::tuple<core::Maybe<VideoFrame>, bool> video::begin_frame() {
-  auto t = vk::begin_frame(device, swapchain, sync);
+  auto [frame, should_rebuild_swapchain] = vk::begin_frame(device, swapchain, sync);
 
-  auto frame                    = core::get<0>(t);
-  auto should_rebuild_swapchain = core::get<1>(t);
   if (frame.is_none()) {
     return {core::None<VideoFrame>(), should_rebuild_swapchain};
   }

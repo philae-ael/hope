@@ -403,11 +403,8 @@ MeshToken MeshLoader::queue_mesh(vk::Device& device, core::str8 src, TextureCach
 }
 
 void MeshLoader::work(vk::Device& device, OnPrimitiveLoaded callback, void* userdata) {
-  for (auto t : command_buffers.iter_rev_enumerate()) {
-    CommandBufferToken command_buffer_token = *core::get<0>(t);
-    CommandBuffer& buffer                   = *core::get<1>(t);
-
-    if (!buffer.done(device)) {
+  for (auto [command_buffer_token, buffer] : command_buffers.iter_rev_enumerate()) {
+    if (!buffer->done(device)) {
       continue;
     }
 
@@ -442,7 +439,7 @@ void MeshLoader::work(vk::Device& device, OnPrimitiveLoaded callback, void* user
       }
     }
 
-    buffer.uninit(device, pool);
+    buffer->uninit(device, pool);
     command_buffers.destroy(command_buffer_token);
   }
 }

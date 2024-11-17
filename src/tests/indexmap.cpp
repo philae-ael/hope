@@ -103,9 +103,7 @@ TEST(handle_map iter) {
 
   bool h1access = false;
   bool h2access = false;
-  for (auto t : a.iter_enumerate()) {
-    auto handle = get<0>(t);
-    auto item   = get<1>(t);
+  for (auto [handle, item] : a.iter_enumerate()) {
     if (handle == h1) {
       h1access = true;
       tassert(item == 2, "a[h1] == 2");

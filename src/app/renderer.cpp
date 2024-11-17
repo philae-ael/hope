@@ -154,9 +154,7 @@ AppEvent render(AppState* app_state, subsystem::video& v, Renderer& renderer) {
     sev |= AppEvent::RebuildRenderer;
   }
 
-  auto t                        = v.begin_frame();
-  auto frame                    = get<0>(t);
-  auto should_rebuild_swapchain = get<1>(t);
+  auto [frame, should_rebuild_swapchain] = v.begin_frame();
   if (should_rebuild_swapchain) {
     sev |= AppEvent::RebuildSwapchain;
   }
