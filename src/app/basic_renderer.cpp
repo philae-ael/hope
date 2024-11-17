@@ -105,7 +105,7 @@ void BasicRenderer::render(
   }
 }
 
-GpuTextureDescriptor GpuTextureDescriptor::init(subsystem::video& v) {
+BindlessTextureDescriptor BindlessTextureDescriptor::init(subsystem::video& v) {
   VkDescriptorPool pool = vk::DescriptorPoolBuilder{
       .max_sets = 1, .sizes = {VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2000}}
   }.build(v.device);
@@ -135,7 +135,7 @@ GpuTextureDescriptor GpuTextureDescriptor::init(subsystem::video& v) {
   };
 }
 
-void GpuTextureDescriptor::update(VkDevice device, VkSampler sampler, const TextureCache& texture_cache) {
+void BindlessTextureDescriptor::update(VkDevice device, VkSampler sampler, const TextureCache& texture_cache) {
   auto scratch          = core::scratch_get();
   core::Allocator alloc = scratch;
   core::vec<VkDescriptorImageInfo> image_infos;
@@ -173,7 +173,7 @@ void GpuTextureDescriptor::update(VkDevice device, VkSampler sampler, const Text
       .update(device);
 }
 
-void GpuTextureDescriptor::uninit(subsystem::video& v) {
+void BindlessTextureDescriptor::uninit(subsystem::video& v) {
   vkDestroyDescriptorSetLayout(v.device, layout, nullptr);
   vkDestroyDescriptorPool(v.device, pool, nullptr);
   default_texture.destroy(v.device);

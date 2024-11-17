@@ -402,7 +402,7 @@ MeshToken MeshLoader::queue_mesh(vk::Device& device, core::str8 src, TextureCach
   return mesh_token;
 }
 
-void MeshLoader::work(vk::Device& device, Callback callback, void* userdata) {
+void MeshLoader::work(vk::Device& device, OnPrimitiveLoaded callback, void* userdata) {
   for (auto t : command_buffers.iter_rev_enumerate()) {
     CommandBufferToken command_buffer_token = *core::get<0>(t);
     CommandBuffer& buffer                   = *core::get<1>(t);
@@ -445,6 +445,13 @@ void MeshLoader::work(vk::Device& device, Callback callback, void* userdata) {
     buffer.uninit(device, pool);
     command_buffers.destroy(command_buffer_token);
   }
+}
+
+MeshLoader::MeshLoader(vk::Device& device) {
+  VkCommandPoolCreateInfo command_pool_create_info{
+      .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+  };
+  VK_ASSERT(vkCreateCommandPool(device, &command_pool_create_info, nullptr, &pool));
 }
 
 void MeshLoader::uninit(subsystem::video& v) {

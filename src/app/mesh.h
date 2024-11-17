@@ -130,7 +130,6 @@ struct StagingBuffer {
   }
 
   void uninit(vk::Device& device) {
-    LOG_TRACE("%p", buffer);
     vmaDestroyBuffer(device.allocator, buffer, allocation);
   }
   void reset() {
@@ -218,23 +217,12 @@ struct TextureCache;
 
 class MeshLoader {
 public:
-  using Callback = void (*)(void*, vk::Device& device, MeshToken, GpuMesh, bool mesh_fully_loaded);
+  using OnPrimitiveLoaded = void (*)(void*, vk::Device& device, MeshToken, GpuMesh, bool mesh_fully_loaded);
+
   MeshToken queue_mesh(vk::Device& device, core::str8 src, TextureCache& texture_cache);
-  void work(vk::Device& device, Callback callback, void* userdata);
+  void work(vk::Device& device, OnPrimitiveLoaded callback, void* userdata);
 
-  bool loading() {
-    return jobs.size() > 0;
-  }
-
-  static MeshLoader init(vk::Device& device) {
-    MeshLoader self{};
-
-    VkCommandPoolCreateInfo command_pool_create_info{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-    };
-    VK_ASSERT(vkCreateCommandPool(device, &command_pool_create_info, nullptr, &self.pool));
-    return self;
-  }
+  MeshLoader(vk::Device& device);
   void uninit(subsystem::video& v);
 
 private:

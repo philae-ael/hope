@@ -26,88 +26,29 @@
 
 using namespace core::enum_helpers;
 
-static core::array deps{
-    "/assets/scenes/sponza.glb"_s,
-    "/assets/scenes/bistro.glb"_s,
-    "/assets/scenes/san miguel.glb"_s,
-};
+MainRenderer::MainRenderer(GPUDataStorage& gpu_data, subsystem::video& v) {
+  swapchain_rebuilt(v);
 
-MainRenderer MainRenderer::init(subsystem::video& v) {
-  MainRenderer self{};
-
-  VkSamplerCreateInfo sampler_create_info{
-      .sType            = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-      .magFilter        = VK_FILTER_LINEAR,
-      .minFilter        = VK_FILTER_LINEAR,
-      .mipmapMode       = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-      .addressModeU     = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-      .addressModeV     = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-      .addressModeW     = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-      .mipLodBias       = 0.0,
-      .anisotropyEnable = false,
-      .maxAnisotropy    = 1.0,
-      .compareEnable    = false,
-      .borderColor      = VK_BORDER_COLOR_INT_OPAQUE_WHITE,
-  };
-  vkCreateSampler(v.device, &sampler_create_info, nullptr, &self.default_sampler);
-  self.swapchain_rebuilt(v);
-
-  self.camera_descriptor      = CameraDescriptor::init(v);
-  self.gpu_texture_descriptor = GpuTextureDescriptor::init(v);
-  self.basic_renderer         = BasicRenderer::init(
-      v, v.swapchain.config.surface_format.format, self.depth.format, self.camera_descriptor.layout,
-      self.gpu_texture_descriptor.layout
+  basic_renderer = BasicRenderer::init(
+      v, v.swapchain.config.surface_format.format, depth.format, gpu_data.camera_descriptor.layout,
+      gpu_data.bindless_texture_descriptor.layout
   );
-  self.grid_renderer =
-      GridRenderer::init(v, v.swapchain.config.surface_format.format, self.depth.format, self.camera_descriptor.layout);
-  self.debug_renderer = DebugRenderer::init(
-      v, v.swapchain.config.surface_format.format, self.depth.format, self.camera_descriptor.layout
-  );
-  self.imgui_renderer = ImGuiRenderer::init(v);
-
-  self.mesh_loader      = core::get_named_allocator(core::AllocatorName::General).allocate<MeshLoader>();
-  self.mesh_loader      = new (self.mesh_loader) MeshLoader{MeshLoader::init(v.device)};
-  self.first_cmd_buffer = true;
-
-  return self;
+  grid_renderer =
+      GridRenderer::init(v, v.swapchain.config.surface_format.format, depth.format, gpu_data.camera_descriptor.layout);
+  debug_renderer =
+      DebugRenderer::init(v, v.swapchain.config.surface_format.format, depth.format, gpu_data.camera_descriptor.layout);
+  imgui_renderer = ImGuiRenderer::init(v);
 }
 
 void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuffer cmd, vk::image2D& swapchain_image) {
-  if (first_cmd_buffer) {
-    mesh_loader->queue_mesh(device, deps[1], texture_cache);
-    vk::pipeline_barrier(cmd, gpu_texture_descriptor.default_texture.sync_to({VK_IMAGE_LAYOUT_GENERAL}));
-    VkImageSubresourceRange range{
-        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-        .levelCount = 1,
-        .layerCount = 1,
-    };
-    VkClearColorValue color{.float32 = {1.0, 0.0, 1.0, 1.0}};
-    vkCmdClearColorImage(cmd, gpu_texture_descriptor.default_texture, VK_IMAGE_LAYOUT_GENERAL, &color, 1, &range);
-    first_cmd_buffer = false;
-  }
-
   vk::pipeline_barrier(
       cmd, swapchain_image.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}),
       depth.sync_to({VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL}, VK_IMAGE_ASPECT_DEPTH_BIT)
   );
 
-  mesh_loader->work(
-      device,
-      [](void* u, vk::Device& device, MeshToken, GpuMesh mesh, bool) {
-        auto* self = static_cast<MainRenderer*>(u);
-        self->meshes.push(core::get_named_allocator(core::AllocatorName::General), mesh);
-        self->should_update_texture_descriptor = true;
-      },
-      this
-  );
-
-  if (should_update_texture_descriptor) {
-    gpu_texture_descriptor.update(device, default_sampler, texture_cache);
-    should_update_texture_descriptor = false;
-  }
   auto camera_matrices =
       app_state->camera.matrices((f32)swapchain_image.extent.width, (f32)swapchain_image.extent.height);
-  camera_descriptor.update(device, camera_matrices);
+  app_state->gpu_data.camera_descriptor.update(device, camera_matrices);
 
   vk::RenderingInfo{
       .render_area       = {{}, swapchain_image.extent},
@@ -135,18 +76,21 @@ void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuff
   // render
 
   auto mesh_scope = vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "mesh"_hs);
-  basic_renderer.render(device, cmd, camera_descriptor, gpu_texture_descriptor, meshes);
+  basic_renderer.render(
+      device, cmd, app_state->gpu_data.camera_descriptor, app_state->gpu_data.bindless_texture_descriptor,
+      app_state->gpu_data.meshes
+  );
   vk::timestamp_scope_end(cmd, VK_PIPELINE_STAGE_2_NONE, mesh_scope);
 
   auto grid_scope = vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "grid"_hs);
-  grid_renderer.render(app_state->config.grid, device, cmd, camera_descriptor);
+  grid_renderer.render(app_state->config.grid, device, cmd, app_state->gpu_data.camera_descriptor);
   vk::timestamp_scope_end(cmd, VK_PIPELINE_STAGE_2_NONE, grid_scope);
 
   debug_renderer.reset();
   debug_renderer.draw_origin_gizmo(device);
 
   auto debug_scope = vk::timestamp_scope_start(cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, "debug"_hs);
-  debug_renderer.render(device, cmd, camera_descriptor);
+  debug_renderer.render(device, cmd, app_state->gpu_data.camera_descriptor);
   vk::timestamp_scope_end(cmd, VK_PIPELINE_STAGE_2_NONE, debug_scope);
 
   vkCmdEndRendering(cmd);
@@ -175,23 +119,11 @@ void MainRenderer::render(AppState* app_state, vk::Device& device, VkCommandBuff
 }
 
 void MainRenderer::uninit(subsystem::video& v) {
-  for (auto& mesh : meshes.iter())
-    unload_mesh(v, mesh);
-  meshes.reset(core::get_named_allocator(core::AllocatorName::General));
-  mesh_loader->uninit(v);
-  core::get_named_allocator(core::AllocatorName::General).deallocate(mesh_loader);
-  mesh_loader = nullptr;
-
   basic_renderer.uninit(v.device);
   grid_renderer.uninit(v.device);
   debug_renderer.uninit(v.device);
   imgui_renderer.uninit(v);
-  camera_descriptor.uninit(v);
-  gpu_texture_descriptor.uninit(v);
   depth.destroy(v.device);
-  texture_cache.uninit(v.device);
-
-  vkDestroySampler(v.device, default_sampler, nullptr);
 
   return;
 }
@@ -209,49 +141,11 @@ void MainRenderer::swapchain_rebuilt(subsystem::video& v) {
 }
 
 core::vec<const core::str8> MainRenderer::file_deps(core::Arena& arena) {
-
   return core::vec<const core::str8>{
       "/assets/shaders/tri.vert.spv"_s,  "/assets/shaders/tri.frag.spv"_s,   "/assets/shaders/grid.vert.spv"_s,
       "/assets/shaders/grid.frag.spv"_s, "/assets/shaders/debug.vert.spv"_s, "/assets/shaders/debug.frag.spv"_s,
   }
       .clone(arena);
-}
-
-void on_dep_file_modified(void* userdata) {
-  LOG_INFO("renderer's file_dep detected, rebuilding renderer is needed");
-  auto& renderer        = *static_cast<Renderer*>(userdata);
-  renderer.need_rebuild = true;
-}
-
-Renderer* init_renderer(core::Allocator alloc, subsystem::video& v) {
-  Renderer& rdata    = *new (alloc.allocate<Renderer>()) Renderer{};
-  rdata.need_rebuild = false;
-
-  VkCommandPoolCreateInfo command_pool_create_info{
-      .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-      .flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-      .queueFamilyIndex = v.device.omni_queue_family_index,
-  };
-  VK_ASSERT(vkCreateCommandPool(v.device, &command_pool_create_info, nullptr, &rdata.command_pool));
-  VkCommandBufferAllocateInfo command_pool_allocate_info{
-      .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-      .commandPool        = rdata.command_pool,
-      .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-      .commandBufferCount = 1,
-  };
-  VK_ASSERT(vkAllocateCommandBuffers(v.device, &command_pool_allocate_info, &rdata.cmd));
-  rdata.main_renderer = MainRenderer::init(v);
-
-  {
-    auto scratch = core::scratch_get();
-    auto deps    = rdata.main_renderer.file_deps(*scratch);
-    for (auto f : deps.iter()) {
-      auto handle = fs::register_modified_file_callback(f, on_dep_file_modified, &rdata);
-      rdata.on_file_modified_handles.push(alloc, handle);
-    }
-  }
-
-  return &rdata;
 }
 
 AppEvent render(AppState* app_state, subsystem::video& v, Renderer& renderer) {
@@ -271,16 +165,7 @@ AppEvent render(AppState* app_state, subsystem::video& v, Renderer& renderer) {
     return sev;
   }
 
-  VkCommandBufferBeginInfo command_buffer_begin_info{
-      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-      .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-  };
-  vkBeginCommandBuffer(renderer.cmd, &command_buffer_begin_info);
-  renderer.main_renderer.render(app_state, v.device, renderer.cmd, frame->swapchain_image);
-
-  auto render_scope = utils::scope_start("end cmd buffer"_hs);
-  vkEndCommandBuffer(renderer.cmd);
-  utils::scope_end(render_scope);
+  renderer.render(app_state, v, frame->swapchain_image);
 
   switch (VkResult res = v.end_frame(*frame, renderer.cmd); res) {
   case VK_ERROR_OUT_OF_DATE_KHR:
@@ -294,7 +179,7 @@ AppEvent render(AppState* app_state, subsystem::video& v, Renderer& renderer) {
   return sev;
 }
 
-void swapchain_rebuilt(subsystem::video& v, Renderer& renderer) {
+void Renderer::swapchain_rebuilt(subsystem::video& v) {
   LOG_TRACE("swapchain rebuilt");
 
   // Rather than this, i think that a timeline semaphore + a coroutine, well whatever
@@ -304,17 +189,107 @@ void swapchain_rebuilt(subsystem::video& v, Renderer& renderer) {
   // })
 
   vkDeviceWaitIdle(v.device);
-  renderer.main_renderer.swapchain_rebuilt(v);
+  main_renderer.swapchain_rebuilt(v);
 }
 
-void uninit_renderer(subsystem::video& v, Renderer& renderer) {
+Renderer::Renderer(core::Allocator alloc, GPUDataStorage& gpu_data, subsystem::video& v)
+    : main_renderer(gpu_data, v) {
+  VkCommandPoolCreateInfo command_pool_create_info{
+      .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+      .flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+      .queueFamilyIndex = v.device.omni_queue_family_index,
+  };
+  VK_ASSERT(vkCreateCommandPool(v.device, &command_pool_create_info, nullptr, &command_pool));
+  VkCommandBufferAllocateInfo command_pool_allocate_info{
+      .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+      .commandPool        = command_pool,
+      .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+      .commandBufferCount = 1,
+  };
+  VK_ASSERT(vkAllocateCommandBuffers(v.device, &command_pool_allocate_info, &cmd));
+
+  {
+    auto scratch = core::scratch_get();
+    auto deps    = main_renderer.file_deps(*scratch);
+    for (auto f : deps.iter()) {
+      auto handle = fs::register_modified_file_callback(
+          f,
+          [](void* userdata) {
+            LOG_INFO("renderer's file_dep detected, rebuilding renderer is needed");
+            auto& renderer        = *static_cast<Renderer*>(userdata);
+            renderer.need_rebuild = true;
+          },
+          this
+      );
+
+      on_file_modified_handles.push(alloc, handle);
+    }
+  }
+}
+
+void Renderer::uninit(subsystem::video& v) {
   vkDeviceWaitIdle(v.device);
-  renderer.main_renderer.uninit(v);
+  main_renderer.uninit(v);
 
-  vkFreeCommandBuffers(v.device, renderer.command_pool, 1, &renderer.cmd);
-  vkDestroyCommandPool(v.device, renderer.command_pool, nullptr);
+  vkFreeCommandBuffers(v.device, command_pool, 1, &cmd);
+  vkDestroyCommandPool(v.device, command_pool, nullptr);
 
-  for (auto h : renderer.on_file_modified_handles.iter()) {
+  for (auto h : on_file_modified_handles.iter()) {
     fs::unregister_modified_file_callback(h);
   }
+}
+void Renderer::render(AppState* app_state, subsystem::video& v, vk::image2D& swapchain_image) {
+
+  VkCommandBufferBeginInfo command_buffer_begin_info{
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+      .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+  };
+  vkBeginCommandBuffer(cmd, &command_buffer_begin_info);
+
+  if (first_cmd_buffer) {
+    vk::pipeline_barrier(
+        cmd, app_state->gpu_data.bindless_texture_descriptor.default_texture.sync_to({VK_IMAGE_LAYOUT_GENERAL})
+    );
+    VkImageSubresourceRange range{
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .levelCount = 1,
+        .layerCount = 1,
+    };
+    VkClearColorValue color{.float32 = {1.0, 0.0, 1.0, 1.0}};
+    vkCmdClearColorImage(
+        cmd, app_state->gpu_data.bindless_texture_descriptor.default_texture, VK_IMAGE_LAYOUT_GENERAL, &color, 1, &range
+    );
+    first_cmd_buffer = false;
+  }
+
+  {
+    // === MESH LOADING ===
+
+    struct MeshLoaderWorkEnv {
+      GPUDataStorage& gpu_data;
+      bool should_update_texture_descriptor = false;
+    } env{
+        app_state->gpu_data,
+    };
+
+    app_state->gpu_data.mesh_loader.work(
+        v.device,
+        [](void* data, vk::Device& device, MeshToken, GpuMesh mesh, bool) {
+          auto& env = *static_cast<MeshLoaderWorkEnv*>(data);
+          env.gpu_data.meshes.push(core::get_named_allocator(core::AllocatorName::General), mesh);
+          env.should_update_texture_descriptor = true;
+        },
+        &env
+    );
+
+    if (env.should_update_texture_descriptor) {
+      app_state->gpu_data.bindless_texture_descriptor.update(
+          v.device, app_state->gpu_data.default_sampler, app_state->gpu_data.texture_cache
+      );
+    }
+  }
+
+  main_renderer.render(app_state, v.device, cmd, swapchain_image);
+
+  vkEndCommandBuffer(cmd);
 }

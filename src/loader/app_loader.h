@@ -22,7 +22,7 @@ struct Renderer;
 union SDL_Event;
 
 using PFN_init           = App* (*)(AppState*, subsystem ::video*);
-using PFN_uninit         = AppState* (*)(App&);
+using PFN_uninit         = AppState* (*)(App&, bool keep_app_state);
 using PFN_process_events = AppEvent (*)(App&);
 using PFN_new_frame      = AppEvent (*)(App&);
 

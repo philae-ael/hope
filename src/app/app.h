@@ -65,17 +65,32 @@ struct InputState {
   Axis yaw;
 };
 
+struct GPUDataStorage {
+  MeshLoader mesh_loader;
+
+  core::vec<GpuMesh> meshes;
+  TextureCache texture_cache{};
+  CameraDescriptor camera_descriptor;
+  BindlessTextureDescriptor bindless_texture_descriptor;
+  VkSampler default_sampler;
+
+  GPUDataStorage(subsystem::video& v);
+  void uninit(subsystem::video& v);
+};
+
 struct App {
   core::Arena* arena;
   subsystem::video* video;
   Renderer* renderer;
+
   InputState input_state{};
+
   AppState* state = nullptr;
 };
 
 struct AppState {
   // WARN: BUMP THIS ON MODIFICATION OF STATE
-  static const usize CUR_VERSION = 7;
+  static const usize CUR_VERSION = 8;
   usize version                  = CUR_VERSION;
   Camera camera{
       .hfov     = DEGREE(60),
@@ -85,7 +100,6 @@ struct AppState {
       .rotation = math::Quat::Id,
   };
   struct {
-
     // === DEBUG ===
     bool wait_timing_target            = false;
     bool print_frame_report            = false;
@@ -106,6 +120,8 @@ struct AppState {
     } rot_speed;
 
   } config;
+
+  GPUDataStorage gpu_data;
 };
 
 #endif // INCLUDE_APP_APP_H_

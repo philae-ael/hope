@@ -115,7 +115,7 @@ int main(int argc, char* argv[]) {
     if (any(sev & AppEvent::ReloadApp) || need_reload(app_pfns)) {
       LOG_INFO("reloading app");
 
-      auto app_state = app_pfns.uninit(*app);
+      auto* app_state = app_pfns.uninit(*app, true);
       reload_app(app_pfns);
       app = app_pfns.init(app_state, &video);
       utils::timings_reset();
@@ -126,7 +126,7 @@ int main(int argc, char* argv[]) {
   /// === Cleanup ===
 
   LOG_INFO("Exiting...");
-  app_pfns.uninit(*app);
+  app_pfns.uninit(*app, false);
 
   ImGui_ImplSDL3_Shutdown();
   ImGui::DestroyContext();

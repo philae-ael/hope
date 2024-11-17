@@ -89,24 +89,17 @@ struct TextureCache {
   }
 };
 
+struct GPUDataStorage;
+
 struct MainRenderer {
-  CameraDescriptor camera_descriptor;
-  GpuTextureDescriptor gpu_texture_descriptor;
   ImGuiRenderer imgui_renderer;
   BasicRenderer basic_renderer;
   GridRenderer grid_renderer;
   DebugRenderer debug_renderer;
+
   vk::image2D depth;
-  VkSampler default_sampler;
-  bool should_update_texture_descriptor;
-  bool first_cmd_buffer;
-  TextureCache texture_cache{};
 
-  // requires to be pinned
-  MeshLoader* mesh_loader;
-  core::vec<GpuMesh> meshes;
-
-  static MainRenderer init(subsystem::video& v);
+  MainRenderer(GPUDataStorage& gpu_data, subsystem::video& v);
   void render(AppState* app_state, vk::Device& device, VkCommandBuffer cmd, vk::image2D& swapchain_image);
   void uninit(subsystem::video& v);
 
@@ -119,16 +112,20 @@ struct Renderer {
   VkCommandPool command_pool;
   VkCommandBuffer cmd;
 
-  core::vec<fs::on_file_modified_handle> on_file_modified_handles;
-  bool need_rebuild = false;
+  bool need_rebuild     = false;
+  bool first_cmd_buffer = true;
 
   MainRenderer main_renderer;
+
+  core::vec<fs::on_file_modified_handle> on_file_modified_handles;
+
+  Renderer(core::Allocator alloc, GPUDataStorage& gpu_data, subsystem::video& v);
+  void uninit(subsystem::video& v);
+
+  void swapchain_rebuilt(subsystem::video& v);
+  void render(AppState* app_state, subsystem::video& v, vk::image2D& swapchain_image);
 };
 
-Renderer* init_renderer(core::Allocator alloc, subsystem::video& v);
-void uninit_renderer(subsystem::video& v, Renderer& renderer);
-
 AppEvent render(AppState* app_state, subsystem::video& v, Renderer& renderer);
-void swapchain_rebuilt(subsystem::video& v, Renderer& renderer);
 
 #endif // INCLUDE_APP_RENDERER_H_

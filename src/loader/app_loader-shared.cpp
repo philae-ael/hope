@@ -10,7 +10,7 @@ AppPFNs init_app_stub() {
   return AppPFNs{
       .handle         = nullptr,
       .init           = [](AppState* app_state, subsystem ::video*) -> App* { return (App*)app_state; },
-      .uninit         = [](App& app_state) -> AppState* { return (AppState*)&app_state; },
+      .uninit         = [](App& app_state, bool) -> AppState* { return (AppState*)&app_state; },
       .process_events = [](App&) -> AppEvent {
         using namespace core::enum_helpers;
         AppEvent sev{};
@@ -58,14 +58,14 @@ AppPFNs init_app_stub() {
     } while (0)
 
 void* libapp_handle = nullptr;
-AppState* uninit_app(App& app) {
+AppState* uninit_app(App& app, bool keep_app_state) {
   LOG_INFO("uninit app");
   AppState* app_state = nullptr;
 
   if (libapp_handle != nullptr) {
     auto pfn_uninit_app = (PFN_uninit)(dlsym(libapp_handle, "uninit"));
     CHECK_DLERROR("can't load symbol uninit");
-    app_state = pfn_uninit_app(app);
+    app_state = pfn_uninit_app(app, keep_app_state);
 
     dlclose(libapp_handle);
     libapp_handle = nullptr;

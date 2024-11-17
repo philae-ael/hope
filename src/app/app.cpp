@@ -1,4 +1,5 @@
 #include "app.h"
+#include "app/mesh.h"
 #include "profiler.h"
 #include "renderer.h"
 
@@ -160,35 +161,93 @@ AppEvent handle_events(SDL_Event& ev, InputState& input_state) {
   return sev;
 }
 
+GPUDataStorage::GPUDataStorage(subsystem::video& v)
+    : mesh_loader(v.device) {
+  VkSamplerCreateInfo sampler_create_info{
+      .sType            = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+      .magFilter        = VK_FILTER_LINEAR,
+      .minFilter        = VK_FILTER_LINEAR,
+      .mipmapMode       = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+      .addressModeU     = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+      .addressModeV     = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+      .addressModeW     = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+      .mipLodBias       = 0.0,
+      .anisotropyEnable = false,
+      .maxAnisotropy    = 1.0,
+      .compareEnable    = false,
+      .borderColor      = VK_BORDER_COLOR_INT_OPAQUE_WHITE,
+  };
+  vkCreateSampler(v.device, &sampler_create_info, nullptr, &default_sampler);
+
+  camera_descriptor           = CameraDescriptor::init(v);
+  bindless_texture_descriptor = BindlessTextureDescriptor::init(v);
+}
+
+void GPUDataStorage::uninit(subsystem::video& v) {
+  LOG_TRACE("HERE");
+  for (auto& mesh : meshes.iter())
+    unload_mesh(v, mesh);
+  meshes.reset(core::get_named_allocator(core::AllocatorName::General));
+  camera_descriptor.uninit(v);
+  bindless_texture_descriptor.uninit(v);
+  texture_cache.uninit(v.device);
+  mesh_loader.uninit(v);
+
+  vkDestroySampler(v.device, default_sampler, nullptr);
+}
+
 extern "C" {
 
 EXPORT App* init(AppState* app_state, subsystem::video* video) {
   static App app;
-  if (app_state == nullptr) {
-    app_state  = core::get_named_allocator(core::AllocatorName::General).allocate<AppState>();
-    *app_state = AppState{};
-  }
-  if (app_state->version != AppState::CUR_VERSION) {
+
+  if (app_state != nullptr && app_state->version != AppState::CUR_VERSION) {
     LOG_ERROR("Resetting app_state: incompatible state version");
-    *app_state = AppState{};
+    app_state = nullptr;
   }
 
-  app.arena               = &core::arena_alloc();
-  app.video               = video;
-  app.state               = app_state;
-  app.renderer            = init_renderer(*app.arena, *app.video);
+  if (app_state == nullptr) {
+    auto* mem = core::get_named_allocator(core::AllocatorName::General).allocate<AppState>();
+    app_state = new (mem) AppState{
+        .gpu_data{*video},
+    };
+
+    static core::array deps{
+        "/assets/scenes/sponza.glb"_s,
+        "/assets/scenes/bistro.glb"_s,
+        "/assets/scenes/san miguel.glb"_s,
+    };
+
+    app_state->gpu_data.mesh_loader.queue_mesh(video->device, deps[1], app_state->gpu_data.texture_cache);
+  }
+
+  app.arena             = &core::arena_alloc();
+  core::Allocator alloc = *app.arena;
+  app.video             = video;
+  app.state             = app_state;
+  app.renderer          = new (alloc.allocate<Renderer>()) Renderer{
+      alloc,
+      app.state->gpu_data,
+      *app.video,
+  };
+
   app.input_state.gamepad = find_gamepad();
 
   return &app;
 }
 static_assert(std::is_same_v<decltype(&init), PFN_init>);
 
-EXPORT AppState* uninit(App& app) {
+EXPORT AppState* uninit(App& app, bool keep_app_state) {
   LOG_DEBUG("Uninit app");
 
-  uninit_renderer(*app.video, *app.renderer);
+  app.renderer->uninit(*app.video);
   core::arena_dealloc(*app.arena);
-  return app.state;
+  if (keep_app_state) {
+    return app.state;
+  } else {
+    app.state->gpu_data.uninit(*app.video);
+    return nullptr;
+  }
 }
 static_assert(std::is_same_v<decltype(&uninit), PFN_uninit>);
 
@@ -365,12 +424,12 @@ EXPORT AppEvent new_frame(App& app) {
   }
   if (any(sev & AppEvent::RebuildRenderer)) {
     LOG_INFO("rebuilding renderer");
-    uninit_renderer(*app.video, *app.renderer);
-    app.renderer = init_renderer(*app.arena, *app.video);
+    app.renderer->uninit(*app.video);
+    *app.renderer = Renderer{*app.arena, app.state->gpu_data, *app.video};
   }
   if (any(sev & AppEvent::RebuildSwapchain)) {
     subsystem::video_rebuild_swapchain(*app.video);
-    swapchain_rebuilt(*app.video, *app.renderer);
+    app.renderer->swapchain_rebuilt(*app.video);
   }
 
   return sev;
