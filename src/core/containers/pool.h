@@ -43,6 +43,9 @@ struct pool {
 
     if (n->prev)
       n->prev->next = n->next;
+    else
+      head = n->next;
+
     if (n->next)
       n->next->prev = n->prev;
 

@@ -516,7 +516,7 @@ struct array {
     return data[idx];
   }
   auto iter() {
-    return core::storage{*this}.iter();
+    return core::storage<S>{*this}.iter();
   }
   auto iter() const {
     return core::storage<const S>{*this}.iter();

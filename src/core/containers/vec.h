@@ -28,6 +28,10 @@ struct vec {
   vec(storage<S> s)
       : store(s)
       , size_(s.size) {}
+  template <class S>
+  vec(clear_t, storage<S> s)
+      : store(s)
+      , size_(0) {}
 
   vec(std::initializer_list<T> s)
       : store(s)
@@ -158,13 +162,7 @@ struct vec {
   // Does not invalidate a reverse iterator!
   // Useful to delete elements from a vector while iterating it backward
   T swap_last_pop(usize idx) {
-    if (idx != size() - 1) {
-      auto t       = (*this)[idx];
-      (*this)[idx] = (*this)[size() - 1];
-      DEBUG_STMT(memset(&(*this)[size() - 1], 0, sizeof(T)));
-      pop(core::noalloc);
-      return t;
-    }
+    SWAP((*this)[idx], (*this)[size() - 1]);
     return pop(core::noalloc);
   }
 };

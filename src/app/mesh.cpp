@@ -22,6 +22,7 @@ void unload_mesh(subsystem::video& v, GpuMesh mesh) {
   vmaDestroyBuffer(v.device.allocator, mesh.index_buffer, mesh.index_buf_allocation);
 }
 
+// TODO: transform this big coroutine like task into a set of smaller, independant tasks
 struct LoadMeshTask {
   core::Arena* arena;
 
@@ -35,6 +36,8 @@ struct LoadMeshTask {
   usize stack_depth = 0;
 
   core::TaskReturn operator()(core::TaskQueue*) {
+    auto s = utils::scope_start("Load Mesh Task"_hs);
+    defer { utils::scope_end(s); };
 
     auto cmdtok = mesh_loader->command_buffers.insert(
         core::get_named_allocator(core::AllocatorName::General), CommandBuffer::init(device, mesh_loader->pool)
@@ -113,21 +116,6 @@ struct LoadMeshTask {
     // --- ESTIMATE MEMORY NEEDED ---
     usize staging_buffer_size{};
     for (auto& primitive : core::storage{mesh.primitives_count, mesh.primitives}.iter()) {
-      // === Index buffer ===
-
-      switch (primitive.indices->component_type) {
-      case cgltf_component_type_r_16u:
-        staging_buffer_size += sizeof(u16) * primitive.indices->count;
-        break;
-      case cgltf_component_type_r_32u:
-        staging_buffer_size += sizeof(u32) * primitive.indices->count;
-        break;
-      default:
-        ASSERTM(false, "Component type not supported");
-      }
-
-      staging_buffer_size += primitive.attributes[0].data->count * (4 + 4 + 2) * sizeof(f32);
-
       staging_buffer_size = ALIGN_UP(staging_buffer_size, TEXEL_SIZE);
 
       // === Materials ===
@@ -151,18 +139,32 @@ struct LoadMeshTask {
       }
     }
 
-    auto get_staging                    = utils::scope_start("get staging"_hs);
-    // This is the slow part! Optimize that by pooling the staging buffer or something in the spririt
-    core::Maybe<StagingBuffer> staging_ = StagingBuffer::init(device, usize(4 * staging_buffer_size), cmd);
-    utils::scope_end(get_staging);
+    // Note that if size == 0, there is no need for a command buffer Maybe do somthing about that
+
+    core::Maybe<StagingBuffer> staging_;
+    if (staging_buffer_size > 0) {
+      for (auto [idx, buffer] :
+           core::enumerate_rev{mesh_loader->staging_buffers.iter_rev(), mesh_loader->staging_buffers.size() - 1}) {
+        if (buffer->size >= staging_buffer_size) {
+          buffer->reset();
+          staging_ = *buffer;
+
+          mesh_loader->staging_buffers.swap_last_pop(idx);
+        }
+      }
+    }
     if (staging_.is_none()) {
+      staging_ = StagingBuffer::init(device, staging_buffer_size > 0 ? MAX(staging_buffer_size, MB(64)) : 0, cmd);
+    }
+    if (staging_.is_none()) {
+      LOG_WARNING("can't get a staging buffer, probably not enough memory");
       return core::TaskReturn::Yield;
     }
 
-    auto staging_buffer_token = mesh_loader->staging_buffers.insert(
+    auto staging_buffer_token = mesh_loader->inflight_staging_buffers.insert(
         core::get_named_allocator(core::AllocatorName::General), {0, staging_.value()}
     );
-    RefCountedStagingBuffer& staging = mesh_loader->staging_buffers.get(staging_buffer_token).value();
+    RefCountedStagingBuffer& staging = mesh_loader->inflight_staging_buffers[staging_buffer_token].value();
 
     for (auto& primitive : core::storage{mesh.primitives_count, mesh.primitives}.iter()) {
       ASSERT(primitive.type == cgltf_primitive_type_triangles);
@@ -171,21 +173,20 @@ struct LoadMeshTask {
       core::Allocator tmp_alloc = tmp_arena;
 
       GpuMesh gpu_mesh{.transform = transform};
-
-      // === Index buffer ===
-
-      core::LayoutInfo component_layout;
-      switch (primitive.indices->component_type) {
-      case cgltf_component_type_r_16u:
-        component_layout = core::default_layout_of<u16>();
-        break;
-      case cgltf_component_type_r_32u:
-        component_layout = core::default_layout_of<u32>();
-        break;
-      default:
-        ASSERTM(false, "Component type not supported");
-      }
       {
+        // === Index buffer ===
+
+        core::LayoutInfo component_layout;
+        switch (primitive.indices->component_type) {
+        case cgltf_component_type_r_16u:
+          component_layout = core::default_layout_of<u16>();
+          break;
+        case cgltf_component_type_r_32u:
+          component_layout = core::default_layout_of<u32>();
+          break;
+        default:
+          ASSERTM(false, "Component type not supported");
+        }
         auto indices = tmp_alloc.allocate_array(component_layout, primitive.indices->count);
 
         ASSERT(cgltf_accessor_unpack_indices(primitive.indices, indices.data, component_layout.size, indices.size));
@@ -214,12 +215,8 @@ struct LoadMeshTask {
         gpu_mesh.huge_indices = primitive.indices->component_type == cgltf_component_type_r_32u;
       }
 
-      // === Vertex buffer ===
-      // pos: 3
-      // normal: 3
-      // texcoord: 2
-
       {
+        // === Vertex buffer ===
         usize vertex_size = primitive.attributes[0].data->count * sizeof(Vertex);
 
         VkBufferCreateInfo vertex_buf_create_info{
@@ -255,7 +252,9 @@ struct LoadMeshTask {
               ASSERT(cgltf_accessor_read_float(attribute.data, i, &vertices[i].nx, 3));
               break;
             case cgltf_attribute_type_texcoord:
-              ASSERT(cgltf_accessor_read_float(attribute.data, i, &vertices[i].u, 2));
+              if (attribute.index == 0) {
+                ASSERT(cgltf_accessor_read_float(attribute.data, i, &vertices[i].u, 2));
+              }
               break;
             case cgltf_attribute_type_tangent:
               LOG_WARNING("tangent attribute type not supported");
@@ -288,15 +287,12 @@ struct LoadMeshTask {
           auto image_index = cgltf_image_index(data, material.pbr_metallic_roughness.base_color_texture.texture->image);
 
           gpu_mesh.base_color_texture_idx =
-              tex_cache
-                  ->entry({
-                      .src           = "GLTF"_s, // TODO: use path?
-                      .texture_index = usize(image_index),
-                  })
+              tex_cache->entry({.src = "GLTF"_s, /* TODO: use path? */ .texture_index = usize(image_index)})
                   .or_create([&]() {
                     auto buf_view = data->images[image_index].buffer_view;
                     int x, y, channels;
 
+                    /// This seems to be the slowest part now
                     u8* mem = stbi_load_from_memory(
                         (const stbi_uc*)buf_view->buffer->data + buf_view->offset, (int)buf_view->size, &x, &y,
                         &channels, 4
@@ -343,9 +339,10 @@ struct LoadMeshTask {
 
     return core::TaskReturn::Yield;
   }
+
   ~LoadMeshTask() {
     cgltf_free(data);
-    core::arena_dealloc(*arena); // ? should Probably be done externally by mesh loader
+    core::arena_dealloc(*arena);
   }
 };
 
@@ -403,4 +400,82 @@ MeshToken MeshLoader::queue_mesh(vk::Device& device, core::str8 src, TextureCach
 
   LOG2_INFO("loading of mesh ", src, " has been launched");
   return mesh_token;
+}
+
+void MeshLoader::work(vk::Device& device, Callback callback, void* userdata) {
+  for (auto t : command_buffers.iter_rev_enumerate()) {
+    CommandBufferToken command_buffer_token = *core::get<0>(t);
+    CommandBuffer& buffer                   = *core::get<1>(t);
+
+    if (!buffer.done(device)) {
+      continue;
+    }
+
+    for (auto [idx, job] : core::enumerate_rev{jobs.iter_rev(), jobs.size() - 1}) {
+      if (job->command_buffer_token == command_buffer_token) {
+        // check if mesh is done after this job
+        auto& infos = mesh_job_infos[job->mesh_token].expect("counter does not exist!");
+        infos.inflight--;
+
+        bool mesh_fully_loaded = infos.staging_done && infos.inflight == 0;
+
+        callback(userdata, device, job->mesh_token, job->mesh, mesh_fully_loaded);
+
+        if (mesh_fully_loaded) {
+          auto& load_task = *static_cast<LoadMeshTask*>(infos.task->data);
+          load_task.~LoadMeshTask();
+          core::default_task_queue()->deallocate_job(infos.task);
+          mesh_job_infos.destroy(job->mesh_token);
+        }
+
+        auto job             = jobs.swap_last_pop(idx);
+        auto& staging_buffer = inflight_staging_buffers.get(job.staging_buffer_token).expect("huhu");
+        staging_buffer.inflight--;
+        if (staging_buffer.inflight == 0) {
+          if (staging_buffer.buffer.size > 0 && staging_buffers.size() < staging_buffers.capacity()) {
+            staging_buffers.push(core::noalloc, staging_buffer.buffer);
+          } else {
+            staging_buffer.buffer.uninit(device);
+          }
+          inflight_staging_buffers.destroy(job.staging_buffer_token);
+        };
+      }
+    }
+
+    buffer.uninit(device, pool);
+    command_buffers.destroy(command_buffer_token);
+  }
+}
+
+void MeshLoader::uninit(subsystem::video& v) {
+  vkDeviceWaitIdle(v.device);
+
+  for (auto& cmd : command_buffers.iter()) {
+    cmd.uninit(v.device, pool);
+  }
+  command_buffers.reset(core::get_named_allocator(core::AllocatorName::General));
+
+  for (auto& job : jobs.iter()) {
+    unload_mesh(v, job.mesh);
+  }
+  jobs.reset(core::get_named_allocator(core::AllocatorName::General));
+
+  for (auto& inflight_staging_buffer : inflight_staging_buffers.iter()) {
+    inflight_staging_buffer.buffer.uninit(v.device);
+  }
+  inflight_staging_buffers.reset(core::get_named_allocator(core::AllocatorName::General));
+
+  for (auto& staging_buffer : staging_buffers.iter()) {
+    staging_buffer.uninit(v.device);
+  }
+  staging_buffers.reset(core::noalloc);
+
+  for (auto mesh_job_info : mesh_job_infos.iter()) {
+    auto& load_task = *static_cast<LoadMeshTask*>(mesh_job_info.task->data);
+    load_task.~LoadMeshTask();
+    core::default_task_queue()->deallocate_job(mesh_job_info.task);
+  }
+  mesh_job_infos.reset(core::get_named_allocator(core::AllocatorName::General));
+
+  vkDestroyCommandPool(v.device, pool, nullptr);
 }
